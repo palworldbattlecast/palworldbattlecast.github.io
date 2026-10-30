@@ -4,6 +4,8 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('en-US');
 const IMG = {}, SIZE = {};
+const VERB = { plays: 'play', uses: 'use', sets: 'set', loses: 'lose', reveals: 'reveal', goes: 'go', wins: 'win', attacks: 'attack' };
+const fixG = t => t.replace(/\bYou (plays|uses|sets|loses|reveals|goes|wins|attacks)\b/g, (m, v) => 'You ' + VERB[v]);
 const RCOL = { MYT: '#cc80ff', LGD: '#ffc73d', SSR: '#ff73f2', SR: '#ffcc40', R: '#d9e0f2', U: '#59d9bf', ITEM: '#80e699', C: '#8cb3ff' };
 const SAVE_KEY = 'dorepacks_save_v1';
 
@@ -201,7 +203,7 @@ function showAchievements() {
 function startBattle(v) {
   const league = v[0] === 'L', k = +v.slice(1), o = G.s.ai[k];
   const b = new Battle(G.activeDeckCards, 'You', G.aiDeck(k), o.name, G.rng.next(), G.rng.int(2));
-  UI.battle = { b, k, league, sel: null, ei: b.events.length, busy: false, floats: [], lines: b.events.filter(e => e.e === 'log').map(e => e.text) };
+  UI.battle = { b, k, league, sel: null, ei: b.events.length, busy: false, floats: [], lines: b.events.filter(e => e.e === 'log').map(e => fixG(e.text)) };
   render(); if (b.current === 1) setTimeout(aiTurn, 700);
 }
 function slotHTML(side, i) {
@@ -260,7 +262,7 @@ function drainEvents() {
   const B = UI.battle, ev = B.b.events;
   for (; B.ei < ev.length; B.ei++) {
     const e = ev[B.ei];
-    if (e.e === 'log') B.lines.push(e.text);
+    if (e.e === 'log') B.lines.push(fixG(e.text));
     else if (e.e === 'damage') B.floats.push({ side: e.side, slot: e.slot, text: `-${e.amount}${e.eff > 1 ? '!' : ''}` });
     else if (e.e === 'heal') B.floats.push({ side: e.side, slot: e.slot, text: `+${e.amount}`, heal: true });
     else if (e.e === 'stat') B.floats.push({ side: e.side, slot: e.slot, text: e.text, heal: true });
@@ -375,7 +377,7 @@ function demo() {
       // play a few turns with the AI driving both sides to reach a mid-game board
       for (let n = 0; n < 400 && b.turnNumber < 7 && !b.over; n++) { const a = BattleAI.next(b); if (!b.apply(a)) b.apply({ t: 'end' }); }
       while (b.current !== 0 && !b.over) { const a = BattleAI.next(b); if (!b.apply(a)) b.apply({ t: 'end' }); }
-      UI.battle.ei = b.events.length; UI.battle.lines = b.events.filter(e => e.e === 'log').map(e => e.text);
+      UI.battle.ei = b.events.length; UI.battle.lines = b.events.filter(e => e.e === 'log').map(e => fixG(e.text));
       if (SNAP === 'battle_target') { const i = b.sides[0].mons.findIndex(m => m && canAttack(m)); if (i >= 0) UI.battle.sel = { kind: 'mon', i }; }
       else { const i = b.sides[0].hand.findIndex(isMon); if (i >= 0) UI.battle.sel = { kind: 'hand', i }; }
       break; }
