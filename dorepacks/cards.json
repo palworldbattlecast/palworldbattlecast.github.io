@@ -1,0 +1,1920 @@
+{
+ "cards": [
+  {
+   "id": "ww_snarlpup",
+   "mon": "snarlpup",
+   "name": "Snarlpup",
+   "set": "WW",
+   "rarity": "C",
+   "num": 1,
+   "kind": "mon",
+   "types": [
+    "Electric",
+    "Dark"
+   ],
+   "hp": 200,
+   "move": "Volt Knuckle",
+   "moveType": "Electric",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_giggleti",
+   "mon": "giggleti",
+   "name": "Giggleti",
+   "set": "WW",
+   "rarity": "C",
+   "num": 2,
+   "kind": "mon",
+   "types": [
+    "Ice",
+    "Normal"
+   ],
+   "hp": 240,
+   "move": "Boom Blast",
+   "moveType": "Normal",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_acornix",
+   "mon": "acornix",
+   "name": "Acornix",
+   "set": "WW",
+   "rarity": "C",
+   "num": 3,
+   "kind": "mon",
+   "types": [
+    "Grass",
+    "Bug"
+   ],
+   "hp": 190,
+   "move": "Vine Lash",
+   "moveType": "Grass",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_grimpkin",
+   "mon": "grimpkin",
+   "name": "Grimpkin",
+   "set": "WW",
+   "rarity": "C",
+   "num": 4,
+   "kind": "mon",
+   "types": [
+    "Fairy",
+    "Poison"
+   ],
+   "hp": 160,
+   "move": "Toxic Fang",
+   "moveType": "Poison",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_hootuft",
+   "mon": "hootuft",
+   "name": "Hootuft",
+   "set": "WW",
+   "rarity": "C",
+   "num": 5,
+   "kind": "mon",
+   "types": [
+    "Normal",
+    "Flying"
+   ],
+   "hp": 150,
+   "move": "Gale Talon",
+   "moveType": "Flying",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_zapwing",
+   "mon": "zapwing",
+   "name": "Zapwing",
+   "set": "WW",
+   "rarity": "C",
+   "num": 6,
+   "kind": "mon",
+   "types": [
+    "Fire",
+    "Electric"
+   ],
+   "hp": 140,
+   "move": "Blaze Bite",
+   "moveType": "Fire",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_teddimple",
+   "mon": "teddimple",
+   "name": "Teddimple",
+   "set": "WW",
+   "rarity": "C",
+   "num": 7,
+   "kind": "mon",
+   "types": [
+    "Bug"
+   ],
+   "hp": 140,
+   "move": "Stinger Flurry",
+   "moveType": "Bug",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_catergar",
+   "mon": "catergar",
+   "name": "Catergar",
+   "set": "WW",
+   "rarity": "C",
+   "num": 8,
+   "kind": "mon",
+   "types": [
+    "Bug"
+   ],
+   "hp": 130,
+   "move": "Swarm Buzz",
+   "moveType": "Bug",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_gruugy",
+   "mon": "gruugy",
+   "name": "Gruugy",
+   "set": "WW",
+   "rarity": "C",
+   "num": 9,
+   "kind": "mon",
+   "types": [
+    "Rock"
+   ],
+   "hp": 150,
+   "move": "Stone Slam",
+   "moveType": "Rock",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_munchwag",
+   "mon": "munchwag",
+   "name": "Munchwag",
+   "set": "WW",
+   "rarity": "C",
+   "num": 10,
+   "kind": "mon",
+   "types": [
+    "Water"
+   ],
+   "hp": 150,
+   "move": "Bubble Jet",
+   "moveType": "Water",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_spydo",
+   "mon": "spydo",
+   "name": "Spydo",
+   "set": "WW",
+   "rarity": "C",
+   "num": 11,
+   "kind": "mon",
+   "types": [
+    "Water"
+   ],
+   "hp": 120,
+   "move": "Bubble Jet",
+   "moveType": "Water",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_panpurr",
+   "mon": "panpurr",
+   "name": "Panpurr",
+   "set": "WW",
+   "rarity": "C",
+   "num": 12,
+   "kind": "mon",
+   "types": [
+    "Water"
+   ],
+   "hp": 130,
+   "move": "Tide Crash",
+   "moveType": "Water",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_sprigchimp",
+   "mon": "sprigchimp",
+   "name": "Sprigchimp",
+   "set": "WW",
+   "rarity": "U",
+   "num": 13,
+   "kind": "mon",
+   "types": [
+    "Grass"
+   ],
+   "hp": 180,
+   "move": "Vine Lash",
+   "moveType": "Grass",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_embertail",
+   "mon": "embertail",
+   "name": "Embertail",
+   "set": "WW",
+   "rarity": "U",
+   "num": 14,
+   "kind": "mon",
+   "types": [
+    "Fire"
+   ],
+   "hp": 170,
+   "move": "Magma Burst",
+   "moveType": "Fire",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_dewdeer",
+   "mon": "dewdeer",
+   "name": "Dewdeer",
+   "set": "WW",
+   "rarity": "U",
+   "num": 15,
+   "kind": "mon",
+   "types": [
+    "Water"
+   ],
+   "hp": 180,
+   "move": "Bubble Jet",
+   "moveType": "Water",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_pinkit",
+   "mon": "pinkit",
+   "name": "Pinkit",
+   "set": "WW",
+   "rarity": "U",
+   "num": 16,
+   "kind": "mon",
+   "types": [
+    "Fairy"
+   ],
+   "hp": 190,
+   "move": "Gilded Gust",
+   "moveType": "Fairy",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_emodaur",
+   "mon": "emodaur",
+   "name": "Emodaur",
+   "set": "WW",
+   "rarity": "U",
+   "num": 17,
+   "kind": "mon",
+   "types": [
+    "Normal"
+   ],
+   "hp": 130,
+   "move": "Boom Blast",
+   "moveType": "Normal",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_gloomairy",
+   "mon": "gloomairy",
+   "name": "Gloomairy",
+   "set": "WW",
+   "rarity": "U",
+   "num": 18,
+   "kind": "mon",
+   "types": [
+    "Fairy"
+   ],
+   "hp": 160,
+   "move": "Gilded Gust",
+   "moveType": "Fairy",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_vulran",
+   "mon": "vulran",
+   "name": "Vulran",
+   "set": "WW",
+   "rarity": "U",
+   "num": 19,
+   "kind": "mon",
+   "types": [
+    "Fire"
+   ],
+   "hp": 120,
+   "move": "Magma Burst",
+   "moveType": "Fire",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_sheldit",
+   "mon": "sheldit",
+   "name": "Sheldit",
+   "set": "WW",
+   "rarity": "U",
+   "num": 20,
+   "kind": "mon",
+   "types": [
+    "Ghost"
+   ],
+   "hp": 120,
+   "move": "Phantom Wail",
+   "moveType": "Ghost",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_glootios",
+   "mon": "glootios",
+   "name": "Glootios",
+   "set": "WW",
+   "rarity": "R",
+   "num": 21,
+   "kind": "mon",
+   "types": [
+    "Dark"
+   ],
+   "hp": 130,
+   "move": "Night Bite",
+   "moveType": "Dark",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_egmil",
+   "mon": "egmil",
+   "name": "Egmil",
+   "set": "WW",
+   "rarity": "R",
+   "num": 22,
+   "kind": "mon",
+   "types": [
+    "Psychic"
+   ],
+   "hp": 160,
+   "move": "Mind Crush",
+   "moveType": "Psychic",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_limantis",
+   "mon": "limantis",
+   "name": "Limantis",
+   "set": "WW",
+   "rarity": "R",
+   "num": 23,
+   "kind": "mon",
+   "types": [
+    "Fairy"
+   ],
+   "hp": 130,
+   "move": "Gilded Gust",
+   "moveType": "Fairy",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_armadig",
+   "mon": "armadig",
+   "name": "Armadig",
+   "set": "WW",
+   "rarity": "R",
+   "num": 24,
+   "kind": "mon",
+   "types": [
+    "Rock"
+   ],
+   "hp": 210,
+   "move": "Stone Slam",
+   "moveType": "Rock",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_rokbru",
+   "mon": "rokbru",
+   "name": "Rokbru",
+   "set": "WW",
+   "rarity": "SR",
+   "num": 25,
+   "kind": "mon",
+   "types": [
+    "Rock"
+   ],
+   "hp": 190,
+   "move": "Stone Slam",
+   "moveType": "Rock",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_sliggy",
+   "mon": "sliggy",
+   "name": "Sliggy",
+   "set": "WW",
+   "rarity": "SR",
+   "num": 26,
+   "kind": "mon",
+   "types": [
+    "Dragon"
+   ],
+   "hp": 230,
+   "move": "Wyrm Pulse",
+   "moveType": "Dragon",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_axerupi",
+   "mon": "axerupi",
+   "name": "Axerupi",
+   "set": "WW",
+   "rarity": "SSR",
+   "num": 27,
+   "kind": "mon",
+   "types": [
+    "Grass"
+   ],
+   "hp": 120,
+   "move": "Vine Lash",
+   "moveType": "Grass",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_electrinx",
+   "mon": "electrinx",
+   "name": "Electrinx",
+   "set": "WW",
+   "rarity": "SSR",
+   "num": 28,
+   "kind": "mon",
+   "types": [
+    "Electric"
+   ],
+   "hp": 120,
+   "move": "Volt Knuckle",
+   "moveType": "Electric",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_senkip",
+   "mon": "senkip",
+   "name": "Senkip",
+   "set": "WW",
+   "rarity": "SSR",
+   "num": 29,
+   "kind": "mon",
+   "types": [
+    "Ground"
+   ],
+   "hp": 140,
+   "move": "Quake Stomp",
+   "moveType": "Ground",
+   "dmg": 100,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ww_badbulb",
+   "mon": "badbulb",
+   "name": "Badbulb",
+   "set": "WW",
+   "rarity": "SSR",
+   "num": 30,
+   "kind": "mon",
+   "types": [
+    "Fire"
+   ],
+   "hp": 120,
+   "move": "Magma Burst",
+   "moveType": "Fire",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_candlewraith",
+   "mon": "candlewraith",
+   "name": "Candlewraith",
+   "set": "FL",
+   "rarity": "C",
+   "num": 1,
+   "kind": "mon",
+   "types": [
+    "Ghost",
+    "Fire"
+   ],
+   "hp": 180,
+   "move": "Magma Burst",
+   "moveType": "Fire",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_lunahowl",
+   "mon": "lunahowl",
+   "name": "Lunahowl",
+   "set": "FL",
+   "rarity": "C",
+   "num": 2,
+   "kind": "mon",
+   "types": [
+    "Ghost",
+    "Ice"
+   ],
+   "hp": 200,
+   "move": "Shade Claw",
+   "moveType": "Ghost",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_swirlgon",
+   "mon": "swirlgon",
+   "name": "Swirlgon",
+   "set": "FL",
+   "rarity": "C",
+   "num": 3,
+   "kind": "mon",
+   "types": [
+    "Water",
+    "Dragon"
+   ],
+   "hp": 230,
+   "move": "Tidal Crash",
+   "moveType": "Water",
+   "dmg": 110,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_glowmare",
+   "mon": "glowmare",
+   "name": "Glowmare",
+   "set": "FL",
+   "rarity": "C",
+   "num": 4,
+   "kind": "mon",
+   "types": [
+    "Normal",
+    "Ice"
+   ],
+   "hp": 220,
+   "move": "Boom Blast",
+   "moveType": "Normal",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_solpuff",
+   "mon": "solpuff",
+   "name": "Solpuff",
+   "set": "FL",
+   "rarity": "C",
+   "num": 5,
+   "kind": "mon",
+   "types": [
+    "Fairy",
+    "Dark"
+   ],
+   "hp": 240,
+   "move": "Gilded Gust",
+   "moveType": "Fairy",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_blossoshell",
+   "mon": "blossoshell",
+   "name": "Blossoshell",
+   "set": "FL",
+   "rarity": "C",
+   "num": 6,
+   "kind": "mon",
+   "types": [
+    "Grass",
+    "Water"
+   ],
+   "hp": 240,
+   "move": "Vine Lash",
+   "moveType": "Grass",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_galefang",
+   "mon": "galefang",
+   "name": "Galefang",
+   "set": "FL",
+   "rarity": "C",
+   "num": 7,
+   "kind": "mon",
+   "types": [
+    "Grass",
+    "Dragon"
+   ],
+   "hp": 210,
+   "move": "Dragon Rend",
+   "moveType": "Dragon",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_zebrolt",
+   "mon": "zebrolt",
+   "name": "Zebrolt",
+   "set": "FL",
+   "rarity": "C",
+   "num": 8,
+   "kind": "mon",
+   "types": [
+    "Electric",
+    "Psychic"
+   ],
+   "hp": 200,
+   "move": "Thunder Arc",
+   "moveType": "Electric",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_draculard",
+   "mon": "draculard",
+   "name": "Draculard",
+   "set": "FL",
+   "rarity": "C",
+   "num": 9,
+   "kind": "mon",
+   "types": [
+    "Psychic",
+    "Dark"
+   ],
+   "hp": 210,
+   "move": "Psy Blade",
+   "moveType": "Psychic",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_scythron",
+   "mon": "scythron",
+   "name": "Scythron",
+   "set": "FL",
+   "rarity": "C",
+   "num": 10,
+   "kind": "mon",
+   "types": [
+    "Steel",
+    "Dragon"
+   ],
+   "hp": 200,
+   "move": "Iron Smash",
+   "moveType": "Steel",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_voltmonk",
+   "mon": "voltmonk",
+   "name": "Voltmonk",
+   "set": "FL",
+   "rarity": "C",
+   "num": 11,
+   "kind": "mon",
+   "types": [
+    "Electric",
+    "Fighting"
+   ],
+   "hp": 200,
+   "move": "Thunder Arc",
+   "moveType": "Electric",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_boulderbear",
+   "mon": "boulderbear",
+   "name": "Boulderbear",
+   "set": "FL",
+   "rarity": "C",
+   "num": 12,
+   "kind": "mon",
+   "types": [
+    "Ground",
+    "Rock"
+   ],
+   "hp": 240,
+   "move": "Quake Stomp",
+   "moveType": "Ground",
+   "dmg": 100,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_madwyre",
+   "mon": "madwyre",
+   "name": "Madwyre",
+   "set": "FL",
+   "rarity": "U",
+   "num": 13,
+   "kind": "mon",
+   "types": [
+    "Fire",
+    "Electric"
+   ],
+   "hp": 190,
+   "move": "Magma Burst",
+   "moveType": "Fire",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_raybuzz",
+   "mon": "raybuzz",
+   "name": "Raybuzz",
+   "set": "FL",
+   "rarity": "U",
+   "num": 14,
+   "kind": "mon",
+   "types": [
+    "Electric",
+    "Fighting"
+   ],
+   "hp": 200,
+   "move": "Rising Uppercut",
+   "moveType": "Fighting",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_ninequeen",
+   "mon": "ninequeen",
+   "name": "Ninequeen",
+   "set": "FL",
+   "rarity": "U",
+   "num": 15,
+   "kind": "mon",
+   "types": [
+    "Fire",
+    "Poison"
+   ],
+   "hp": 190,
+   "move": "Magma Burst",
+   "moveType": "Fire",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_wirltoad",
+   "mon": "wirltoad",
+   "name": "Wirltoad",
+   "set": "FL",
+   "rarity": "U",
+   "num": 16,
+   "kind": "mon",
+   "types": [
+    "Water"
+   ],
+   "hp": 240,
+   "move": "Bubble Jet",
+   "moveType": "Water",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_ursafly",
+   "mon": "ursafly",
+   "name": "Ursafly",
+   "set": "FL",
+   "rarity": "U",
+   "num": 17,
+   "kind": "mon",
+   "types": [
+    "Bug",
+    "Fighting"
+   ],
+   "hp": 220,
+   "move": "Rising Uppercut",
+   "moveType": "Fighting",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_furpert",
+   "mon": "furpert",
+   "name": "Furpert",
+   "set": "FL",
+   "rarity": "U",
+   "num": 18,
+   "kind": "mon",
+   "types": [
+    "Ground",
+    "Rock"
+   ],
+   "hp": 230,
+   "move": "Quake Stomp",
+   "moveType": "Ground",
+   "dmg": 100,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_friscor",
+   "mon": "friscor",
+   "name": "Friscor",
+   "set": "FL",
+   "rarity": "U",
+   "num": 19,
+   "kind": "mon",
+   "types": [
+    "Bug",
+    "Psychic"
+   ],
+   "hp": 200,
+   "move": "Mind Crush",
+   "moveType": "Psychic",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_brogem",
+   "mon": "brogem",
+   "name": "Brogem",
+   "set": "FL",
+   "rarity": "U",
+   "num": 20,
+   "kind": "mon",
+   "types": [
+    "Rock"
+   ],
+   "hp": 240,
+   "move": "Stone Slam",
+   "moveType": "Rock",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_wispeacock",
+   "mon": "wispeacock",
+   "name": "Wispeacock",
+   "set": "FL",
+   "rarity": "R",
+   "num": 21,
+   "kind": "mon",
+   "types": [
+    "Ghost"
+   ],
+   "hp": 210,
+   "move": "Phantom Wail",
+   "moveType": "Ghost",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_verdaconda",
+   "mon": "verdaconda",
+   "name": "Verdaconda",
+   "set": "FL",
+   "rarity": "R",
+   "num": 22,
+   "kind": "mon",
+   "types": [
+    "Dragon",
+    "Fairy"
+   ],
+   "hp": 210,
+   "move": "Gilded Gust",
+   "moveType": "Fairy",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_magmaberry",
+   "mon": "magmaberry",
+   "name": "Magmaberry",
+   "set": "FL",
+   "rarity": "R",
+   "num": 23,
+   "kind": "mon",
+   "types": [
+    "Fire",
+    "Rock"
+   ],
+   "hp": 230,
+   "move": "Magma Burst",
+   "moveType": "Fire",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_wraithscale",
+   "mon": "wraithscale",
+   "name": "Wraithscale",
+   "set": "FL",
+   "rarity": "R",
+   "num": 24,
+   "kind": "mon",
+   "types": [
+    "Ghost",
+    "Dragon"
+   ],
+   "hp": 210,
+   "move": "Dragon Rend",
+   "moveType": "Dragon",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_haxpion",
+   "mon": "haxpion",
+   "name": "Haxpion",
+   "set": "FL",
+   "rarity": "SR",
+   "num": 25,
+   "kind": "mon",
+   "types": [
+    "Grass",
+    "Dark"
+   ],
+   "hp": 200,
+   "move": "Vine Lash",
+   "moveType": "Grass",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_warplume",
+   "mon": "warplume",
+   "name": "Warplume",
+   "set": "FL",
+   "rarity": "SR",
+   "num": 26,
+   "kind": "mon",
+   "types": [
+    "Flying",
+    "Fighting"
+   ],
+   "hp": 220,
+   "move": "Rising Uppercut",
+   "moveType": "Fighting",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "fl_spiraquill",
+   "mon": "spiraquill",
+   "name": "Spiraquill",
+   "set": "FL",
+   "rarity": "LGD",
+   "num": 27,
+   "kind": "mon",
+   "types": [
+    "Dragon",
+    "Steel"
+   ],
+   "hp": 240,
+   "move": "Dragon Rend",
+   "moveType": "Dragon",
+   "dmg": 90,
+   "legendary": true,
+   "mythical": false
+  },
+  {
+   "id": "fl_maneshard",
+   "mon": "maneshard",
+   "name": "Maneshard",
+   "set": "FL",
+   "rarity": "LGD",
+   "num": 28,
+   "kind": "mon",
+   "types": [
+    "Ice",
+    "Fighting"
+   ],
+   "hp": 240,
+   "move": "Rising Uppercut",
+   "moveType": "Fighting",
+   "dmg": 80,
+   "legendary": true,
+   "mythical": false
+  },
+  {
+   "id": "fl_seraphink",
+   "mon": "seraphink",
+   "name": "Seraphink",
+   "set": "FL",
+   "rarity": "LGD",
+   "num": 29,
+   "kind": "mon",
+   "types": [
+    "Flying",
+    "Psychic"
+   ],
+   "hp": 230,
+   "move": "Feather Storm",
+   "moveType": "Flying",
+   "dmg": 90,
+   "legendary": true,
+   "mythical": false
+  },
+  {
+   "id": "fl_mothmallow",
+   "mon": "mothmallow",
+   "name": "Mothmallow",
+   "set": "FL",
+   "rarity": "MYT",
+   "num": 30,
+   "kind": "mon",
+   "types": [
+    "Bug",
+    "Poison"
+   ],
+   "hp": 250,
+   "move": "Sludge Spray",
+   "moveType": "Poison",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": true
+  },
+  {
+   "id": "st_potion",
+   "name": "Potion",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 1,
+   "kind": "spell",
+   "types": [
+    "Grass"
+   ],
+   "hp": 0,
+   "move": "Leaf Mend",
+   "moveType": "Grass",
+   "dmg": 0,
+   "artMon": "sprigchimp",
+   "effect": {
+    "heal": 50
+   },
+   "text": "Heal 50 HP from one of your doremon.",
+   "price": 60,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_super_potion",
+   "name": "Super Potion",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 2,
+   "kind": "spell",
+   "types": [
+    "Fairy"
+   ],
+   "hp": 0,
+   "move": "Moon Glow",
+   "moveType": "Fairy",
+   "dmg": 0,
+   "artMon": "solpuff",
+   "effect": {
+    "heal": 100
+   },
+   "text": "Heal 100 HP from one of your doremon.",
+   "price": 150,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_soothing_song",
+   "name": "Soothing Song",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 3,
+   "kind": "spell",
+   "types": [
+    "Fairy"
+   ],
+   "hp": 0,
+   "move": "Soothing Song",
+   "moveType": "Fairy",
+   "dmg": 0,
+   "artMon": "verdaconda",
+   "effect": {
+    "healAll": 30
+   },
+   "text": "Heal 30 HP from ALL of your doremon.",
+   "price": 200,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_antidote",
+   "name": "Antidote",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 4,
+   "kind": "spell",
+   "types": [
+    "Water"
+   ],
+   "hp": 0,
+   "move": "Pal Patch",
+   "moveType": "Water",
+   "dmg": 0,
+   "artMon": "dewdeer",
+   "effect": {
+    "cure": "psn"
+   },
+   "text": "Cure Poison from one of your doremon.",
+   "price": 40,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_burn_heal",
+   "name": "Burn Heal",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 5,
+   "kind": "spell",
+   "types": [
+    "Water"
+   ],
+   "hp": 0,
+   "move": "Pal Patch",
+   "moveType": "Water",
+   "dmg": 0,
+   "artMon": "pearlgill",
+   "effect": {
+    "cure": "brn"
+   },
+   "text": "Cure a Burn from one of your doremon.",
+   "price": 40,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_paralyze_heal",
+   "name": "Paralyze Heal",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 6,
+   "kind": "spell",
+   "types": [
+    "Psychic"
+   ],
+   "hp": 0,
+   "move": "Aid Pulse",
+   "moveType": "Psychic",
+   "dmg": 0,
+   "artMon": "ribbonix",
+   "effect": {
+    "cure": "par"
+   },
+   "text": "Cure Paralysis from one of your doremon.",
+   "price": 40,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_awakening",
+   "name": "Awakening",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 7,
+   "kind": "spell",
+   "types": [
+    "Psychic"
+   ],
+   "hp": 0,
+   "move": "Aid Pulse",
+   "moveType": "Psychic",
+   "dmg": 0,
+   "artMon": "fluffram",
+   "effect": {
+    "cure": "slp"
+   },
+   "text": "Wake up one of your sleeping doremon.",
+   "price": 40,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_full_heal",
+   "name": "Full Heal",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 8,
+   "kind": "spell",
+   "types": [
+    "Psychic"
+   ],
+   "hp": 0,
+   "move": "Aid Pulse",
+   "moveType": "Psychic",
+   "dmg": 0,
+   "artMon": "peaflora",
+   "effect": {
+    "cure": "all"
+   },
+   "text": "Cure ANY status (Poison, Burn, Paralysis, Sleep, Confusion).",
+   "price": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_power_up",
+   "name": "Power Up",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 9,
+   "kind": "spell",
+   "types": [
+    "Normal"
+   ],
+   "hp": 0,
+   "move": "Power Up",
+   "moveType": "Normal",
+   "dmg": 0,
+   "artMon": "warplume",
+   "effect": {
+    "atk": 2
+   },
+   "text": "One of your doremon gets ATK +2 (+100% damage).",
+   "price": 220,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_iron_guard",
+   "name": "Iron Guard",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 10,
+   "kind": "spell",
+   "types": [
+    "Steel"
+   ],
+   "hp": 0,
+   "move": "Iron Guard",
+   "moveType": "Steel",
+   "dmg": 0,
+   "artMon": "spikebrute",
+   "effect": {
+    "def": 2
+   },
+   "text": "One of your doremon gets DEF +2 (takes half damage).",
+   "price": 220,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_brace_up",
+   "name": "Brace Up",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 11,
+   "kind": "spell",
+   "types": [
+    "Rock"
+   ],
+   "hp": 0,
+   "move": "Brace Up",
+   "moveType": "Rock",
+   "dmg": 0,
+   "artMon": "rokbru",
+   "effect": {
+    "def": 1
+   },
+   "text": "One of your doremon gets DEF +1.",
+   "price": 100,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_cheer_on",
+   "name": "Cheer On",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 12,
+   "kind": "spell",
+   "types": [
+    "Normal"
+   ],
+   "hp": 0,
+   "move": "Cheer On",
+   "moveType": "Normal",
+   "dmg": 0,
+   "artMon": "hootuft",
+   "effect": {
+    "atkAll": 1
+   },
+   "text": "ALL of your doremon get ATK +1.",
+   "price": 260,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_shield_pal",
+   "name": "Shield Pal",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 13,
+   "kind": "spell",
+   "types": [
+    "Steel"
+   ],
+   "hp": 0,
+   "move": "Shield Pal",
+   "moveType": "Steel",
+   "dmg": 0,
+   "artMon": "scythron",
+   "effect": {
+    "defAll": 1
+   },
+   "text": "ALL of your doremon get DEF +1.",
+   "price": 260,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_guard_wall",
+   "name": "Guard Wall",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 14,
+   "kind": "trap",
+   "types": [
+    "Normal"
+   ],
+   "hp": 0,
+   "move": "Guard Wall",
+   "moveType": "Normal",
+   "dmg": 0,
+   "artMon": "boulderbear",
+   "effect": {
+    "stall": 1
+   },
+   "text": "STALL: when an enemy attacks, block it and end their attacks for this turn.",
+   "price": 300,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_bramble_shield",
+   "name": "Bramble Shield",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 15,
+   "kind": "trap",
+   "types": [
+    "Grass"
+   ],
+   "hp": 0,
+   "move": "Bramble Shield",
+   "moveType": "Grass",
+   "dmg": 0,
+   "artMon": "mossfang",
+   "effect": {
+    "block": 1,
+    "recoil": 30
+   },
+   "text": "When an enemy attacks, block that attack and deal 30 damage to the attacker.",
+   "price": 260,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_menace",
+   "name": "Menace",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 16,
+   "kind": "trap",
+   "types": [
+    "Dark"
+   ],
+   "hp": 0,
+   "move": "Menace",
+   "moveType": "Dark",
+   "dmg": 0,
+   "artMon": "draculard",
+   "effect": {
+    "atk": -2
+   },
+   "text": "When an enemy attacks, the attacker gets ATK -2 before it hits.",
+   "price": 200,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_cute_growl",
+   "name": "Cute Growl",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 17,
+   "kind": "trap",
+   "types": [
+    "Normal"
+   ],
+   "hp": 0,
+   "move": "Cute Growl",
+   "moveType": "Normal",
+   "dmg": 0,
+   "artMon": "pinkit",
+   "effect": {
+    "atk": -1
+   },
+   "text": "When an enemy attacks, the attacker gets ATK -1 before it hits.",
+   "price": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_metal_screech",
+   "name": "Metal Screech",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 18,
+   "kind": "trap",
+   "types": [
+    "Steel"
+   ],
+   "hp": 0,
+   "move": "Metal Screech",
+   "moveType": "Steel",
+   "dmg": 0,
+   "artMon": "draplin",
+   "effect": {
+    "def": -2
+   },
+   "text": "When an enemy attacks, the attacker gets DEF -2.",
+   "price": 160,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_glare_down",
+   "name": "Glare Down",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 19,
+   "kind": "trap",
+   "types": [
+    "Normal"
+   ],
+   "hp": 0,
+   "move": "Glare Down",
+   "moveType": "Normal",
+   "dmg": 0,
+   "artMon": "fluffram",
+   "effect": {
+    "def": -1
+   },
+   "text": "When an enemy attacks, the attacker gets DEF -1.",
+   "price": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_static_web",
+   "name": "Static Web",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 20,
+   "kind": "trap",
+   "types": [
+    "Electric"
+   ],
+   "hp": 0,
+   "move": "Static Web",
+   "moveType": "Electric",
+   "dmg": 0,
+   "artMon": "zebrolt",
+   "effect": {
+    "status": "par"
+   },
+   "text": "When an enemy attacks, the attacker is Paralyzed and its attack fails.",
+   "price": 240,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_wisp_scorch",
+   "name": "Wisp Scorch",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 21,
+   "kind": "trap",
+   "types": [
+    "Fire"
+   ],
+   "hp": 0,
+   "move": "Wisp Scorch",
+   "moveType": "Fire",
+   "dmg": 0,
+   "artMon": "embertail",
+   "effect": {
+    "status": "brn"
+   },
+   "text": "When an enemy attacks, the attacker is Burned before it hits.",
+   "price": 160,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_venom_dust",
+   "name": "Venom Dust",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 22,
+   "kind": "trap",
+   "types": [
+    "Bug"
+   ],
+   "hp": 0,
+   "move": "Venom Dust",
+   "moveType": "Bug",
+   "dmg": 0,
+   "artMon": "teddimple",
+   "effect": {
+    "status": "psn"
+   },
+   "text": "When an enemy attacks, the attacker is Poisoned.",
+   "price": 140,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_doze_spores",
+   "name": "Doze Spores",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 23,
+   "kind": "trap",
+   "types": [
+    "Grass"
+   ],
+   "hp": 0,
+   "move": "Doze Spores",
+   "moveType": "Grass",
+   "dmg": 0,
+   "artMon": "petalmoth",
+   "effect": {
+    "status": "slp"
+   },
+   "text": "When an enemy attacks, the attacker falls Asleep and its attack fails.",
+   "price": 260,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_bewilder_beam",
+   "name": "Bewilder Beam",
+   "set": "ST",
+   "rarity": "ITEM",
+   "num": 24,
+   "kind": "trap",
+   "types": [
+    "Ghost"
+   ],
+   "hp": 0,
+   "move": "Bewilder Beam",
+   "moveType": "Ghost",
+   "dmg": 0,
+   "artMon": "lunahowl",
+   "effect": {
+    "status": "cnf"
+   },
+   "text": "When an enemy attacks, the attacker becomes Confused.",
+   "price": 150,
+   "legendary": false,
+   "mythical": false
+  }
+ ],
+ "chart": {
+  "Normal": {
+   "Rock": 0.5,
+   "Steel": 0.5,
+   "Ghost": 0.0
+  },
+  "Fire": {
+   "Grass": 2.0,
+   "Ice": 2.0,
+   "Bug": 2.0,
+   "Steel": 2.0,
+   "Fire": 0.5,
+   "Water": 0.5,
+   "Rock": 0.5,
+   "Dragon": 0.5
+  },
+  "Water": {
+   "Fire": 2.0,
+   "Ground": 2.0,
+   "Rock": 2.0,
+   "Water": 0.5,
+   "Grass": 0.5,
+   "Dragon": 0.5
+  },
+  "Electric": {
+   "Water": 2.0,
+   "Flying": 2.0,
+   "Electric": 0.5,
+   "Grass": 0.5,
+   "Dragon": 0.5,
+   "Ground": 0.0
+  },
+  "Grass": {
+   "Water": 2.0,
+   "Ground": 2.0,
+   "Rock": 2.0,
+   "Fire": 0.5,
+   "Grass": 0.5,
+   "Poison": 0.5,
+   "Flying": 0.5,
+   "Bug": 0.5,
+   "Dragon": 0.5,
+   "Steel": 0.5
+  },
+  "Ice": {
+   "Grass": 2.0,
+   "Ground": 2.0,
+   "Flying": 2.0,
+   "Dragon": 2.0,
+   "Fire": 0.5,
+   "Water": 0.5,
+   "Ice": 0.5,
+   "Steel": 0.5
+  },
+  "Fighting": {
+   "Normal": 2.0,
+   "Ice": 2.0,
+   "Rock": 2.0,
+   "Dark": 2.0,
+   "Steel": 2.0,
+   "Poison": 0.5,
+   "Flying": 0.5,
+   "Psychic": 0.5,
+   "Bug": 0.5,
+   "Fairy": 0.5,
+   "Ghost": 0.0
+  },
+  "Poison": {
+   "Grass": 2.0,
+   "Fairy": 2.0,
+   "Poison": 0.5,
+   "Ground": 0.5,
+   "Rock": 0.5,
+   "Ghost": 0.5,
+   "Steel": 0.0
+  },
+  "Ground": {
+   "Fire": 2.0,
+   "Electric": 2.0,
+   "Poison": 2.0,
+   "Rock": 2.0,
+   "Steel": 2.0,
+   "Grass": 0.5,
+   "Bug": 0.5,
+   "Flying": 0.0
+  },
+  "Flying": {
+   "Grass": 2.0,
+   "Fighting": 2.0,
+   "Bug": 2.0,
+   "Electric": 0.5,
+   "Rock": 0.5,
+   "Steel": 0.5
+  },
+  "Psychic": {
+   "Fighting": 2.0,
+   "Poison": 2.0,
+   "Psychic": 0.5,
+   "Steel": 0.5,
+   "Dark": 0.0
+  },
+  "Bug": {
+   "Grass": 2.0,
+   "Psychic": 2.0,
+   "Dark": 2.0,
+   "Fire": 0.5,
+   "Fighting": 0.5,
+   "Poison": 0.5,
+   "Flying": 0.5,
+   "Ghost": 0.5,
+   "Steel": 0.5,
+   "Fairy": 0.5
+  },
+  "Rock": {
+   "Fire": 2.0,
+   "Ice": 2.0,
+   "Flying": 2.0,
+   "Bug": 2.0,
+   "Fighting": 0.5,
+   "Ground": 0.5,
+   "Steel": 0.5
+  },
+  "Ghost": {
+   "Psychic": 2.0,
+   "Ghost": 2.0,
+   "Dark": 0.5,
+   "Normal": 0.0
+  },
+  "Dragon": {
+   "Dragon": 2.0,
+   "Steel": 0.5,
+   "Fairy": 0.0
+  },
+  "Dark": {
+   "Psychic": 2.0,
+   "Ghost": 2.0,
+   "Fighting": 0.5,
+   "Dark": 0.5,
+   "Fairy": 0.5
+  },
+  "Steel": {
+   "Ice": 2.0,
+   "Rock": 2.0,
+   "Fairy": 2.0,
+   "Fire": 0.5,
+   "Water": 0.5,
+   "Electric": 0.5,
+   "Steel": 0.5
+  },
+  "Fairy": {
+   "Fighting": 2.0,
+   "Dragon": 2.0,
+   "Dark": 2.0,
+   "Fire": 0.5,
+   "Poison": 0.5,
+   "Steel": 0.5
+  }
+ },
+ "typeColors": {
+  "Fire": [
+   237,
+   128,
+   48
+  ],
+  "Water": [
+   99,
+   143,
+   240
+  ],
+  "Electric": [
+   217,
+   184,
+   26
+  ],
+  "Grass": [
+   115,
+   191,
+   77
+  ],
+  "Ice": [
+   115,
+   199,
+   204
+  ],
+  "Fighting": [
+   191,
+   48,
+   41
+  ],
+  "Poison": [
+   161,
+   64,
+   161
+  ],
+  "Ground": [
+   209,
+   171,
+   89
+  ],
+  "Flying": [
+   143,
+   128,
+   235
+  ],
+  "Psychic": [
+   242,
+   89,
+   128
+  ],
+  "Bug": [
+   158,
+   179,
+   31
+  ],
+  "Rock": [
+   179,
+   158,
+   64
+  ],
+  "Ghost": [
+   112,
+   89,
+   153
+  ],
+  "Dragon": [
+   112,
+   56,
+   242
+  ],
+  "Dark": [
+   89,
+   69,
+   56
+  ],
+  "Steel": [
+   153,
+   153,
+   184
+  ],
+  "Fairy": [
+   230,
+   140,
+   191
+  ],
+  "Normal": [
+   153,
+   153,
+   120
+  ]
+ }
+}
