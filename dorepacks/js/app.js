@@ -114,7 +114,7 @@ function moreView() {
   const m = UI.more;
   if (!m) return `<h1>More</h1>` + [['league', '🏆', 'League', 'Leaderboard & results'], ['trades', '🤝', 'Trades', `${G.s.offers.length} offer(s)`], ['shop', '🛒', 'Shop', 'Packs, singles, supplies, sell'], ['auction', '🔨', 'Auction House', `${G.s.auctions.length} listing(s) · bid against the AIs`], ['spectate', '📺', 'Spectate', 'Watch AI vs AI battles'], ['market', '📈', 'Market', `Day ${G.s.day}`], ['stats', '📊', 'Stats', 'Your career numbers'], ['ach', '🏅', 'Achievements', `${G.s.achievements.length}/${ACHIEVEMENTS.length}`], ['rules', '📖', 'How to Play', 'Rules of the mat']]
     .map(([k, i, t, d]) => `<div class="panel row" data-a="more" data-v="${k}"><span style="font-size:28px">${i}</span><div class="grow"><div class="title" style="font-size:22px">${t}</div><div class="small">${d}</div></div><span>›</span></div>`).join('')
-    + `<button class="btn r sm" data-a="reset" style="margin-top:20px">Reset save</button><div class="small" style="margin-top:8px">Progress is saved on this device (localStorage).</div>`;
+    + `<div class="sub" style="margin-top:20px">Settings</div>` + newGameBtn() + `<div class="small" style="margin-top:8px">Progress is saved on this device (localStorage).</div>`;
   const back = `<button class="btn k sm" data-a="more" data-v="" style="margin-bottom:8px">‹ Back</button>`;
   return back + ({ league: leagueView, trades: tradesView, shop: shopView, market: marketView, ach: achView, rules: rulesView, auction: auctionView, spectate: spectateView, stats: statsView })[m]();
 }
@@ -175,6 +175,8 @@ function spectateView() {
   <div class="sub">Exhibition: pick two AIs (no MR or cash at stake)</div>${pick(a, 'specA')}<div style="text-align:center;margin:6px">vs</div>${pick(b, 'specB')}
   <button class="btn y" style="width:100%;margin-top:10px" data-a="watch" data-v="X" ${a === b ? 'disabled' : ''}>Watch ${esc(s.ai[a].name)} vs ${esc(s.ai[b].name)}</button>`;
 }
+const NEW_GAME_WARN = 'Start a new game?\n\nThis permanently erases ALL your cards, Dorebucks, MR, decks, stats, achievements and league progress on this device.\n\nEveryone (you and all 8 AI players) restarts equal: starter deck, $1500, 1000 MR and 2 WW + 1 FL packs.';
+function newGameBtn() { return `<button class="btn r" data-a="reset" style="width:100%;margin-top:14px;font-size:18px">🔄 Start New Game</button>`; }
 function statsView() {
   const s = G.s, t = s.stats, pct = (w, l) => w + l ? Math.round(w / (w + l) * 100) + '%' : '—';
   const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
@@ -188,7 +190,7 @@ function statsView() {
   panel('Pulls by rarity', order.filter(r => t.pulls[r]).map(r => kv(`${rar(r)} ${Rarity.name(r)}`, t.pulls[r]))) +
   panel('Battles', [['Ranked', t.battles.ranked], ['Friendly', t.battles.friendly]].map(([n, b]) => kv(n, `${b.w}W ${b.l}L${b.d ? ' ' + b.d + 'D' : ''} · ${pct(b.w, b.l)}`)).concat([kv('Total', `${s.wins}W ${s.losses}L · ${pct(s.wins, s.losses)}`), kv('MR now / peak', `${s.mr} / ${s.bestMr}`), kv('Win streak now / best', `${s.streak} / ${s.bestStreak}`)])) +
   panel('Dorebucks', [kv('Cash', money(s.money)), kv('Earned', `<span style="color:#7dfc9f">${money(sum(t.earned))}</span>`)].concat(Object.entries(t.earned).map(([k, v]) => kv('&nbsp;&nbsp;' + esc(k), money(v))), [kv('Spent', `<span style="color:#ff9b9b">${money(sum(t.spent))}</span>`)], Object.entries(t.spent).map(([k, v]) => kv('&nbsp;&nbsp;' + esc(k), money(v))))) +
-  panel('Trading', [kv('Cards sold (shop + auction)', s.cardsSold), kv('Singles bought', s.singlesBought), kv('Auctions won', t.auctionsWon), kv('Auctions sold', t.auctionsSold), kv('Listings / bids placed', `${t.listings} / ${t.bids}`), kv('Trades done', s.trades), kv('Achievements', `${s.achievements.length}/${ACHIEVEMENTS.length}`)]);
+  panel('Trading', [kv('Cards sold (shop + auction)', s.cardsSold), kv('Singles bought', s.singlesBought), kv('Auctions won', t.auctionsWon), kv('Auctions sold', t.auctionsSold), kv('Listings / bids placed', `${t.listings} / ${t.bids}`), kv('Trades done', s.trades), kv('Achievements', `${s.achievements.length}/${ACHIEVEMENTS.length}`)]) + newGameBtn();
 }
 function achView() {
   return `<h1>Achievements</h1><div class="sub">${G.s.achievements.length}/${ACHIEVEMENTS.length} unlocked</div><div class="panel list" style="padding:4px 12px">${ACHIEVEMENTS.map(a => { const on = G.s.achievements.includes(a.id); return `<div class="it" style="opacity:${on ? 1 : .55}"><span style="font-size:24px">${on ? '🏅' : '🔒'}</span><div class="grow"><b>${esc(a.title)}</b><div class="small">${esc(a.desc)} · ${esc(G.rewardText(a))}</div></div></div>`; }).join('')}</div>`;
@@ -397,7 +399,7 @@ const A = {
   counter: v => { UI.counter = v; render(); },
   cancelCounter: () => { UI.counter = null; render(); },
   doCounter: v => { const o = G.s.offers.find(x => x.id === UI.counter); UI.counter = null; if (o) { const ok = G.counter(o, v); alert(ok ? 'Deal! Trade completed.' : 'They turned down your counter.'); } render(); },
-  reset: () => { if (confirm('Erase all progress and start over?')) { localStorage.removeItem(SAVE_KEY); G = new E.Game(storage()); hook(); render(); } },
+  reset: () => { if (confirm(NEW_GAME_WARN)) { UI.more = ''; UI.tab = 'packs'; localStorage.removeItem(SAVE_KEY); G = new E.Game(storage()); hook(); render(); } },
   fight: v => startBattle(v),
   slot: v => { const [s, i] = v.split(':').map(Number); tapSlot(s, i); },
   st: v => { const B = UI.battle, [s, i] = v.split(':').map(Number); if (s === 0 && B.sel?.kind === 'hand') act({ t: 'setTrap', hand: B.sel.i, slot: i }); },
