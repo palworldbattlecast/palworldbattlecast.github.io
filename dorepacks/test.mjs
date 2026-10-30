@@ -26,7 +26,13 @@ for (const set of ['WW', 'FL']) {
   const effc = Packs.effectiveChase(set);
   check(Math.abs(chaseP - effc) < 0.004, `${set}: chase rate ${f4(chaseP)} matches expected-with-pity ${f4(effc)}`);
   check(Math.max(...gaps) <= rule.pity && Math.max(...aiGaps) <= rule.pity, `${set}: pity never exceeded (max gap player ${Math.max(...gaps)}, AI ${Math.max(...aiGaps)}, limit ${rule.pity})`);
-  check(player.every(p => p.length === 7 && p.slice(0, 4).every(c => c.rarity === 'C')), `${set}: 7 cards, slots 1-4 common`);
+  check(player.every(p => p.length === 7 && p.slice(0, 2).every(c => c.rarity === 'C') && E.isMon(p[0]) && !E.isMon(p[3]) && p.slice(4).every(E.isMon)), `${set}: 7 cards, slots 1-2 common, slot 4 spell/trap, slots 5-7 doremon`);
+  const items = (tp.ITEM || 0) / N, aItems = (ta.ITEM || 0) / N;
+  check(Math.abs(items - 1.3) < 0.02 && Math.abs(aItems - 1.3) < 0.02, `${set}: ${items.toFixed(3)} spell/trap per pack (player) vs ${aItems.toFixed(3)} (AI), expected 1.300`);
+  if (set === 'WW') { const cnt = {}; let tot = 0; for (const p of player) for (const c of p) if (!E.isMon(c)) { cnt[c.id] = (cnt[c.id] || 0) + 1; tot++; }
+    const worst = Math.max(...Packs.itemOdds().map(([c, p]) => Math.abs((cnt[c.id] || 0) / tot - p)));
+    check(worst < 0.006 && Packs.itemOdds().every(([c]) => cnt[c.id] > 0), `every spell/trap can drop, per-card rate within ${worst.toFixed(4)} of its listed odds`);
+    console.log('spell/trap odds:', Packs.itemOdds().map(([c, p]) => `${c.name} ${(p * 100).toFixed(1)}%`).join(', ')); }
   if (set === 'FL') { const myt = (tp.MYT || 0) / N, lgd = (tp.LGD || 0) / N; console.log(`FL observed: legendary ${f4(lgd)} mythical ${f4(myt)} per pack`); check(myt > 0.003 && myt < 0.01, 'FL mythical rate sane'); }
 }
 // RNG parity with Swift SplitMix (seed 42 first output, from the reference algorithm)
@@ -59,6 +65,20 @@ check(Battle.damage(mk('ww_electrinx'), mk('ww_senkip'))[0] === 0, 'Electric vs 
   check(b.events.some(e => e.e === 'trap') && b.sides[1].stalled, 'Guard Wall trap stalls the attacker');
   check(b.sides[0].life === lifeBefore, 'stalled attack did no damage');
 }
+// ---- fair start: every AI begins exactly like the player ----
+{
+  const g0 = new Game(null, 123n); const s0 = g0.s, n0 = E.STARTER_DECK.length;
+  const startPacks = Object.values(s0.packs).reduce((a, b) => a + b, 0);
+  const tot = o => Object.values(o).reduce((a, b) => a + b, 0);
+  check(s0.ai.every(p => p.mr === s0.mr && s0.mr === 1000), 'fair start: every AI starts at the same MR as the player (1000)');
+  check(s0.ai.every(p => p.money === s0.money && s0.money === 1500), 'fair start: every AI starts with the same $1500 as the player');
+  check(s0.ai.every(p => p.packsOpened === startPacks && startPacks === 3), 'fair start: every AI opens exactly the player\'s starting packs (2 WW + 1 FL)');
+  check(s0.ai.every(p => tot(p.owned) === n0 + startPacks * 7 && E.STARTER_DECK.every(id => (p.owned[id] || 0) >= E.STARTER_DECK.filter(x => x === id).length)), 'fair start: every AI owns exactly the starter deck + its 3 pack openings');
+  for (const set of Object.keys(s0.packs)) for (let i = 0; i < s0.packs[set]; i++) g0.openPack(set);
+  check(tot(s0.owned) === n0 + startPacks * 7, 'fair start: the player ends up with the same card count after opening their packs');
+  check(s0.ai.every(p => p.deck.every(id => (p.owned[id] || 0) >= p.deck.filter(x => x === id).length)), 'fair start: AI decks use only cards they own');
+  check(s0.bank.initial === 9 * 1500, 'fair start: bank starts with 9 x $1500');
+}
 let g = new Game(null, 99n);
 {
   const wins = [0, 0, 0]; let turns = 0, stuck = 0; const n = 400;
@@ -86,6 +106,92 @@ let g = new Game(null, 99n);
   }
   check(smart > 120, `AI beats a naive player (${smart}/200)`);
 }
+// ---- fairness audit: shuffle + hidden information ----
+{
+  // 1) both decks go through the same Fisher-Yates shuffle: the position of a marked card is uniform for side A AND side B
+  const deck = Array.from({ length: 20 }, (_, i) => card(i < 12 ? E.inSet('WW')[i].id : E.supplies()[i - 12].id));
+  const posA = Array(20).fill(0), posB = Array(20).fill(0); const N = 40000;
+  for (let i = 0; i < N; i++) { const b = new Battle(deck, 'A', deck, 'B', BigInt(i + 1), 0); const all = [...b.sides[0].hand, ...b.sides[0].deck], allB = [...b.sides[1].hand, ...b.sides[1].deck];
+    posA[all.indexOf(deck[19])]++; posB[allB.indexOf(deck[19])]++; }
+  const dev = a => Math.max(...a.map(x => Math.abs(x / N - 1 / 20)));
+  check(dev(posA) < 0.006 && dev(posB) < 0.006, `player and AI decks are shuffled the same way (max deviation from uniform: player ${dev(posA).toFixed(4)}, AI ${dev(posB).toFixed(4)})`);
+  // 2) the AI's choices never depend on hidden info: scramble the opponent's hand, deck order and the identity of face-down traps
+  let same = 0, total = 0; const g0 = new Game(null, 3n);
+  for (let i = 0; i < 300; i++) {
+    const b = new Battle(g0.aiDeck(i % 8), 'P', g0.aiDeck((i + 1) % 8), 'AI', BigInt(500 + i), i % 2);
+    for (let n = 0, stop = 3 + (i % 25); n < stop && !b.over; n++) { const a = BattleAI.next(b); if (!b.apply(a)) b.apply({ t: 'end' }); }
+    if (b.over) continue;
+    const me = b.current, o = b.sides[1 - me];
+    const a1 = JSON.stringify(BattleAI.next(b));
+    const sup = E.supplies(), mons = E.inSet('FL');
+    o.hand = o.hand.map((c, j) => mons[(j * 7 + i) % mons.length]); o.deck = o.deck.slice().reverse().map((c, j) => sup[(j + i) % sup.length]);
+    o.traps = o.traps.map(t => t ? card('st_glare_down') : null);
+    const a2 = JSON.stringify(BattleAI.next(b)); total++; if (a1 === a2) same++;
+  }
+  check(same === total && total > 200, `AI decisions ignore the opponent's hand, deck order and face-down trap identity (${same}/${total} identical)`);
+}
+// ---- starter deck vs fresh AI decks ----
+{
+  let w = 0; const N = 400; const g0 = new Game(null, 11n);
+  for (let i = 0; i < N; i++) { const b = new Battle(E.STARTER_DECK.map(card), 'You', g0.aiDeck(i % 8), 'AI', BigInt(9000 + i), i % 2); if (BattleAI.simulate(b) === 0) w++; }
+  console.log(`starter deck (played by the same AI brain) vs day-1 AI decks: ${w}/${N} = ${(w / N * 100).toFixed(1)}%`);
+  check(w / N > 0.19, 'buffed starter deck wins more often than the old one (16%)');
+}
+// ---- AI economy + auction house: money conservation and bid caps ----
+{
+  const g0 = new Game(null, 21n);
+  const cards = () => { let n = g0.s.auctions.length; for (const o of [g0.s.owned, ...g0.s.ai.map(p => p.owned)]) for (const k in o) n += o[k]; return n; };
+  const origBid = g0.bid.bind(g0); let bidViolations = 0, aiBids = 0;
+  g0.bid = (who, lid, amt) => { if (who !== E.ME) { const l = g0.s.auctions.find(x => x.id === lid); aiBids++; if (amt > g0.aiValuation(who, l.card) || amt > g0.aiBudget(who)) bidViolations++; } return origBid(who, lid, amt); };
+  let ok = true, negative = false, escrowOk = true, cardsOk = true;
+  for (let d = 0; d < 150; d++) {
+    // the player also uses the auction house
+    const spare = Object.keys(g0.s.owned).filter(id => g0.sellableCount(id) > 0);
+    if (spare.length && d % 3 === 0) g0.list(E.ME, spare[d % spare.length], d % 2 ? 'fixed' : 'auction', g0.value(spare[d % spare.length]) * 0.8, 2);
+    const open = g0.s.auctions.find(l => l.seller !== E.ME && l.kind === 'auction');
+    if (open && d % 4 === 1) g0.bid(E.ME, open.id, g0.minBid(open));
+    const c0 = cards(); g0.auctionDay(); g0.settleAuctions(); if (cards() !== c0) cardsOk = false;
+    g0.worldStep(null);
+    if (!g0.ledgerBalanced()) ok = false;
+    if (g0.s.money < 0 || g0.s.ai.some(p => p.money < 0)) negative = true;
+    for (const l of g0.s.auctions) if (l.high && l.high.amt < l.price) escrowOk = false;
+  }
+  const b = g0.s.bank;
+  console.log(`150 days: cash+escrow ${g0.totalCash()} = start ${b.initial} + paid out ${b.faucet} - paid in ${b.sink}; auctions completed ${g0.s.auctionLog.length >= 40 ? '40+' : g0.s.auctionLog.length}, AI bids ${aiBids}`);
+  check(ok, 'ledger balances every day: no Dorebucks created or destroyed outside rewards, packs and the shop');
+  check(!negative, 'no one ever has negative cash');
+  check(bidViolations === 0 && aiBids > 20, `every AI bid is within its valuation and its spare cash (${aiBids} bids, ${bidViolations} violations)`);
+  check(cardsOk, 'auction house never creates or destroys cards');
+  check(escrowOk, 'escrowed high bids are always >= the start price');
+  check(g0.s.auctionLog.some(x => x.buyer !== E.ME && x.seller !== E.ME), 'AIs buy from each other on the auction house');
+  const P = g0.s.ai[0]; check(Math.abs(P.money + g0.committed(0) - P.earned + P.spent) >= 0, 'AI cash is tracked');
+  check(Object.values(g0.s.market).every(e => e.factor < 2.45), `no card pinned at the 2.5x price cap after 150 days (max ${Math.max(...Object.values(g0.s.market).map(e => e.factor)).toFixed(2)}x)`);
+}
+// ---- auction mechanics ----
+{
+  const g0 = new Game(null, 77n); g0.save = () => {};
+  g0.s.owned.ww_rokbru = 3; const before = g0.s.money;
+  const l = g0.list(E.ME, 'ww_rokbru', 'auction', 100, 1);
+  check(l && g0.s.owned.ww_rokbru === 2, 'listing a card puts it in escrow');
+  g0.s.ai[0].money = 5000; g0.s.ai[1].money = 5000;
+  check(g0.bid(0, l.id, 100) && g0.s.ai[0].money === 4900, 'AI bid takes cash into escrow');
+  check(!g0.bid(1, l.id, 101), 'bid must beat the minimum increment');
+  check(g0.bid(1, l.id, 105) && g0.s.ai[0].money === 5000 && g0.s.ai[1].money === 4895, 'outbid AI gets a full refund');
+  g0.s.ai[2].money = 50; check(!g0.bid(2, l.id, 200), "can't bid more cash than you have");
+  const t0 = g0.totalCash(); g0.s.day = l.endDay; g0.settleAuctions();
+  check(g0.s.money === before + 105 && g0.s.ai[1].owned.ww_rokbru >= 1 && g0.totalCash() === t0, 'settlement pays the seller from escrow and delivers the card');
+  check((g0.s.market.ww_rokbru.sales || []).some(x => x[1] === 105) && g0.s.stats.auctionsSold === 1, 'market records the auction sale');
+  g0.s.ai[3].owned.ww_axerupi = 9; g0.s.ai[3].deck = []; const l2 = g0.list(3, 'ww_axerupi', 'fixed', 2000, 2);
+  g0.s.money = 1999; check(!g0.buyNow(E.ME, l2.id), "can't buy now without the cash");
+  g0.s.money = 2500; const m3 = g0.s.ai[3].money; check(g0.buyNow(E.ME, l2.id) && g0.s.money === 500 && g0.s.ai[3].money === m3 + 2000, 'buy-now transfers cash player -> AI');
+  check(g0.s.stats.auctionsWon === 1 && g0.s.stats.spent['auction buys'] === 2000, 'stats track auction buys');
+}
+// ---- spectate replays are exact ----
+{
+  const g0 = new Game(null, 31n); g0.worldStep(null);
+  const ok = g0.s.lastDay.every(m => { const b = new Battle(m.deckA.map(card), 'A', m.deckB.map(card), 'B', BigInt(m.seed), m.first); return BattleAI.simulate(b) === m.winner; });
+  check(ok && g0.s.lastDay.length === 4, 'league matches replay move-for-move in Spectate (same winner)');
+}
 // economy
 g = new Game(null, 5n);
 const sells = { C: 'ww_snarlpup', U: 'ww_sprigchimp', R: 'ww_glootios', SR: 'ww_rokbru', SSR: 'ww_axerupi' }, expect = { C: 10, U: 25, R: 60, SR: 150, SSR: 1000 };
@@ -93,7 +199,7 @@ for (const r in sells) { g.s.market[sells[r]].factor = 1; check(g.sellPrice(sell
 g.s.owned.ww_axerupi = 1; check(!g.sell('ww_axerupi'), "can't sell your last copy");
 g.s.owned.ww_axerupi = 3; const m0 = g.s.money; check(g.sell('ww_axerupi') && g.s.money > m0 && g.s.owned.ww_axerupi === 2, 'selling a dupe pays');
 check(g.buyPrice('ww_glootios') >= g.sellPrice('ww_glootios') * 2, 'no buy/sell arbitrage');
-g.s.money = 10000; check(g.buyPack('FL') && g.s.money === 9200, 'Fallen Legends pack costs $800');
+g.s.money = 10000; g.s.bank.initial += 10000 - 1500; check(g.buyPack('FL') && g.s.money === 9200, 'Fallen Legends pack costs $800');
 const sum = () => g.s.ai.reduce((a, p) => a + p.mr, 0); const s0 = sum();
 for (let i = 0; i < 60; i++) g.worldStep(null);
 check(s0 === sum(), `AI-only league MR is zero-sum (${s0} -> ${sum()})`);

@@ -21,7 +21,7 @@ export function effectiveness(atk, defTypes) { let m = 1; for (const d of defTyp
 export const Rarity = {
   order: ['C', 'U', 'R', 'SR', 'SSR', 'LGD', 'MYT', 'ITEM'],
   rank: r => Math.max(0, Rarity.order.indexOf(r)),
-  name: r => ({ C: 'Common', U: 'Uncommon', R: 'Rare', SR: 'Super Rare', SSR: 'SSR', LGD: 'Legendary', MYT: 'Mythical' }[r] || 'Supply'),
+  name: r => ({ C: 'Common', U: 'Uncommon', R: 'Rare', SR: 'Super Rare', SSR: 'SSR', LGD: 'Legendary', MYT: 'Mythical', ITEM: 'Spell/Trap' }[r] || 'Supply'),
   isChase: r => r === 'SSR' || r === 'LGD' || r === 'MYT',
   baseValue: r => ({ C: 30, U: 75, R: 180, SR: 450, SSR: 3000, LGD: 4500, MYT: 9000 }[r] ?? 100),
   copyLimit: c => (c.rarity === 'LGD' || c.rarity === 'MYT') ? 1 : (c.rarity === 'SR' || c.rarity === 'SSR') ? 2 : 3,
@@ -47,10 +47,15 @@ export const randomSeed = () => { const a = new Uint32Array(2); (globalThis.cryp
 // ---------- packs: ONE function for the player and every AI ----------
 export const Packs = {
   size: 7,
-  WW: { set: 'WW', name: 'Whispering Winds', price: 500, pity: 30, tiers: ['C', 'U', 'R', 'SR', 'SSR'],
-    slots: [[100,0,0,0,0],[100,0,0,0,0],[100,0,0,0,0],[100,0,0,0,0],[0,88,10,2,0],[0,65,30,5,0],[0,0,80,18.5,1.5]], chase: ['SSR'], pityOdds: [1] },
-  FL: { set: 'FL', name: 'Fallen Legends', price: 800, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT'],
-    slots: [[100,0,0,0,0,0],[100,0,0,0,0,0],[100,0,0,0,0,0],[100,0,0,0,0,0],[0,88,10,2,0,0],[0,65,30,5,0,0],[0,0,78,18,3.5,0.5]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
+  // ITEM = a spell/trap card (Supplies). Slot 3: 30% spell/trap, slot 4: always a spell/trap. Slots 5-7 (and every chase rate + pity) unchanged.
+  WW: { set: 'WW', name: 'Whispering Winds', price: 500, pity: 30, tiers: ['C', 'U', 'R', 'SR', 'SSR', 'ITEM'],
+    slots: [[100,0,0,0,0,0],[100,0,0,0,0,0],[70,0,0,0,0,30],[0,0,0,0,0,100],[0,88,10,2,0,0],[0,65,30,5,0,0],[0,0,80,18.5,1.5,0]], chase: ['SSR'], pityOdds: [1] },
+  FL: { set: 'FL', name: 'Fallen Legends', price: 800, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT', 'ITEM'],
+    slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
+  /** spell/trap pick weight: inverse of shop price (Potion common, Guard Wall rare) */
+  itemWeight: c => 1 / (c.price || 100),
+  itemOdds() { const sup = supplies(), tot = sup.reduce((a, c) => a + Packs.itemWeight(c), 0); return sup.map(c => [c, Packs.itemWeight(c) / tot]); },
+  pickItem(rng) { const sup = supplies(), tot = sup.reduce((a, c) => a + Packs.itemWeight(c), 0); let r = rng.unit() * tot; for (const c of sup) { r -= Packs.itemWeight(c); if (r < 0) return c; } return sup[sup.length - 1]; },
   rule: s => s === 'FL' ? Packs.FL : Packs.WW,
   rollRarity(rule, slot, forceChase, rng) {
     if (forceChase && slot === Packs.size - 1) {
@@ -67,6 +72,7 @@ export const Packs = {
     const rule = Packs.rule(set); const force = pityRef.v >= rule.pity - 1; const out = [];
     for (let s = 0; s < Packs.size; s++) {
       const r = Packs.rollRarity(rule, s, force, rng);
+      if (r === 'ITEM') { out.push(Packs.pickItem(rng)); continue; }
       let pool = ofRarity(set, r);
       if (Rarity.isChase(r)) { const fresh = pool.filter(c => !(owned[c.id] > 0)); if (fresh.length) pool = fresh; }
       out.push(pool[rng.int(pool.length)]);
@@ -80,8 +86,8 @@ export const Packs = {
     let e = 0; for (let k = 0; k < r.pity; k++) e += Math.pow(1 - p, k); return 1 / e;
   },
   ratesText(set) {
-    const r = Packs.rule(set); const rows = [['Slots 1-4', 'Common 100%']];
-    for (let s = 4; s < 7; s++) rows.push([`Slot ${s + 1}`, r.tiers.map((t, i) => [t, r.slots[s][i]]).filter(x => x[1] > 0).map(x => `${Rarity.name(x[0])} ${Packs.fmt(x[1])}%`).join(' · ')]);
+    const r = Packs.rule(set); const rows = [['Slots 1-2', 'Common 100%']];
+    for (let s = 2; s < 7; s++) rows.push([`Slot ${s + 1}`, r.tiers.map((t, i) => [t, r.slots[s][i]]).filter(x => x[1] > 0).map(x => `${Rarity.name(x[0])} ${Packs.fmt(x[1])}%`).join(' · ')]);
     const chaseP = r.chase.map(c => r.slots[6][r.tiers.indexOf(c)]).reduce((a, b) => a + b, 0);
     const names = r.chase.map(Rarity.name).join(' / ');
     rows.push(['Chase', `${names}: ${Packs.fmt(chaseP)}% per pack`]);
@@ -89,6 +95,8 @@ export const Packs = {
     const ec = Packs.effectiveChase(set);
     rows.push(['With pity', `Real long-run rate ≈ ${(ec * 100).toFixed(1)}% per pack (about 1 every ${Math.round(1 / ec)} packs)`]);
     rows.push(['Each card', set === 'FL' ? 'Each Legendary ~1.17% · Mythical 0.5% per pack (pity: Mythical 1 in 8)' : 'Each SSR starter 0.375% per pack']);
+    const io = Packs.itemOdds(); const ex = n => io.filter(x => x[0].id === n)[0][1];
+    rows.push(['Spells/traps', `1.3 per pack on average. Which one is weighted by shop price: Potion ${(ex('st_potion') * 100).toFixed(1)}%, Super Potion ${(ex('st_super_potion') * 100).toFixed(1)}%, Guard Wall ${(ex('st_guard_wall') * 100).toFixed(1)}% of spell/trap pulls`]);
     rows.push(['Fairness', 'Every AI opens packs with this exact function and its own pity counter']);
     return rows;
   },
@@ -382,8 +390,10 @@ export const DeckRules = {
 // ---------- game: save, economy, market, league, trades, achievements ----------
 export const AI_NAMES = [['Kai', 'zebrolt'], ['Mira', 'pinkit'], ['Rook', 'rokbru'], ['Juno', 'pearlgill'], ['Ezra', 'wispeacock'], ['Lumi', 'solpuff'], ['Dax', 'magmaberry'], ['Nova', 'verdaconda']];
 export const STARTER = ['ww_snarlpup', 'ww_acornix', 'ww_zapwing', 'ww_spydo', 'ww_gruugy', 'ww_hootuft'];
-const STARTER_SUP = ['st_potion', 'st_potion', 'st_super_potion', 'st_power_up', 'st_guard_wall', 'st_cute_growl', 'st_static_web', 'st_full_heal'];
-export const STARTER_DECK = STARTER.flatMap(x => [x, x]).concat(STARTER_SUP);
+// Phase 3 starter buff: 1 Zapwing -> Giggleti, 1 Hootuft -> Embertail, Potion -> Super Potion, Cute Growl -> Menace
+const STARTER_MONS = ['ww_snarlpup', 'ww_snarlpup', 'ww_acornix', 'ww_acornix', 'ww_giggleti', 'ww_zapwing', 'ww_spydo', 'ww_spydo', 'ww_gruugy', 'ww_gruugy', 'ww_embertail', 'ww_hootuft'];
+const STARTER_SUP = ['st_potion', 'st_super_potion', 'st_super_potion', 'st_power_up', 'st_guard_wall', 'st_menace', 'st_static_web', 'st_full_heal'];
+export const STARTER_DECK = STARTER_MONS.concat(STARTER_SUP);
 const uuid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const inc = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
 
@@ -404,8 +414,11 @@ export const ACHIEVEMENTS = [
 export const tier = mr => mr < 1050 ? 'Bronze' : mr < 1150 ? 'Silver' : mr < 1250 ? 'Gold' : mr < 1400 ? 'Platinum' : mr < 1550 ? 'Diamond' : 'Master';
 export const elo = (a, b, aWon) => swiftRound(32 * ((aWon ? 1 : 0) - 1 / (1 + Math.pow(10, (b - a) / 400))));
 
-const freshSave = () => ({ version: 1, money: 1500, owned: {}, packs: { WW: 2, FL: 1 }, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
-  mr: 1000, bestMr: 1000, wins: 0, losses: 0, streak: 0, bestStreak: 0, leagueWins: 0, cardsSold: 0, singlesBought: 0, trades: 0, achievements: [], ai: [], offers: [], market: {}, day: 0, recent: [], seed: '0', pulledRarities: [] });
+const freshStats = () => ({ pulls: {}, bestPull: null, packsBought: {}, battles: { ranked: { w: 0, l: 0, d: 0 }, friendly: { w: 0, l: 0, d: 0 } }, earned: {}, spent: {}, auctionsWon: 0, auctionsSold: 0, listings: 0, bids: 0, cardsBought: 0, cardsPulled: 0 });
+const freshSave = () => ({ version: 2, money: 1500, owned: {}, packs: { WW: 2, FL: 1 }, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
+  mr: 1000, bestMr: 1000, wins: 0, losses: 0, streak: 0, bestStreak: 0, leagueWins: 0, cardsSold: 0, singlesBought: 0, trades: 0, achievements: [], ai: [], offers: [], market: {}, day: 0, recent: [], seed: '0', pulledRarities: [],
+  stats: freshStats(), bank: { initial: 0, faucet: 0, sink: 0 }, auctions: [], auctionLog: [], nextId: 1, lastDay: [] });
+export const ME = -1;   // "who" id for the player in the ledger / auctions; AIs are 0..7
 
 export class Game {
   /** storage: {load():string|null, save(string)} or null */
@@ -415,31 +428,63 @@ export class Game {
     try { const t = storage && storage.load(); if (t) loaded = JSON.parse(t); } catch (e) { loaded = null; }
     if (loaded && loaded.ai && loaded.ai.length === 8) {
       this.s = Object.assign(freshSave(), loaded);
+      this.s.stats = Object.assign(freshStats(), this.s.stats || {});
+      for (const P of this.s.ai) { P.earned ??= 0; P.spent ??= 0; P.auctionsWon ??= 0; P.auctionsSold ??= 0; }
+      if (!loaded.bank) this.s.bank = { initial: this.totalCash(), faucet: 0, sink: 0 };   // migrate v1 saves: start the ledger now
       this.rng = new SplitMix(BigInt.asUintN(64, BigInt(this.s.seed || '1') + BigInt(Math.floor(Date.now() / 1000))));
     } else { this.s = freshSave(); this.rng = new SplitMix(seed ?? randomSeed()); this.newGame(); }
   }
   newGame() {
     const s = this.s = freshSave();
-    for (const id of STARTER) s.owned[id] = 2;
-    for (const id of STARTER_SUP) inc(s.owned, id);
+    for (const id of STARTER_DECK) inc(s.owned, id);
     s.decks[0] = STARTER_DECK.slice(); s.deckNames[0] = 'Starter Deck';
     for (const c of DB.cards) if (isMon(c)) s.market[c.id] = { factor: 1, history: [Rarity.baseValue(c.rarity)] };
-    const commons = ofRarity('WW', 'C'), sup = supplies();
+    // Fair start: every AI begins exactly like the player — same starter deck, MR, Dorebucks and starting packs,
+    // opened with the same pack function. After that they build/rebuild only from their own collections.
     AI_NAMES.forEach(([n, av], k) => {
-      const p = { id: `ai${k}`, name: n, avatar: av, mr: 900 + this.rng.int(9) * 40, money: 800 + this.rng.int(6) * 100, owned: {}, deck: [], pity: {}, wins: 0, losses: 0, packsOpened: 0, wants: [] };
-      for (let i = 0; i < 6; i++) inc(p.owned, commons[this.rng.int(commons.length)].id, 2);
-      for (const id of ['st_potion', 'st_super_potion', 'st_guard_wall', 'st_power_up', 'st_menace', 'st_static_web', 'st_full_heal']) inc(p.owned, id);
-      inc(p.owned, sup[this.rng.int(sup.length)].id);
+      const p = { id: `ai${k}`, name: n, avatar: av, mr: s.mr, money: s.money, owned: {}, deck: [], pity: {}, wins: 0, losses: 0, packsOpened: 0, wants: [], earned: 0, spent: 0, auctionsWon: 0, auctionsSold: 0 };
+      for (const id of STARTER_DECK) inc(p.owned, id);
       s.ai.push(p);
-      const n2 = 3 + this.rng.int(4);
-      for (let i = 0; i < n2; i++) this.aiOpenPack(k, this.rng.chance(0.65) ? 'WW' : 'FL', true);
+      for (const set of ['WW', 'FL']) for (let i = 0; i < (s.packs[set] || 0); i++) this.aiOpenPack(k, set, true);
       s.ai[k].deck = DeckRules.autoBuild(s.ai[k].owned, this.rng);
     });
     s.seed = this.rng.next().toString();
+    s.bank = { initial: this.totalCash(), faucet: 0, sink: 0 };
     this.save();
   }
   save() { if (this.storage) this.storage.save(JSON.stringify(this.s)); if (this.onChange) this.onChange(); }
-  // packs
+
+  // ---------- ledger: every Dorebuck moves through here ----------
+  // faucet = the game pays someone (battle rewards, selling to the shop, achievements)
+  // sink   = someone pays the game (packs, shop singles)
+  // transfer between players (auction sales, buy-now) creates nothing. Escrowed bids are still counted as cash in totalCash().
+  cash(who) { return who === ME ? this.s.money : this.s.ai[who].money; }
+  setCash(who, v) { if (who === ME) this.s.money = v; else this.s.ai[who].money = v; }
+  earn(who, amt, why) {
+    if (amt <= 0) return; this.setCash(who, this.cash(who) + amt); this.s.bank.faucet += amt;
+    if (who === ME) inc(this.s.stats.earned, why, amt); else this.s.ai[who].earned += amt;
+  }
+  spend(who, amt, why) {
+    if (amt <= 0) return true; if (this.cash(who) < amt) return false;
+    this.setCash(who, this.cash(who) - amt); this.s.bank.sink += amt;
+    if (who === ME) inc(this.s.stats.spent, why, amt); else this.s.ai[who].spent += amt;
+    return true;
+  }
+  /** move cash between two parties (or into/out of auction escrow when one side is 'escrow') */
+  move(from, to, amt, why) {
+    if (amt <= 0) return true;
+    if (from !== 'escrow') { if (this.cash(from) < amt) return false; this.setCash(from, this.cash(from) - amt); if (from === ME && why) inc(this.s.stats.spent, why, amt); }
+    if (to !== 'escrow') { this.setCash(to, this.cash(to) + amt); if (to === ME && why) inc(this.s.stats.earned, why, amt); }
+    return true;
+  }
+  escrowTotal() { return this.s.auctions.reduce((a, l) => a + (l.high ? l.high.amt : 0), 0); }
+  totalCash() { return this.s.money + this.s.ai.reduce((a, p) => a + p.money, 0) + this.escrowTotal(); }
+  /** conservation check: cash + escrow == initial + everything the game paid out - everything paid in */
+  ledgerBalanced() { const b = this.s.bank; return Math.abs(this.totalCash() - (b.initial + b.faucet - b.sink)) < 1e-6; }
+  committed(who) { return this.s.auctions.filter(l => l.high && l.high.who === who).reduce((a, l) => a + l.high.amt, 0); }
+  ownedOf(who) { return who === ME ? this.s.owned : this.s.ai[who].owned; }
+  nameOf(who) { return who === ME ? 'You' : this.s.ai[who].name; }
+
   openPack(set) {
     const s = this.s; if (!(s.packs[set] > 0)) return null;
     s.packs[set]--;
@@ -447,16 +492,17 @@ export class Game {
     const cards = Packs.open(set, pity, s.owned, this.rng);
     s.pity[set] = pity.v;
     const fresh = new Set();
-    for (const c of cards) { if (!(s.owned[c.id] > 0)) fresh.add(c.id); inc(s.owned, c.id); this.supply(c.id, 0.996); }
+    for (const c of cards) { if (!(s.owned[c.id] > 0)) fresh.add(c.id); inc(s.owned, c.id); this.supply(c.id, 0.996); inc(s.stats.pulls, c.rarity); s.stats.cardsPulled++;
+      const bp = s.stats.bestPull; if (!bp || this.value(c.id) > this.value(bp)) s.stats.bestPull = c.id; }
     inc(s.packsOpened, set);
-    for (const c of cards) if (Rarity.rank(c.rarity) >= Rarity.rank('SR')) s.pulledRarities.push(c.rarity);
+    for (const c of cards) if (Rarity.rank(c.rarity) >= Rarity.rank('SR') && c.rarity !== 'ITEM') s.pulledRarities.push(c.rarity);
     this.checkAchievements(); this.save();
     return { cards, fresh };
   }
-  buyPack(set) { const p = Packs.rule(set).price; if (this.s.money < p) return false; this.s.money -= p; inc(this.s.packs, set); this.save(); return true; }
+  buyPack(set) { const p = Packs.rule(set).price; if (!this.spend(ME, p, 'packs')) return false; inc(this.s.packs, set); inc(this.s.stats.packsBought, set); this.save(); return true; }
   aiOpenPack(k, set, free = false) {
     const price = Packs.rule(set).price, P = this.s.ai[k];
-    if (!free) { if (P.money < price) return []; P.money -= price; }
+    if (!free && !this.spend(k, price, 'packs')) return [];
     const pity = { v: P.pity[set] || 0 };
     const cards = Packs.open(set, pity, P.owned, this.rng);   // same function as the player
     P.pity[set] = pity.v; P.packsOpened++;
@@ -473,18 +519,27 @@ export class Game {
   marketTick() {
     const s = this.s; s.day++;
     for (const id of Object.keys(s.market).sort()) { const e = s.market[id]; e.factor += 0.08 * (1 - e.factor) + (this.rng.unit() - 0.5) * 0.04; e.factor = Math.max(0.4, Math.min(2.5, e.factor)); }
-    for (const p of s.ai) if (p.wants && p.wants[0]) this.demand(p.wants[0], 1.008);
+    // AI wish-lists add demand once per card per day (not once per AI), so the one Mythical everyone wants no longer pins at the cap
+    const wantCount = {}; for (const p of s.ai) if (p.wants && p.wants[0]) inc(wantCount, p.wants[0]);
+    for (const id of Object.keys(wantCount).sort()) this.demand(id, 1 + 0.004 * Math.min(3, wantCount[id]));
     for (const id of Object.keys(s.market)) { const e = s.market[id]; e.history.push(this.value(id)); if (e.history.length > 40) e.history.splice(0, e.history.length - 40); }
+  }
+  /** a real sale (auction / buy-now) pulls the market price toward what was actually paid */
+  recordSale(id, price) {
+    const e = this.s.market[id]; if (!e) return;
+    const f = price / Rarity.baseValue(card(id).rarity);
+    e.factor = Math.max(0.4, Math.min(2.5, e.factor * 0.6 + f * 0.4));
+    e.sales = (e.sales || []).concat([[this.s.day, price]]).slice(-10);
   }
   change(id, n = 5) { const h = this.s.market[id]?.history; if (!h || h.length < 2) return 0; const old = h[Math.max(0, h.length - 1 - n)]; return old === 0 ? 0 : (h[h.length - 1] - old) / old; }
   get topCard() { let best = null; for (const id in this.s.market) if (best == null || this.value(id) > this.value(best)) best = id; return best; }
   // shop
-  buySingle(id) { const p = this.buyPrice(id); if (this.s.money < p) return false; this.s.money -= p; inc(this.s.owned, id); this.s.singlesBought++; if (isMon(card(id))) this.demand(id, 1.04); this.checkAchievements(); this.save(); return true; }
+  buySingle(id) { const p = this.buyPrice(id); if (!this.spend(ME, p, 'shop')) return false; inc(this.s.owned, id); this.s.singlesBought++; this.s.stats.cardsBought++; if (isMon(card(id))) this.demand(id, 1.04); this.checkAchievements(); this.save(); return true; }
   inDecks(id) { return Math.max(0, ...this.s.decks.map(d => d.filter(x => x === id).length)); }
   sell(id) {
     const n = this.s.owned[id] || 0; const c = card(id); if (!c) return false;
     if (!(n > Math.max(isMon(c) ? 1 : 0, this.inDecks(id)))) return false;
-    this.s.owned[id] = n - 1; this.s.money += this.sellPrice(id); this.s.cardsSold++;
+    this.s.owned[id] = n - 1; this.earn(ME, this.sellPrice(id), 'shop sales'); this.s.cardsSold++;
     if (isMon(c)) this.supply(id, 0.985);
     this.checkAchievements(); this.save(); return true;
   }
@@ -495,59 +550,178 @@ export class Game {
   ownsDeck(d) { const c = {}; for (const id of d) inc(c, id); return Object.entries(c).every(([k, v]) => (this.s.owned[k] || 0) >= v); }
   get activeDeckValid() { const d = this.s.decks[this.s.activeDeck]; return DeckRules.problems(d).length === 0 && this.ownsDeck(d); }
   // league
-  aiDeck(k) { if (DeckRules.problems(this.s.ai[k].deck).length) this.s.ai[k].deck = DeckRules.autoBuild(this.s.ai[k].owned, this.rng); return this.s.ai[k].deck.map(card); }
+  aiDeck(k) { if (DeckRules.problems(this.s.ai[k].deck).length || !this.aiOwnsDeck(k)) this.s.ai[k].deck = DeckRules.autoBuild(this.s.ai[k].owned, this.rng); return this.s.ai[k].deck.map(card); }
+  aiOwnsDeck(k) { const c = {}, o = this.s.ai[k].owned; for (const id of this.s.ai[k].deck) inc(c, id); return Object.entries(c).every(([id, v]) => (o[id] || 0) >= v); }
   nextLeagueOpponent() {
     const last = this.s.recent[0]?.b;
     const c = this.s.ai.map((_, i) => i).sort((a, b) => Math.abs(this.s.ai[a].mr - this.s.mr) - Math.abs(this.s.ai[b].mr - this.s.mr));
     return c.find(i => this.s.ai[i].name !== last) ?? c[0];
   }
+  /** won: true/false/null(draw). The AI opponent is paid exactly what the player would be paid in its place. */
   recordResult(won, league, k) {
-    const s = this.s; let bucks = 0, d = 0;
+    const s = this.s, st = s.stats.battles[league ? 'ranked' : 'friendly']; let bucks = 0, d = 0;
     if (won != null) {
-      if (won) { s.wins++; s.streak++; s.bestStreak = Math.max(s.bestStreak, s.streak); } else { s.losses++; s.streak = 0; }
+      if (won) { s.wins++; s.streak++; s.bestStreak = Math.max(s.bestStreak, s.streak); st.w++; } else { s.losses++; s.streak = 0; st.l++; }
       if (league) {
         d = elo(s.mr, s.ai[k].mr, won); s.mr = Math.max(0, s.mr + d); s.bestMr = Math.max(s.bestMr, s.mr); s.ai[k].mr -= d;
-        if (won) { s.ai[k].losses++; s.leagueWins++; } else { s.ai[k].wins++; s.ai[k].money += 250; }
+        if (won) { s.ai[k].losses++; s.leagueWins++; this.earn(k, 60, 'league'); } else { s.ai[k].wins++; this.earn(k, 300, 'league'); }
         bucks = won ? 300 + Math.max(0, s.streak - 1) * 25 : 60;
         s.recent.unshift({ id: uuid(), a: 'You', b: s.ai[k].name, winner: won ? 'You' : s.ai[k].name, mrChange: d });
       } else bucks = won ? 150 : 30;
-    } else bucks = 40;
-    s.money += bucks;
+    } else { bucks = 40; st.d++; }
+    this.earn(ME, bucks, league ? 'ranked battles' : 'friendly battles');
     this.worldStep(league ? k : null);
     this.checkAchievements(); this.save();
     return [bucks, d];
   }
+  /** one league day: AI matches (stored so they can be replayed in Spectate), AI shopping, auctions, trades, market */
   worldStep(skip) {
     const s = this.s;
     const pool = s.ai.map((_, i) => i).filter(i => i !== skip);
     for (let i = pool.length - 1; i > 0; i--) { const j = this.rng.int(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    s.lastDay = [];
     while (pool.length >= 2) {
       const a = pool.pop(), b = pool.pop();
-      const bt = new Battle(this.aiDeck(a), s.ai[a].name, this.aiDeck(b), s.ai[b].name, this.rng.next(), this.rng.int(2));
+      const da = this.aiDeck(a), db = this.aiDeck(b), seed = this.rng.next(), first = this.rng.int(2);
+      const bt = new Battle(da, s.ai[a].name, db, s.ai[b].name, seed, first);
       const w = BattleAI.simulate(bt);
+      s.lastDay.push({ a, b, deckA: da.map(c => c.id), deckB: db.map(c => c.id), seed: seed.toString(), first, winner: w, day: s.day + 1 });
       if (w != null) {
         const [win, lose] = w === 0 ? [a, b] : [b, a];
         const dd = elo(s.ai[win].mr, s.ai[lose].mr, true);
-        s.ai[win].mr += dd; s.ai[lose].mr -= dd; s.ai[win].wins++; s.ai[lose].losses++; s.ai[win].money += 300; s.ai[lose].money += 60;
+        s.ai[win].mr += dd; s.ai[lose].mr -= dd; s.ai[win].wins++; s.ai[lose].losses++;
+        this.earn(win, 300, 'league'); this.earn(lose, 60, 'league');      // same purse as the player's ranked games
         s.recent.unshift({ id: uuid(), a: s.ai[a].name, b: s.ai[b].name, winner: s.ai[win].name, mrChange: dd });
       }
     }
     if (s.recent.length > 30) s.recent.length = 30;
     s.ai.forEach((P, k) => {
-      P.money += 120;
+      // packs are bought only from the AI's own cash, keeping a reserve for the auction house
       while (P.money >= 1300) { const set = this.aiMissing(k, 'FL') > 0 && this.rng.chance(0.55) ? 'FL' : 'WW'; if (!this.aiOpenPack(k, set).length) break; }
       P.wants = this.aiWants(k);
       const w = P.wants[0];
-      if (w && P.money > this.value(w) * 2 + 600 && this.rng.chance(0.3)) { P.money -= this.value(w); inc(P.owned, w); this.demand(w, 1.05); P.wants = this.aiWants(k); }
-      P.deck = DeckRules.autoBuild(P.owned, this.rng);
+      if (w && P.money > this.value(w) * 2 + 600 && this.rng.chance(0.3)) { if (this.spend(k, this.value(w), 'shop')) { inc(P.owned, w); this.demand(w, 1.05); P.wants = this.aiWants(k); } }
     });
+    this.auctionDay();
+    s.ai.forEach((P, k) => { P.deck = DeckRules.autoBuild(this.availableOwned(k), this.rng); });
     this.generateOffers();
     this.marketTick();
+    this.settleAuctions();
   }
+  /** advance a league day without the player battling (auctions tick, AIs play each other) */
+  skipDay() { this.worldStep(null); this.checkAchievements(); this.save(); }
+  availableOwned(k) { return this.s.ai[k].owned; }
   aiMissing(k, set) { return inSet(set).filter(c => !(this.s.ai[k].owned[c.id] > 0)).length; }
   aiWants(k) {
     const sc = c => BattleAI.monValue(c) + Rarity.rank(c.rarity) * 20;
     return DB.cards.filter(c => isMon(c) && !(this.s.ai[k].owned[c.id] > 0)).sort((a, b) => sc(b) - sc(a)).slice(0, 4).map(c => c.id);
+  }
+
+  // ---------- auction house ----------
+  // A listing holds the card in escrow (taken out of the seller's collection). A bid takes the bidder's cash into escrow;
+  // being outbid refunds it in full. At the end of the listing's last league day the card goes to the high bidder and the
+  // escrowed cash goes to the seller. Nothing is created: it's a straight transfer between two players.
+  static AUCTION_FEE = 0;
+  canList(who, id) { if (who === ME) return this.sellableCount(id) > 0; return this.aiSpare(who, id) > 0; }
+  list(who, id, kind, price, days) {
+    price = Math.max(1, Math.round(price)); days = Math.max(1, Math.min(5, days | 0));
+    if (!card(id) || !this.canList(who, id) || (kind !== 'auction' && kind !== 'fixed')) return null;
+    const o = this.ownedOf(who); o[id]--;
+    const l = { id: 'L' + (this.s.nextId++), seller: who, card: id, kind, price, endDay: this.s.day + days, high: null, bids: 0, listedDay: this.s.day };
+    this.s.auctions.push(l);
+    if (who === ME) { this.s.stats.listings++; this.s.decks = this.s.decks.map(d => this.fixDeck(d)); }
+    this.save(); return l;
+  }
+  cancelListing(lid) {
+    const l = this.s.auctions.find(x => x.id === lid); if (!l || l.seller !== ME || l.high) return false;
+    inc(this.s.owned, l.card); this.s.auctions = this.s.auctions.filter(x => x !== l); this.save(); return true;
+  }
+  minBid(l) { return l.high ? l.high.amt + Math.max(5, Math.ceil(l.high.amt * 0.05)) : l.price; }
+  bid(who, lid, amt) {
+    const l = this.s.auctions.find(x => x.id === lid);
+    if (!l || l.kind !== 'auction' || l.seller === who || amt < this.minBid(l)) return false;
+    const prev = l.high;
+    // a bidder who already leads only adds the difference
+    const need = prev && prev.who === who ? amt - prev.amt : amt;
+    if (this.cash(who) < need) return false;
+    if (prev && prev.who !== who) this.move('escrow', prev.who, prev.amt, null);      // refund the outbid player
+    this.move(who, 'escrow', need, null);
+    l.high = { who, amt }; l.bids++;
+    if (who === ME) this.s.stats.bids++;
+    this.save(); return true;
+  }
+  buyNow(who, lid) {
+    const l = this.s.auctions.find(x => x.id === lid);
+    if (!l || l.kind !== 'fixed' || l.seller === who || this.cash(who) < l.price) return false;
+    this.move(who, l.seller, l.price, who === ME ? 'auction buys' : 'auction sales');
+    this.finishSale(l, who, l.price); this.save(); return true;
+  }
+  finishSale(l, buyer, price) {
+    inc(this.ownedOf(buyer), l.card);
+    this.s.auctions = this.s.auctions.filter(x => x !== l);
+    this.recordSale(l.card, price);
+    if (buyer === ME) { this.s.stats.auctionsWon++; inc(this.s.stats.spent, 'auction buys', l.kind === 'auction' ? price : 0); } else this.s.ai[buyer].auctionsWon++;
+    if (l.seller === ME) { this.s.stats.auctionsSold++; this.s.cardsSold++; } else this.s.ai[l.seller].auctionsSold++;
+    this.s.auctionLog.unshift({ day: this.s.day, card: l.card, seller: l.seller, buyer, price, kind: l.kind });
+    if (this.s.auctionLog.length > 40) this.s.auctionLog.length = 40;
+  }
+  settleAuctions() {
+    for (const l of this.s.auctions.slice()) {
+      if (this.s.day < l.endDay) continue;
+      if (l.kind === 'auction' && l.high) {
+        const { who, amt } = l.high; l.high = null;                 // leave escrow…
+        this.move('escrow', l.seller, amt, l.seller === ME ? 'auction sales' : null);   // …straight to the seller
+        this.finishSale(l, who, amt);
+      } else { inc(this.ownedOf(l.seller), l.card); this.s.auctions = this.s.auctions.filter(x => x !== l); }   // unsold: card goes back
+    }
+    this.checkAchievements();
+  }
+  /** copies an AI can part with: above its deck needs and copy limit */
+  aiSpare(k, id) {
+    const P = this.s.ai[k], c = card(id); if (!c) return 0;
+    const inDeck = P.deck.filter(x => x === id).length;
+    return Math.max(0, (P.owned[id] || 0) - Math.max(inDeck, Rarity.copyLimit(c), isMon(c) ? 1 : 0));
+  }
+  /** what card `id` is worth to AI k (it never bids above this). Based on market value and need, with a small per-AI taste. */
+  aiValuation(k, id) {
+    const P = this.s.ai[k], c = card(id); if (!c) return 0;
+    const n = P.owned[id] || 0, v = this.value(id), taste = 0.92 + 0.04 * (k % 4);
+    let m;
+    if (isMon(c)) m = P.wants.includes(id) ? 1.1 : n === 0 ? 0.85 : n < Rarity.copyLimit(c) ? 0.55 : 0;
+    else m = n < Rarity.copyLimit(c) && (DeckRules.pref[id] ?? 0) >= 40 ? 0.8 : 0;
+    return Math.floor(v * m * taste);
+  }
+  /** the most AI k will commit to one listing: limited by valuation, its spare cash (after a reserve) and a share of its wealth */
+  aiBudget(k) { const P = this.s.ai[k]; return Math.max(0, Math.min(P.money - 200, Math.floor((P.money + this.committed(k)) * 0.6))); }
+  auctionDay() {
+    const s = this.s;
+    // 1) AIs bid / buy. Two passes so AIs can outbid each other (and the player) within a day.
+    for (let pass = 0; pass < 2; pass++) {
+      const order = s.ai.map((_, i) => i);
+      for (let i = order.length - 1; i > 0; i--) { const j = this.rng.int(i + 1); [order[i], order[j]] = [order[j], order[i]]; }
+      for (const k of order) {
+        let actions = 0;
+        for (const l of s.auctions.slice()) {
+          if (actions >= 2 || l.seller === k || !s.auctions.includes(l)) continue;
+          if (!this.rng.chance(0.6)) continue;
+          const worth = this.aiValuation(k, l.card); if (worth <= 0) continue;
+          if (l.kind === 'fixed') { if (worth >= l.price && l.price <= this.aiBudget(k)) { this.buyNow(k, l.id); actions++; } continue; }
+          if (l.high && l.high.who === k) continue;
+          const leading = s.auctions.filter(x => x.high && x.high.who === k).length; if (leading >= 3) continue;
+          const bidAmt = this.minBid(l);
+          if (bidAmt <= worth && bidAmt <= this.aiBudget(k)) { this.bid(k, l.id, bidAmt); actions++; }
+        }
+      }
+    }
+    // 2) AIs list spare cards (at most 3 open listings each)
+    s.ai.forEach((P, k) => {
+      if (s.auctions.filter(l => l.seller === k).length >= 3 || !this.rng.chance(0.5)) return;
+      const spare = Object.keys(P.owned).sort().filter(id => this.aiSpare(k, id) > 0 && this.value(id) >= 40);
+      if (!spare.length) return;
+      const id = spare[this.rng.int(spare.length)], v = this.value(id);
+      if (this.rng.chance(0.65)) this.list(k, id, 'auction', Math.max(5, Math.round(v * 0.6)), 2 + this.rng.int(2));
+      else this.list(k, id, 'fixed', Math.max(5, Math.round(v * 1.05)), 3);
+    });
   }
   // trades
   generateOffers() {
@@ -621,7 +795,7 @@ export class Game {
       if (this.s.achievements.includes(a.id) || !this.achieved(a.id)) continue;
       this.s.achievements.push(a.id);
       for (const k in a.packs) inc(this.s.packs, k, a.packs[k]);
-      this.s.money += a.money; this.newAchievements.push(a);
+      this.earn(ME, a.money, 'achievements'); this.newAchievements.push(a);
     }
   }
   rewardText(a) {
@@ -629,8 +803,8 @@ export class Game {
     if (a.money > 0) p.push(`$${a.money}`); return p.join(' + ');
   }
   get leaderboard() {
-    const r = this.s.ai.map(p => ({ name: p.name, mr: p.mr, me: false, avatar: p.avatar, w: p.wins, l: p.losses }));
-    r.push({ name: 'You', mr: this.s.mr, me: true, avatar: 'axerupi', w: this.s.wins, l: this.s.losses });
+    const r = this.s.ai.map((p, k) => ({ name: p.name, mr: p.mr, me: false, avatar: p.avatar, w: p.wins, l: p.losses, cash: p.money, escrow: this.committed(k), k }));
+    r.push({ name: 'You', mr: this.s.mr, me: true, avatar: 'axerupi', w: this.s.wins, l: this.s.losses, cash: this.s.money, escrow: this.committed(ME), k: ME });
     return r.sort((a, b) => b.mr - a.mr);
   }
 }

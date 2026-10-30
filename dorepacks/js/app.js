@@ -103,7 +103,7 @@ function battleSetupView() {
   return `<h1>Battle</h1><div class="sub">Deck: ${esc(s.deckNames[s.activeDeck])} ${ok ? '✓' : '<span style="color:#ff9b9b">(not legal — fix it in Decks)</span>'}</div>
   <div class="panel" style="text-align:center"><div class="pix" style="color:var(--yellow)">RANKED MATCH</div>
    <div style="margin:10px 0">${sprite(o.avatar, 90)}</div><div class="title" style="font-size:26px">${esc(o.name)}</div>
-   <div class="small">${o.mr} MR · ${tier(o.mr)} · ${o.wins}W ${o.losses}L</div>
+   <div class="small">${o.mr} MR · ${tier(o.mr)} · ${o.wins}W ${o.losses}L · cash <span style="color:#7dfc9f">${money(o.money)}</span></div>
    <div class="small" style="margin:6px 0">You: ${s.mr} MR · ${tier(s.mr)} · streak ${s.streak}</div>
    <button class="btn y" style="width:100%" data-a="fight" data-v="L${k}" ${ok ? '' : 'disabled'}>Ranked Battle</button></div>
   <div class="sub">Friendly match (no MR)</div>
@@ -112,15 +112,16 @@ function battleSetupView() {
 }
 function moreView() {
   const m = UI.more;
-  if (!m) return `<h1>More</h1>` + [['league', '🏆', 'League', 'Leaderboard & results'], ['trades', '🤝', 'Trades', `${G.s.offers.length} offer(s)`], ['shop', '🛒', 'Shop', 'Packs, singles, supplies, sell'], ['market', '📈', 'Market', `Day ${G.s.day}`], ['ach', '🏅', 'Achievements', `${G.s.achievements.length}/${ACHIEVEMENTS.length}`], ['rules', '📖', 'How to Play', 'Rules of the mat']]
+  if (!m) return `<h1>More</h1>` + [['league', '🏆', 'League', 'Leaderboard & results'], ['trades', '🤝', 'Trades', `${G.s.offers.length} offer(s)`], ['shop', '🛒', 'Shop', 'Packs, singles, supplies, sell'], ['auction', '🔨', 'Auction House', `${G.s.auctions.length} listing(s) · bid against the AIs`], ['spectate', '📺', 'Spectate', 'Watch AI vs AI battles'], ['market', '📈', 'Market', `Day ${G.s.day}`], ['stats', '📊', 'Stats', 'Your career numbers'], ['ach', '🏅', 'Achievements', `${G.s.achievements.length}/${ACHIEVEMENTS.length}`], ['rules', '📖', 'How to Play', 'Rules of the mat']]
     .map(([k, i, t, d]) => `<div class="panel row" data-a="more" data-v="${k}"><span style="font-size:28px">${i}</span><div class="grow"><div class="title" style="font-size:22px">${t}</div><div class="small">${d}</div></div><span>›</span></div>`).join('')
     + `<button class="btn r sm" data-a="reset" style="margin-top:20px">Reset save</button><div class="small" style="margin-top:8px">Progress is saved on this device (localStorage).</div>`;
   const back = `<button class="btn k sm" data-a="more" data-v="" style="margin-bottom:8px">‹ Back</button>`;
-  return back + ({ league: leagueView, trades: tradesView, shop: shopView, market: marketView, ach: achView, rules: rulesView })[m]();
+  return back + ({ league: leagueView, trades: tradesView, shop: shopView, market: marketView, ach: achView, rules: rulesView, auction: auctionView, spectate: spectateView, stats: statsView })[m]();
 }
 function leagueView() {
   const lb = G.leaderboard;
-  return `<h1>League</h1><div class="sub">Season ladder · K=32 Elo</div><div class="panel list" style="padding:4px 12px">${lb.map((r, i) => `<div class="it" style="${r.me ? 'background:#ffd64022;margin:0 -12px;padding:9px 12px' : ''}"><b style="width:22px">${i + 1}</b><span style="width:40px;text-align:center">${sprite(r.avatar, 34)}</span><div class="grow"><b>${esc(r.name)}</b><div class="small">${tier(r.mr)} · ${r.w}W ${r.l}L</div></div><b style="color:var(--yellow)">${r.mr}</b></div>`).join('')}</div>
+  return `<h1>League</h1><div class="sub">Season ladder · K=32 Elo</div><div class="panel list" style="padding:4px 12px">${lb.map((r, i) => `<div class="it" style="${r.me ? 'background:#ffd64022;margin:0 -12px;padding:9px 12px' : ''}"><b style="width:22px">${i + 1}</b><span style="width:40px;text-align:center">${sprite(r.avatar, 34)}</span><div class="grow"><b>${esc(r.name)}</b><div class="small">${tier(r.mr)} · ${r.w}W ${r.l}L · <span style="color:#7dfc9f">${money(r.cash)}</span>${r.escrow ? ` <span title="in bids">(+${money(r.escrow)} bid)</span>` : ''}</div></div><b style="color:var(--yellow)">${r.mr}</b></div>`).join('')}</div>
+  <button class="btn k" style="width:100%" data-a="skipDay">Skip a day (AIs play, shop and auction) ›</button>
   <div class="sub">Recent results</div><div class="panel list" style="padding:4px 12px">${G.s.recent.slice(0, 15).map(r => `<div class="it small"><span class="grow" style="color:#fff">${esc(r.a)} vs ${esc(r.b)}</span><span>🏆 ${esc(r.winner)} (±${Math.abs(r.mrChange)})</span></div>`).join('') || '<div class="small">No games yet.</div>'}</div>`;
 }
 function tradesView() {
@@ -145,6 +146,50 @@ function marketView() {
   ${top ? `<div class="panel row">${sprite(spriteId(card(top)), 56)}<div class="grow"><div class="pix" style="color:var(--yellow)">TOP CARD</div><div class="title" style="font-size:22px">${esc(card(top).name)}</div><b>${money(G.value(top))}</b></div></div>` : ''}
   <div class="panel list" style="padding:4px 12px">${ids.map(id => { const c = card(id), ch = G.change(id); return `<div class="it" data-a="inspect" data-v="${id}">${sprite(spriteId(c), 28)}<div class="grow" style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</div>${rar(c.rarity)}</div>${spark(G.s.market[id].history)}<div style="text-align:right;width:76px"><b>${money(G.value(id))}</b><div class="small" style="color:${ch > 0 ? '#40c773' : ch < 0 ? '#f25252' : 'var(--dim)'}">${ch > 0 ? '+' : ''}${(ch * 100).toFixed(1)}%</div></div></div>`; }).join('')}</div>`;
 }
+function ends(l) { const d = l.endDay - G.s.day; return d <= 1 ? 'ends after next day' : `ends in ${d} days`; }
+function auctionView() {
+  const s = G.s, t = UI.aTab || 'browse'; let body = '';
+  const who = w => w === E.ME ? 'You' : esc(s.ai[w].name);
+  const row = (l, btn) => { const c = card(l.card); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 34) : '✨'}<div class="grow" data-a="inspect" data-v="${c.id}"><b>${esc(c.name)}</b> ${rar(c.rarity)}<div class="small">${l.kind === 'auction' ? '🔨 auction' : '🏷 fixed price'} · by ${who(l.seller)} · ${ends(l)} · value ${money(G.value(l.card))}</div>
+    <div class="small">${l.kind === 'auction' ? (l.high ? `high bid <b style="color:#fff">${money(l.high.amt)}</b> by ${who(l.high.who)} · ${l.bids} bid(s)` : `start ${money(l.price)} · no bids`) : `price <b style="color:#fff">${money(l.price)}</b>`}</div></div>${btn}</div>`; };
+  if (t === 'browse') { const ls = s.auctions.filter(l => l.seller !== E.ME).sort((a, b) => a.endDay - b.endDay);
+    body = `<div class="panel list" style="padding:4px 12px">${ls.map(l => row(l, l.kind === 'auction' ? (l.high?.who === E.ME ? '<span class="rar" style="background:var(--green)">LEADING</span>' : `<button class="btn y sm" data-a="bid" data-v="${l.id}" ${s.money >= G.minBid(l) - (l.high?.who === E.ME ? l.high.amt : 0) ? '' : 'disabled'}>Bid ${money(G.minBid(l))}</button>`) : `<button class="btn g sm" data-a="buyNow" data-v="${l.id}" ${s.money >= l.price ? '' : 'disabled'}>Buy ${money(l.price)}</button>`)).join('') || '<div class="small" style="padding:8px 0">No listings right now. AIs list spare cards as days pass.</div>'}</div>`; }
+  if (t === 'mine') { const ls = s.auctions.filter(l => l.seller === E.ME); const lead = s.auctions.filter(l => l.high?.who === E.ME);
+    body = `<div class="sub">Your listings</div><div class="panel list" style="padding:4px 12px">${ls.map(l => row(l, !l.high ? `<button class="btn r sm" data-a="cancelListing" data-v="${l.id}">Cancel</button>` : '')).join('') || '<div class="small" style="padding:8px 0">Nothing listed.</div>'}</div>
+    <div class="sub">Bids you're leading (${money(G.committed(E.ME))} held in escrow)</div><div class="panel list" style="padding:4px 12px">${lead.map(l => row(l, '')).join('') || '<div class="small" style="padding:8px 0">None.</div>'}</div>`; }
+  if (t === 'sell') { const kind = UI.lKind || 'auction', days = UI.lDays || 2; const list = Object.keys(s.owned).filter(id => G.sellableCount(id) > 0).sort((a, b) => G.value(b) - G.value(a));
+    body = `<div class="seg">${[['auction', 'Auction'], ['fixed', 'Fixed price']].map(([k, n]) => `<button class="${kind === k ? 'on' : ''}" data-a="lKind" data-v="${k}">${n}</button>`).join('')}</div>
+    <div class="seg">${[1, 2, 3, 5].map(d => `<button class="${days === d ? 'on' : ''}" data-a="lDays" data-v="${d}">${d} day${d > 1 ? 's' : ''}</button>`).join('')}</div>
+    <div class="small" style="margin-bottom:6px">${kind === 'auction' ? 'Set a starting price; highest bid when the timer ends wins. Bids are held in escrow.' : 'First buyer at your price gets it.'} Shop sell price shown for comparison.</div>
+    <div class="panel list" style="padding:4px 12px">${list.map(id => { const c = card(id); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow">${esc(c.name)} ${rar(c.rarity)}<div class="small">${G.sellableCount(id)} spare · value ${money(G.value(id))} · shop pays ${money(G.sellPrice(id))}</div></div><button class="btn y sm" data-a="listCard" data-v="${id}">List</button></div>`; }).join('') || '<div class="small" style="padding:8px 0">Nothing spare to list.</div>'}</div>`; }
+  if (t === 'history') body = `<div class="panel list" style="padding:4px 12px">${s.auctionLog.map(x => `<div class="it small"><span>Day ${x.day}</span><span class="grow" style="color:#fff">${esc(card(x.card).name)}</span><span>${who(x.seller)} → ${who(x.buyer)}</span><b style="color:#7dfc9f">${money(x.price)}</b></div>`).join('') || '<div class="small" style="padding:8px 0">No sales yet.</div>'}</div>`;
+  return `<h1>Auction House</h1><div class="sub">Day ${s.day} · you ${money(s.money)} · timers count league days (play a battle or skip a day)</div>
+  <div class="seg">${[['browse', 'Browse'], ['mine', 'Mine'], ['sell', 'List a card'], ['history', 'Sold']].map(([k, n]) => `<button class="${t === k ? 'on' : ''}" data-a="aTab" data-v="${k}">${n}</button>`).join('')}</div>${body}
+  <button class="btn k" style="width:100%;margin-top:10px" data-a="skipDay">Skip a day ›</button>`;
+}
+function spectateView() {
+  const s = G.s, a = UI.specA ?? 0, b = UI.specB ?? 1;
+  const pick = (cur, key) => `<div class="grid3">${s.ai.map((p, i) => `<button class="btn ${cur === i ? 'y' : 'k'}" style="flex-direction:column;padding:6px 2px" data-a="${key}" data-v="${i}">${sprite(p.avatar, 36)}<span style="font-size:12px">${esc(p.name)}</span></button>`).join('')}</div>`;
+  return `<h1>Spectate</h1><div class="sub">Latest league day (replayed move-for-move)</div>
+  <div class="panel list" style="padding:4px 12px">${(s.lastDay || []).map((m, i) => `<div class="it">${sprite(s.ai[m.a].avatar, 30)}<div class="grow"><b>${esc(s.ai[m.a].name)}</b> vs <b>${esc(s.ai[m.b].name)}</b><div class="small">Day ${m.day}</div></div><button class="btn y sm" data-a="watch" data-v="R${i}">Watch</button></div>`).join('') || '<div class="small" style="padding:8px 0">No league matches yet — play or skip a day.</div>'}</div>
+  <div class="sub">Exhibition: pick two AIs (no MR or cash at stake)</div>${pick(a, 'specA')}<div style="text-align:center;margin:6px">vs</div>${pick(b, 'specB')}
+  <button class="btn y" style="width:100%;margin-top:10px" data-a="watch" data-v="X" ${a === b ? 'disabled' : ''}>Watch ${esc(s.ai[a].name)} vs ${esc(s.ai[b].name)}</button>`;
+}
+function statsView() {
+  const s = G.s, t = s.stats, pct = (w, l) => w + l ? Math.round(w / (w + l) * 100) + '%' : '—';
+  const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
+  const kv = (k, v) => `<div class="it"><span class="grow">${k}</span><b>${v}</b></div>`;
+  const panel = (title, rows) => `<div class="sub">${title}</div><div class="panel list" style="padding:4px 12px">${rows.join('')}</div>`;
+  const order = ['MYT', 'LGD', 'SSR', 'SR', 'R', 'U', 'C', 'ITEM'];
+  const bp = t.bestPull ? card(t.bestPull) : null;
+  return `<h1>Stats</h1>` +
+  (bp ? `<div class="panel row">${sprite(spriteId(bp), 56)}<div class="grow"><div class="pix" style="color:var(--yellow)">BEST PULL</div><div class="title" style="font-size:22px">${esc(bp.name)}</div>${rar(bp.rarity)} <span class="small">worth ${money(G.value(bp.id))}</span></div></div>` : '') +
+  panel('Packs', [kv('Whispering Winds opened', s.packsOpened.WW || 0), kv('Fallen Legends opened', s.packsOpened.FL || 0), kv('Packs bought', sum(t.packsBought)), kv('Cards pulled', t.cardsPulled)]) +
+  panel('Pulls by rarity', order.filter(r => t.pulls[r]).map(r => kv(`${rar(r)} ${Rarity.name(r)}`, t.pulls[r]))) +
+  panel('Battles', [['Ranked', t.battles.ranked], ['Friendly', t.battles.friendly]].map(([n, b]) => kv(n, `${b.w}W ${b.l}L${b.d ? ' ' + b.d + 'D' : ''} · ${pct(b.w, b.l)}`)).concat([kv('Total', `${s.wins}W ${s.losses}L · ${pct(s.wins, s.losses)}`), kv('MR now / peak', `${s.mr} / ${s.bestMr}`), kv('Win streak now / best', `${s.streak} / ${s.bestStreak}`)])) +
+  panel('Dorebucks', [kv('Cash', money(s.money)), kv('Earned', `<span style="color:#7dfc9f">${money(sum(t.earned))}</span>`)].concat(Object.entries(t.earned).map(([k, v]) => kv('&nbsp;&nbsp;' + esc(k), money(v))), [kv('Spent', `<span style="color:#ff9b9b">${money(sum(t.spent))}</span>`)], Object.entries(t.spent).map(([k, v]) => kv('&nbsp;&nbsp;' + esc(k), money(v))))) +
+  panel('Trading', [kv('Cards sold (shop + auction)', s.cardsSold), kv('Singles bought', s.singlesBought), kv('Auctions won', t.auctionsWon), kv('Auctions sold', t.auctionsSold), kv('Listings / bids placed', `${t.listings} / ${t.bids}`), kv('Trades done', s.trades), kv('Achievements', `${s.achievements.length}/${ACHIEVEMENTS.length}`)]);
+}
 function achView() {
   return `<h1>Achievements</h1><div class="sub">${G.s.achievements.length}/${ACHIEVEMENTS.length} unlocked</div><div class="panel list" style="padding:4px 12px">${ACHIEVEMENTS.map(a => { const on = G.s.achievements.includes(a.id); return `<div class="it" style="opacity:${on ? 1 : .55}"><span style="font-size:24px">${on ? '🏅' : '🔒'}</span><div class="grow"><b>${esc(a.title)}</b><div class="small">${esc(a.desc)} · ${esc(G.rewardText(a))}</div></div></div>`; }).join('')}</div>`;
 }
@@ -159,7 +204,9 @@ const RULES = [
   ['Traps', 'Set face-down in a SPELL/TRAP slot (6 slots). When the enemy declares an attack, your leftmost trap springs: Guard Wall stalls them (no more attacks that turn), Bramble Shield blocks and hits back for 30, debuffs (Menace, Cute Growl, Metal Screech, Glare Down) and status traps (Static Web, Doze Spores stop the attack; Wisp Scorch, Venom Dust, Bewilder Beam).'],
   ['Status', 'Poison: −20 HP at the end of its owner\'s turn. Burn: −10 HP each turn and half damage. Paralysis: can\'t attack for one turn. Sleep: can\'t attack; 50% to wake each turn, always wakes by the 2nd. Confusion: 50% to hit itself for 30 instead, lasts 2 turns.'],
   ['Rewards', 'Friendly win $150 (loss $30). Ranked win $300 + $25 per win streak (loss $60) and MR via Elo (K=32). Tiers: Bronze, Silver 1050, Gold 1150, Platinum 1250, Diamond 1400, Master 1550.'],
-  ['Fair play', 'The AI players open packs with the exact same function, odds and pity as you, build decks only from cards they own, and play by the same rules.'],
+  ['Packs', 'Every pack has 7 cards: 2 Commons, a Common-or-spell/trap slot (30% spell/trap), 1 guaranteed spell/trap, then 3 doremon slots where Uncommons, Rares and the chase cards live. Cheaper spells/traps drop more often. Pity guarantees a chase card if you go long enough without one.'],
+  ['Auction House', 'List spare cards at a fixed price or as an auction lasting 1–5 league days. Bids are held in escrow and refunded the moment someone outbids you; when the timer ends the seller gets the winning bid and the winner gets the card. AIs list and bid too, using only their own cash.'],
+  ['Fair play', 'The AI players open packs with the exact same function, odds and pity as you, shuffle the same way, build decks only from cards they own, and play by the same rules. They never see your hand, your deck order or which traps you set. Each AI has its own wallet: it earns the same battle rewards you do and pays for packs and bids out of it, and it never bids more than a card is worth to it or more than it can afford.'],
 ];
 function rulesView() { return `<h1>How to Play</h1><div class="sub">Doremonsters mat battles</div>` + RULES.map(([a, b]) => `<div class="panel"><div class="title" style="font-size:20px;color:var(--yellow)">${a}</div><div style="font-weight:500;margin-top:4px">${esc(b)}</div></div>`).join(''); }
 
@@ -230,17 +277,23 @@ function stRow(side) {
   return `<div class="strow">${S.traps.map((t, i) => { let c = 'st' + (t ? ' set' : ''); if (side === 0 && sel?.kind === 'hand' && isTrap(S.hand[sel.i]) && b.isLegal({ t: 'setTrap', hand: sel.i, slot: i })) c += ' can'; return `<div class="${c}" data-a="st" data-v="${side}:${i}">${t ? (side === 0 ? esc(t.name.split(' ')[0]) : '?') : ''}</div>`; }).join('')}</div>`;
 }
 function battleView() {
-  const B = UI.battle, b = B.b, me = b.sides[0], op = b.sides[1], o = G.s.ai[B.k], my = b.current === 0 && !b.over && !B.busy;
+  const B = UI.battle, b = B.b, me = b.sides[0], op = b.sides[1], o = B.spec ? { name: B.spec.nb, avatar: B.spec.ab } : G.s.ai[B.k], my = !B.spec && b.current === 0 && !b.over && !B.busy;
+  const nA = B.spec ? esc(B.spec.na) : 'You', avA = B.spec ? B.spec.aa : 'axerupi';
   const hearts = n => '❤️'.repeat(Math.max(0, n)) + '<span style="opacity:.25">' + '❤️'.repeat(Math.max(0, 5 - n)) + '</span>';
   let hint = '';
-  if (!my) hint = b.over ? '' : `${esc(o.name)} is thinking…`;
+  if (B.spec) hint = b.over ? `🏆 ${esc(b.winner == null ? 'Draw' : b.winner === 0 ? B.spec.na : B.spec.nb)} wins!` : `Turn ${b.turnNumber} · ${esc(b.current === 0 ? B.spec.na : B.spec.nb)} to move`; else if (!my) hint = b.over ? '' : `${esc(o.name)} is thinking…`;
   else if (B.sel?.kind === 'hand') { const c = me.hand[B.sel.i]; hint = isMon(c) ? (me.monsPlayed ? 'Already played a doremon this turn' : 'Tap an empty slot on your mat') : isTrap(c) ? 'Tap a SPELL/TRAP slot to set it' : b.spellNeedsTarget(c) ? 'Tap one of your doremon' : ''; }
   else if (B.sel?.kind === 'mon') hint = monCount(op) ? 'Tap an enemy to attack' : 'No enemies — attack directly!';
   else hint = `Turn ${b.turnNumber} · doremon ${me.monsPlayed}/1 · spell/trap ${me.stPlayed}/2${me.stalled ? ' · STALLED' : ''}`;
   const selC = B.sel?.kind === 'hand' ? me.hand[B.sel.i] : null;
   const castBtn = my && selC && isSpell(selC) && !b.spellNeedsTarget(selC) ? `<button class="btn y sm" data-a="cast">Cast ${esc(selC.name)}</button>` : '';
   const directBtn = my && B.sel?.kind === 'mon' && b.isLegal({ t: 'attack', from: B.sel.i, to: null }) ? `<button class="btn r sm" data-a="direct">Direct attack!</button>` : '';
-  return `<div class="top" style="padding-bottom:4px"><button class="btn k sm" data-a="forfeit">✕</button><div class="grow" style="text-align:center;font-weight:800">${B.league ? 'Ranked' : 'Friendly'} vs ${esc(o.name)}</div><button class="btn k sm" data-a="log">Log</button></div>
+  const top = B.spec ? `<div class="top" style="padding-bottom:4px"><button class="btn k sm" data-a="leaveSpec">✕</button><div class="grow" style="text-align:center;font-weight:800">📺 ${B.spec.title}</div><button class="btn k sm" data-a="log">Log</button></div>`
+    : `<div class="top" style="padding-bottom:4px"><button class="btn k sm" data-a="forfeit">✕</button><div class="grow" style="text-align:center;font-weight:800">${B.league ? 'Ranked' : 'Friendly'} vs ${esc(o.name)}</div><button class="btn k sm" data-a="log">Log</button></div>`;
+  const handA = B.spec ? me.hand.map(() => `<div class="hc dis">${`<img class="cardimg" src="${IMG['cards/card_back']}" alt="">`}</div>`).join('') : null;
+  const bar = B.spec ? `<div class="bbar">${[0.5, 1, 2, 4].map(x => `<button class="btn sm ${B.spec.speed === x ? 'y' : 'k'}" data-a="specSpeed" data-v="${x}">${x}×</button>`).join('')}<span class="grow"></span><button class="btn sm" data-a="specPause">${B.spec.paused ? '▶' : '⏸'}</button><button class="btn sm k" data-a="specStep" ${B.spec.paused && !b.over ? '' : 'disabled'}>Step</button></div>
+   <div class="panel log" style="max-height:120px;overflow:auto;margin-top:6px;font-size:13px">${B.lines.slice(-8).reverse().map(l => `<div>${esc(l)}</div>`).join('')}</div>` : null;
+  return `${top}
   <div class="bt">
    <div class="bhead">${sprite(o.avatar, 26)}<b>${esc(o.name)}</b><span class="life">${hearts(op.life)}</span><span class="grow"></span><span class="small">✋${op.hand.length} 🂠${op.deck.length}</span></div>
    ${stRow(1)}
@@ -248,11 +301,24 @@ function battleView() {
    <div class="prev">${hint}</div>
    <div class="mat me" id="matme"><div class="lbl">DOREMON</div>${[0, 1, 2, 3, 4, 5].map(i => slotHTML(0, i)).join('')}</div>
    ${stRow(0)}
-   <div class="bhead">${sprite('axerupi', 26)}<b>You</b><span class="life">${hearts(me.life)}</span><span class="grow"></span><span class="small">🂠${me.deck.length}</span></div>
-   <div class="hand">${me.hand.map((c, i) => { const can = my && (isMon(c) ? me.monsPlayed < 1 && monCount(me) < 6 : me.stPlayed < 2); return `<div class="hc ${B.sel?.kind === 'hand' && B.sel.i === i ? 'sel' : ''} ${can ? '' : 'dis'}" data-a="hand" data-v="${i}">${cardImg(c.id)}</div>`; }).join('')}</div>
-   <div class="bbar">${castBtn}${directBtn}<span class="grow"></span><button class="btn y" data-a="endTurn" ${my ? '' : 'disabled'}>End turn</button></div>
+   <div class="bhead">${sprite(avA, 26)}<b>${nA}</b><span class="life">${hearts(me.life)}</span><span class="grow"></span><span class="small">🂠${me.deck.length}</span></div>
+   ${bar ? `<div class="hand">${handA}</div>${bar}` : `<div class="hand">${me.hand.map((c, i) => { const can = my && (isMon(c) ? me.monsPlayed < 1 && monCount(me) < 6 : me.stPlayed < 2); return `<div class="hc ${B.sel?.kind === 'hand' && B.sel.i === i ? 'sel' : ''} ${can ? '' : 'dis'}" data-a="hand" data-v="${i}">${cardImg(c.id)}</div>`; }).join('')}</div>
+   <div class="bbar">${castBtn}${directBtn}<span class="grow"></span><button class="btn y" data-a="endTurn" ${my ? '' : 'disabled'}>End turn</button></div>`}
   </div>`;
 }
+// ---------- spectate ----------
+function watch(v) {
+  const s = G.s; let A, Bk, da, db, seed, first, title;
+  if (v[0] === 'R') { const m = s.lastDay[+v.slice(1)]; A = m.a; Bk = m.b; da = m.deckA.map(card); db = m.deckB.map(card); seed = BigInt(m.seed); first = m.first; title = `League day ${m.day}`; }
+  else { A = UI.specA ?? 0; Bk = UI.specB ?? 1; da = s.ai[A].deck.map(card); db = s.ai[Bk].deck.map(card); seed = BigInt(Date.now()) ^ 0x5eedn; first = Date.now() % 2; title = 'Exhibition'; }
+  if (DeckRules.problems(da.map(c => c.id)).length) da = G.aiDeck(A); if (DeckRules.problems(db.map(c => c.id)).length) db = G.aiDeck(Bk);
+  const b = new Battle(da, s.ai[A].name, db, s.ai[Bk].name, seed, first);
+  UI.battle = { b, k: Bk, league: false, sel: null, ei: b.events.length, busy: true, floats: [], lines: b.events.filter(e => e.e === 'log').map(e => e.text),
+    spec: { na: s.ai[A].name, nb: s.ai[Bk].name, aa: s.ai[A].avatar, ab: s.ai[Bk].avatar, speed: 1, paused: false, title, timer: null } };
+  render(); specTick();
+}
+function specStep() { const B = UI.battle; if (!B?.spec || B.b.over) return; const a = BattleAI.next(B.b); if (!B.b.apply(a)) B.b.apply({ t: 'end' }); drainEvents(); render(); return a; }
+function specTick() { const B = UI.battle; if (!B?.spec) return; clearTimeout(B.spec.timer); if (B.spec.paused || B.b.over) return; const a = specStep(); B.spec.timer = setTimeout(specTick, (a && a.t === 'end' ? 350 : 800) / B.spec.speed); }
 function afterBattleRender() {
   const B = UI.battle; if (!B) return;
   for (const f of B.floats) { const el = document.getElementById(`s${f.side}${f.slot}`); if (!el) continue; const d = document.createElement('div'); d.className = 'float' + (f.heal ? ' heal' : ''); d.textContent = f.text; el.appendChild(d); if (!f.heal) el.classList.add('shake'); }
@@ -271,7 +337,7 @@ function drainEvents() {
     else if (e.e === 'trap') banner(`TRAP! ${e.card.name}`);
   }
 }
-function banner(t) { const d = document.createElement('div'); d.className = 'banner'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1400); }
+function banner(t) { if (SNAP) return; const d = document.createElement('div'); d.className = 'banner'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1400); }
 function act(a) { const B = UI.battle; if (!B.b.apply(a)) return false; B.sel = null; drainEvents(); render(); checkOver(); return true; }
 function checkOver() {
   const B = UI.battle; if (!B || !B.b.over || UI.overlay) return;
@@ -341,6 +407,20 @@ const A = {
   endTurn: () => { const B = UI.battle; B.sel = null; if (act({ t: 'end' }) && !B.b.over) setTimeout(aiTurn, 500); },
   log: () => { UI.overlay = { kind: 'log', lines: UI.battle.lines }; renderOverlay(); },
   forfeit: () => { const B = UI.battle; if (B.b.over) return; if (!confirm('Forfeit this match? It counts as a loss.')) return; B.b.finish(1); drainEvents(); checkOver(); },
+  leaveSpec: () => { const B = UI.battle; if (B?.spec) clearTimeout(B.spec.timer); UI.battle = null; UI.overlay = null; UI.tab = 'more'; UI.more = 'spectate'; render(); },
+  specSpeed: v => { UI.battle.spec.speed = +v; render(); specTick(); },
+  specPause: () => { const S = UI.battle.spec; S.paused = !S.paused; render(); specTick(); },
+  specStep: () => specStep(),
+  specA: v => { UI.specA = +v; render(); }, specB: v => { UI.specB = +v; render(); },
+  watch: v => watch(v),
+  skipDay: () => { G.skipDay(); banner(`Day ${G.s.day}`); render(); },
+  aTab: v => { UI.aTab = v; render(); }, lKind: v => { UI.lKind = v; render(); }, lDays: v => { UI.lDays = +v; render(); },
+  bid: v => { const l = G.s.auctions.find(x => x.id === v); if (!l) return; const min = G.minBid(l); const r = SNAP ? min : prompt(`Your bid for ${card(l.card).name} (minimum ${money(min)}). The cash is held until you're outbid or the auction ends.`, min); if (r == null) return; const amt = Math.round(+String(r).replace(/[$,]/g, '')); if (!G.bid(E.ME, v, amt)) alert(amt < min ? `Bid at least ${money(min)}.` : 'Not enough cash.'); render(); },
+  buyNow: v => { const l = G.s.auctions.find(x => x.id === v); if (l && confirm(`Buy ${card(l.card).name} for ${money(l.price)}?`)) { G.buyNow(E.ME, v); G.checkAchievements(); } render(); },
+  cancelListing: v => { G.cancelListing(v); render(); },
+  listCard: v => { const kind = UI.lKind || 'auction', days = UI.lDays || 2, def = kind === 'auction' ? Math.round(G.value(v) * 0.7) : G.value(v);
+    const r = prompt(`${kind === 'auction' ? 'Starting bid' : 'Price'} for ${card(v).name} (market value ${money(G.value(v))}), ${days} day(s):`, def); if (r == null) return;
+    const p = Math.round(+String(r).replace(/[$,]/g, '')); if (!(p > 0)) return; if (G.list(E.ME, v, kind, p, days)) banner('Listed!'); render(); },
   leaveBattle: () => { UI.overlay = null; UI.battle = null; UI.tab = 'battle'; render(); },
 };
 document.addEventListener('click', ev => { const t = ev.target.closest('[data-a]'); if (!t) return; if (t.disabled) return; const f = A[t.dataset.a]; if (f) f(t.dataset.v, ev); });
@@ -365,6 +445,15 @@ function demo() {
     case 'shop': UI.tab = 'more'; UI.more = 'shop'; UI.shopTab = 'singles'; break;
     case 'trades': UI.tab = 'more'; UI.more = 'trades'; if (!g.s.offers.length) { const k = 0, P = g.s.ai[k]; const give = Object.keys(P.owned).find(id => isMon(card(id)) && P.owned[id] > 1 && !(g.s.owned[id] > 0)) || 'ww_giggleti'; g.s.offers.push({ id: 'demo', aiId: P.id, give, want: 'ww_badbulb', countered: false, note: `${P.name} is building around Badbulb.` }); } break;
     case 'ach': UI.tab = 'more'; UI.more = 'ach'; break;
+    case 'stats': UI.tab = 'more'; UI.more = 'stats'; break;
+    case 'more': UI.tab = 'more'; break;
+    case 'auction': case 'auction_mine': case 'auction_sell': { UI.tab = 'more'; UI.more = 'auction'; UI.aTab = { auction: 'browse', auction_mine: 'mine', auction_sell: 'sell' }[SNAP];
+      const spare = Object.keys(g.s.owned).filter(id => g.sellableCount(id) > 0 && isMon(card(id))).sort((a, b) => g.value(b) - g.value(a));
+      for (let i = 0; i < 6; i++) g.skipDay();
+      if (spare[0]) g.list(E.ME, spare[0], 'auction', Math.round(g.value(spare[0]) * 0.5), 3); if (spare[1]) g.list(E.ME, spare[1], 'fixed', g.value(spare[1]) * 2, 3);
+      g.auctionDay();
+      const l = g.s.auctions.find(x => x.seller !== E.ME && x.kind === 'auction' && !x.high) || g.s.auctions.find(x => x.seller !== E.ME && x.kind === 'auction'); if (l) g.bid(E.ME, l.id, g.minBid(l)); break; }
+    case 'spectate': UI.tab = 'more'; UI.more = 'spectate'; UI.specA = 2; UI.specB = 5; break;
     case 'rules': UI.tab = 'more'; UI.more = 'rules'; break;
     case 'opening': { UI.tab = 'packs'; g.s.packs.FL++; const r = g.openPack('FL'); const fl = inSet('FL'); UI.overlay = { kind: 'pack', set: 'FL', cards: r.cards, fresh: r.fresh, phase: 0 }; break; }
     case 'reveal': { const fl = inSet('FL').filter(c => c.rarity === 'LGD'); UI.overlay = { kind: 'pack', set: 'FL', cards: inSet('FL').slice(-7), fresh: new Set([fl[0].id]), phase: 1, i: 6, flipped: true }; UI.overlay.cards[6] = fl[0]; break; }
@@ -381,8 +470,11 @@ function demo() {
       if (SNAP === 'battle_target') { const i = b.sides[0].mons.findIndex(m => m && canAttack(m)); if (i >= 0) UI.battle.sel = { kind: 'mon', i }; }
       else { const i = b.sides[0].hand.findIndex(isMon); if (i >= 0) UI.battle.sel = { kind: 'hand', i }; }
       break; }
+    case 'spectate_live': { UI.tab = 'more'; UI.more = 'spectate'; watch('R0'); const B = UI.battle; B.spec.paused = true; clearTimeout(B.spec.timer); B.spec.speed = 2;
+      for (let n = 0; n < 400 && B.b.turnNumber < 9 && !B.b.over; n++) specStep(); break; }
     case 'result': UI.tab = 'battle'; UI.overlay = { kind: 'result', won: true, bucks: 325, d: 17, league: true, avatar: 'zebrolt', ko: [5, 2] }; break;
   }
+  G.newAchievements = [];
 }
 (async () => {
   try {
