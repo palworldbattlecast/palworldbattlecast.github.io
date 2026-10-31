@@ -142,3 +142,8 @@ input.vol{accent-color:var(--yellow);height:28px}
 .tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:86px;padding:10px;border-radius:14px;border:1px solid #2a3360;background:var(--panel);color:#fff;text-align:left;font:inherit}
 .tile:active{transform:scale(.97)}.tile .ti{font-size:24px;line-height:28px}.tile .tn{font-family:Lilita;font-size:17px;line-height:1.1}.tile .td{font-size:11px;color:var(--dim)}
 .tile .dot{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:50%;background:var(--red)}
+.sx{display:inline-flex;align-items:center;justify-content:center;height:11px;padding:0 2px;margin-right:2px;border-radius:3px;font-size:8px;font-weight:900;color:#fff;vertical-align:1px;text-shadow:none}
+.sx.d{background:#ff7a1a}.sx.s{background:#2f8cff}.sx .fork{width:11px;height:9px}
+.slot.protected{box-shadow:inset 0 2px 0 var(--tc),0 0 0 2px #7ee0ff,0 0 10px #7ee0ffaa}
+.slot .prot{font-size:10px;margin-right:1px}
+.slot.tgt.t1{outline:3px solid #ffd23d;outline-offset:-1px;animation:none}

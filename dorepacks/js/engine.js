@@ -11,6 +11,12 @@ export const card = (id) => DB.byId[id];
 export const inSet = (s) => DB.cards.filter(c => c.set === s).sort((a, b) => a.num - b.num);
 export const ofRarity = (s, r) => DB.cards.filter(c => c.set === s && c.rarity === r).sort((a, b) => a.num - b.num);
 export const supplies = () => inSet('ST');
+export const SETS = ['WW', 'FL', 'T2'];
+export const SET_NAMES = { WW: 'Whispering Winds', FL: 'Fallen Legends', T2: 'Troublesome 2', ST: 'Supplies' };
+/** reprint-safe identity: every printing has its own card id (set_mon), the doremon itself is c.mon */
+export const nameKey = c => c.mon || c.id;
+/** spells/traps a set's packs can contain: the base supplies, plus (T2 only) the set's own new ones at 3x weight */
+export const packSupplies = set => supplies().filter(c => !c.pack || c.pack === set);
 export const isMon = c => c.kind === 'mon', isSpell = c => c.kind === 'spell', isTrap = c => c.kind === 'trap';
 export const spriteId = c => c.mon || c.artMon || '';
 export const eff = (c, k) => (c.effect && typeof c.effect[k] === 'number') ? c.effect[k] : 0;
@@ -24,7 +30,7 @@ export const Rarity = {
   name: r => ({ C: 'Common', U: 'Uncommon', R: 'Rare', SR: 'Super Rare', SSR: 'SSR', LGD: 'Legendary', MYT: 'Mythical', ITEM: 'Spell/Trap' }[r] || 'Supply'),
   isChase: r => r === 'SSR' || r === 'LGD' || r === 'MYT',
   baseValue: r => ({ C: 30, U: 75, R: 180, SR: 450, SSR: 3000, LGD: 4500, MYT: 9000 }[r] ?? 100),
-  copyLimit: c => (c.rarity === 'LGD' || c.rarity === 'MYT') ? 1 : 2,   // max 2 of any card in a deck; Legendary/Mythical 1
+  copyLimit: c => (c.rarity === 'LGD' || c.rarity === 'MYT') ? 1 : 2,   // max 2 of any doremon (counted by NAME across printings); Legendary/Mythical 1
   keepCopies: 3,   // a card is a dupe (sellable) only beyond 3 owned copies: 2 for a deck + 1 to trade
 };
 
@@ -54,10 +60,12 @@ export const Packs = {
   FL: { set: 'FL', name: 'Fallen Legends', price: 800, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT', 'ITEM'],
     slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
   /** spell/trap pick weight: inverse of shop price (Potion common, Guard Wall rare) */
-  itemWeight: c => 1 / (c.price || 100),
-  itemOdds() { const sup = supplies(), tot = sup.reduce((a, c) => a + Packs.itemWeight(c), 0); return sup.map(c => [c, Packs.itemWeight(c) / tot]); },
-  pickItem(rng) { const sup = supplies(), tot = sup.reduce((a, c) => a + Packs.itemWeight(c), 0); let r = rng.unit() * tot; for (const c of sup) { r -= Packs.itemWeight(c); if (r < 0) return c; } return sup[sup.length - 1]; },
-  rule: s => s === 'FL' ? Packs.FL : Packs.WW,
+  itemWeight: c => (c.pack ? 3 : 1) / (c.price || 100),
+  itemOdds(set = 'WW') { const sup = packSupplies(set), tot = sup.reduce((a, c) => a + Packs.itemWeight(c), 0); return sup.map(c => [c, Packs.itemWeight(c) / tot]); },
+  pickItem(rng, set = 'WW') { const sup = packSupplies(set), tot = sup.reduce((a, c) => a + Packs.itemWeight(c), 0); let r = rng.unit() * tot; for (const c of sup) { r -= Packs.itemWeight(c); if (r < 0) return c; } return sup[sup.length - 1]; },
+  T2: { set: 'T2', name: 'Troublesome 2', price: 700, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT', 'ITEM'],
+    slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
+  rule: s => s === 'FL' ? Packs.FL : s === 'T2' ? Packs.T2 : Packs.WW,
   rollRarity(rule, slot, forceChase, rng) {
     if (forceChase && slot === Packs.size - 1) {
       const tot = rule.pityOdds.reduce((a, b) => a + b, 0); let r = rng.unit() * tot;
@@ -73,7 +81,7 @@ export const Packs = {
     const rule = Packs.rule(set); const force = pityRef.v >= rule.pity - 1; const out = [];
     for (let s = 0; s < Packs.size; s++) {
       const r = Packs.rollRarity(rule, s, force, rng);
-      if (r === 'ITEM') { out.push(Packs.pickItem(rng)); continue; }
+      if (r === 'ITEM') { out.push(Packs.pickItem(rng, set)); continue; }
       let pool = ofRarity(set, r);
       if (Rarity.isChase(r)) { const fresh = pool.filter(c => !(owned[c.id] > 0)); if (fresh.length) pool = fresh; }
       out.push(pool[rng.int(pool.length)]);
@@ -95,9 +103,10 @@ export const Packs = {
     rows.push(['Pity', `Guaranteed ${names} in slot 7 on pack ${r.pity} if you haven't hit one in the ${r.pity - 1} before`]);
     const ec = Packs.effectiveChase(set);
     rows.push(['With pity', `Real long-run rate ≈ ${(ec * 100).toFixed(1)}% per pack (about 1 every ${Math.round(1 / ec)} packs)`]);
-    rows.push(['Each card', set === 'FL' ? 'Each Legendary ~1.17% · Mythical 0.5% per pack (pity: Mythical 1 in 8)' : 'Each SSR starter 0.375% per pack']);
-    const io = Packs.itemOdds(); const ex = n => io.filter(x => x[0].id === n)[0][1];
+    rows.push(['Each card', set !== 'WW' ? 'Each Legendary ~1.17% · Mythical 0.5% per pack (pity: Mythical 1 in 8)' : 'Each SSR starter 0.375% per pack']);
+    const io = Packs.itemOdds(set); const ex = n => io.filter(x => x[0].id === n)[0][1];
     rows.push(['Spells/traps', `1.3 per pack on average. Which one is weighted by shop price: Potion ${(ex('st_potion') * 100).toFixed(1)}%, Super Potion ${(ex('st_super_potion') * 100).toFixed(1)}%, Guard Wall ${(ex('st_guard_wall') * 100).toFixed(1)}% of spell/trap pulls`]);
+    if (set === 'T2') { const t2 = io.filter(x => x[0].pack === 'T2').reduce((a, x) => a + x[1], 0); rows.push(['New in T2', `The set's 7 new spells/traps (Mirror Veil, Twin Remedy, Duo Bloom, Twin War Cry, Twin Growl, Double Glare, Toxic Spray) are ${(t2 * 100).toFixed(1)}% of its spell/trap pulls (3x weight); they only come from Troublesome 2 packs or the shop`]); }
     rows.push(['Fairness', 'Every AI opens packs with this exact function and its own pity counter']);
     return rows;
   },
@@ -106,19 +115,23 @@ export const Packs = {
 // ---------- battle ----------
 export const STATUS = { none: ['', ''], psn: ['PSN', 'Poisoned'], brn: ['BRN', 'Burned'], par: ['PAR', 'Paralyzed'], slp: ['SLP', 'Asleep'], cnf: ['CNF', 'Confused'] };
 let monUid = 0;
-export const newMon = (c) => ({ uid: ++monUid, card: c, hp: c.hp, atk: 0, def: 0, status: 'none', statusTurns: 0, ready: false, attacked: false });
+export const newMon = (c) => ({ uid: ++monUid, card: c, hp: c.hp, atk: 0, def: 0, status: 'none', statusTurns: 0, ready: false, attacked: false, protected: false });
+export const isDouble = c => c && c.split === 'double', isSpread = c => c && c.split === 'spread';
+/** an enemy doremon an attack may target (Mirror Veil = protected until its owner's next turn) */
+export const targetable = m => !!m && !m.protected;
 export const canAttack = m => m.ready && !m.attacked && m.status !== 'par' && m.status !== 'slp';
 const newSide = (name, deck) => ({ name, deck, hand: [], discard: [], mons: Array(6).fill(null), traps: Array(6).fill(null), life: Battle.startLife, monsPlayed: 0, stPlayed: 0, stalled: false, koCount: 0, freshTraps: [] });
 export const monCount = s => s.mons.filter(Boolean).length;
 const hasAnyMonLeft = s => monCount(s) > 0 || s.hand.some(isMon) || s.deck.some(isMon);
 const clamp4 = v => Math.max(-4, Math.min(4, v));
 
-// actions: {t:'playMon',hand,slot} {t:'spell',hand,target} {t:'setTrap',hand,slot} {t:'attack',from,to} {t:'end'}
+// actions: {t:'playMon',hand,slot} {t:'spell',hand,target} {t:'setTrap',hand,slot} {t:'attack',from,to,to2} {t:'end'}
+//          to2: optional 2nd target of a SPREAD move (must differ from to)
 //          {t:'undo',kind:'mon'|'trap',slot}  take back a doremon/trap played this turn (nothing resolved from it yet)
 export class Battle {
   static startLife = 5; static handStart = 5; static handMax = 10; static turnCap = 80;
   constructor(deckA, nameA, deckB, nameB, seed, first = 0) {
-    this.rng = new SplitMix(seed); this.current = 0; this.turnNumber = 1; this.winner = null; this.over = false; this.events = [];
+    this.rng = new SplitMix(seed); this.splitKOs = [0, 0]; this.current = 0; this.turnNumber = 1; this.winner = null; this.over = false; this.events = [];
     const a = deckA.slice(), b = deckB.slice();
     Battle.shuffle(a, this.rng); Battle.shuffle(b, this.rng);
     this.sides = [newSide(nameA, a), newSide(nameB, b)];
@@ -156,15 +169,16 @@ export class Battle {
     if (a.status === 'brn') x *= 0.5;
     return [Math.max(10, swiftRound(x / 10) * 10), ef];
   }
-  spellNeedsTarget(c) { return eff(c, 'heal') > 0 || effS(c, 'cure') != null || eff(c, 'atk') !== 0 || eff(c, 'def') !== 0; }
+  spellNeedsTarget(c) { return eff(c, 'heal') > 0 || effS(c, 'cure') != null || eff(c, 'atk') !== 0 || eff(c, 'def') !== 0 || eff(c, 'protect') > 0; }
   spellValid(c, s, target) {
     const st = this.sides[s];
     if (!this.spellNeedsTarget(c)) {
-      if (eff(c, 'healAll') > 0) return st.mons.some(m => m && m.hp < m.card.hp);
+      if (eff(c, 'healAll') > 0 || eff(c, 'heal2') > 0) return st.mons.some(m => m && m.hp < m.card.hp);
       return monCount(st) > 0;
     }
     if (target == null || target < 0 || target >= 6) return false; const m = st.mons[target]; if (!m) return false;
     if (eff(c, 'heal') > 0) return m.hp < m.card.hp;
+    if (eff(c, 'protect') > 0) return !m.protected;
     const cu = effS(c, 'cure'); if (cu != null) return m.status !== 'none' && (cu === 'all' || cu === m.status);
     return true;
   }
@@ -180,8 +194,12 @@ export class Battle {
       case 'attack': {
         if (a.from < 0 || a.from >= 6) return false; const m = s.mons[a.from]; if (!m || !canAttack(m) || s.stalled) return false;
         const o = this.sides[this.opp];
-        if (a.to != null) return a.to >= 0 && a.to < 6 && !!o.mons[a.to];
-        return monCount(o) === 0;
+        if (a.to != null) {
+          if (!(a.to >= 0 && a.to < 6 && targetable(o.mons[a.to]))) return false;
+          if (a.to2 == null) return true;
+          return isSpread(m.card) && a.to2 !== a.to && a.to2 >= 0 && a.to2 < 6 && targetable(o.mons[a.to2]);
+        }
+        return monCount(o) === 0 && a.to2 == null;
       }
     }
     return false;
@@ -200,7 +218,7 @@ export class Battle {
       case 'playMon': { const c = S.hand.splice(a.hand, 1)[0]; S.mons[a.slot] = newMon(c); S.mons[a.slot].fresh = true; S.monsPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`); break; }
       case 'setTrap': { const c = S.hand.splice(a.hand, 1)[0]; S.traps[a.slot] = c; S.freshTraps.push(a.slot); S.stPlayed++; this.events.push({ e: 'set', side: me, slot: a.slot }); this.log(`${S.name} sets a trap face-down.`); break; }
       case 'spell': { const c = S.hand.splice(a.hand, 1)[0]; S.stPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.castSpell(c, me, a.target); S.discard.push(c); break; }
-      case 'attack': this.attack(a.from, a.to); break;
+      case 'attack': this.attack(a.from, a.to, a.to2); break;
     }
     this.checkBoardLoss();
     return true;
@@ -216,7 +234,18 @@ export class Battle {
   castSpell(c, s, t) {
     const S = this.sides[s], who = S.name;
     if (t != null && S.mons[t]) S.mons[t].fresh = false;                                 // a spell resolved onto it: locked in
-    if (eff(c, 'healAll') > 0 || eff(c, 'atkAll') !== 0 || eff(c, 'defAll') !== 0) for (const m of S.mons) if (m) m.fresh = false;
+    if (eff(c, 'healAll') > 0 || eff(c, 'atkAll') !== 0 || eff(c, 'defAll') !== 0 || eff(c, 'heal2') > 0 || eff(c, 'atk2') !== 0) for (const m of S.mons) if (m) m.fresh = false;
+    if (eff(c, 'protect') > 0 && t != null && S.mons[t]) { const m = S.mons[t]; m.protected = true; this.events.push({ e: 'stat', side: s, slot: t, text: 'PROTECTED' }); this.log(`${who} uses ${c.name}: ${m.card.name} can't be targeted until ${who}'s next turn.`); }
+    if (eff(c, 'heal2') > 0) {
+      const hurt = Battle.mostHurt(S, 2);
+      for (const i of hurt) { const m = S.mons[i]; const amt = Math.min(eff(c, 'heal2'), m.card.hp - m.hp); m.hp += amt; this.events.push({ e: 'heal', side: s, slot: i, amount: amt }); }
+      this.log(`${who} uses ${c.name}: ${hurt.map(i => S.mons[i].card.name).join(' and ')} heal.`);
+    }
+    if (eff(c, 'atk2') !== 0) {
+      const top = Battle.strongest(S, 2, -1);
+      for (const i of top) { const m = S.mons[i]; m.atk = clamp4(m.atk + eff(c, 'atk2')); this.events.push({ e: 'stat', side: s, slot: i, text: `ATK +${eff(c, 'atk2')}` }); }
+      this.log(`${who} uses ${c.name}: ${top.map(i => S.mons[i].card.name).join(' and ')} get ATK +${eff(c, 'atk2')}.`);
+    }
     if (eff(c, 'heal') > 0 && t != null && S.mons[t]) { const m = S.mons[t]; const amt = Math.min(eff(c, 'heal'), m.card.hp - m.hp); m.hp += amt; this.events.push({ e: 'heal', side: s, slot: t, amount: amt }); this.log(`${who} uses ${c.name}: ${m.card.name} heals ${amt}.`); }
     if (eff(c, 'healAll') > 0) {
       for (let i = 0; i < 6; i++) { const m = S.mons[i]; if (m && m.hp < m.card.hp) { const amt = Math.min(eff(c, 'healAll'), m.card.hp - m.hp); m.hp += amt; this.events.push({ e: 'heal', side: s, slot: i, amount: amt }); } }
@@ -234,10 +263,27 @@ export class Battle {
       this.log(`${who} uses ${c.name}: the whole team gets ${txt}.`);
     }
   }
-  attack(f, t) {
+  /** slots of the n most damaged doremon (missing HP desc, then slot) */
+  static mostHurt(S, n) { return S.mons.map((m, i) => [i, m]).filter(x => x[1] && x[1].hp < x[1].card.hp).sort((a, b) => (b[1].card.hp - b[1].hp) - (a[1].card.hp - a[1].hp) || a[0] - b[0]).slice(0, n).map(x => x[0]); }
+  /** slots of the n strongest doremon (printed damage x hits, then HP, then slot), excluding slot `skip` */
+  static strongest(S, n, skip) { const pw = c => c.dmg * (c.split ? 2 : 1); return S.mons.map((m, i) => [i, m]).filter(x => x[1] && x[0] !== skip).sort((a, b) => pw(b[1].card) - pw(a[1].card) || b[1].hp - a[1].hp || a[0] - b[0]).slice(0, n).map(x => x[0]); }
+  /** a trap's effect on one attacking-side doremon */
+  trapHit(trap, me, slot, k) {
+    const m = this.sides[me].mons[slot]; if (!m) return;
+    const da = eff(trap, 'atk') + eff(trap, 'atk2'), dd = eff(trap, 'def') + eff(trap, 'def2');
+    if (k > 0 && !eff(trap, 'atk2') && !eff(trap, 'def2') && !effS(trap, 'status2')) return;
+    if (da !== 0 || dd !== 0) {
+      m.atk = clamp4(m.atk + da); m.def = clamp4(m.def + dd);
+      const txt = da !== 0 ? `ATK ${da}` : `DEF ${dd}`;
+      this.events.push({ e: 'stat', side: me, slot, text: txt }); this.log(`${m.card.name} gets ${txt}.`);
+    }
+    const st = effS(trap, 'status') || effS(trap, 'status2');
+    if (st && STATUS[st] && m.status === 'none') { m.status = st; m.statusTurns = 0; this.events.push({ e: 'status', side: me, slot, status: st }); this.log(`${m.card.name} is ${STATUS[st][1].toLowerCase()}!`); }
+  }
+  attack(f, t, t2 = null) {
     const me = this.current, o = this.opp; const a = this.sides[me].mons[f]; if (!a) return;
     a.attacked = true;
-    this.events.push({ e: 'attack', side: me, from: f, to: t });
+    this.events.push({ e: 'attack', side: me, from: f, to: t, to2: t2 });
     const O = this.sides[o];
     const ti = O.traps.findIndex(Boolean);
     if (ti >= 0) {
@@ -245,22 +291,30 @@ export class Battle {
       this.events.push({ e: 'trap', side: o, card: trap }); this.log(`TRAP! ${O.name} reveals ${trap.name}!`);
       if (eff(trap, 'stall') > 0) { this.sides[me].stalled = true; this.log(`${a.card.name}'s attack is blocked and ${this.sides[me].name} is stalled for the rest of the turn.`); return; }
       if (eff(trap, 'block') > 0) { this.log(`${a.card.name}'s attack is blocked!`); this.hurt(me, f, eff(trap, 'recoil'), 1, 'is pricked by thorns'); return; }
-      if (eff(trap, 'atk') !== 0 || eff(trap, 'def') !== 0) {
-        a.atk = clamp4(a.atk + eff(trap, 'atk')); a.def = clamp4(a.def + eff(trap, 'def'));
-        const txt = eff(trap, 'atk') !== 0 ? `ATK ${eff(trap, 'atk')}` : `DEF ${eff(trap, 'def')}`;
-        this.events.push({ e: 'stat', side: me, slot: f, text: txt }); this.log(`${a.card.name} gets ${txt}.`);
-      }
-      const st = effS(trap, 'status');
-      if (st && STATUS[st] && a.status === 'none') { a.status = st; a.statusTurns = 0; this.events.push({ e: 'status', side: me, slot: f, status: st }); this.log(`${a.card.name} is ${STATUS[st][1].toLowerCase()}!`); }
+      this.trapHit(trap, me, f, 0);
+      // multi-target traps (Twin Growl / Double Glare / Toxic Spray): also the attacker's strongest teammate
+      if (eff(trap, 'atk2') || eff(trap, 'def2') || effS(trap, 'status2')) for (const j of Battle.strongest(this.sides[me], 1, f)) this.trapHit(trap, me, j, 1);
       if (a.status === 'par' || a.status === 'slp') { this.log(`${a.card.name} can't attack!`); return; }
     }
     if (a.status === 'cnf' && this.rng.chance(0.5)) { this.log(`${a.card.name} is confused and hurts itself!`); this.hurt(me, f, 30, 1, 'hits itself'); return; }
     if (t == null) { this.events.push({ e: 'direct', side: o }); this.log(`${a.card.name} attacks ${O.name} directly! (-1 life)`); this.loseLife(o); return; }
-    const d = O.mons[t]; if (!d) return;
-    const [dmg, ef] = Battle.damage(a, d);
-    const note = ef === 0 ? ' It has no effect...' : ef > 1 ? " It's super effective!" : ef < 1 ? " It's not very effective." : '';
-    this.log(`${a.card.name} uses ${a.card.move} on ${d.card.name} for ${dmg}.${note}`);
-    this.hurt(o, t, dmg, ef, null);
+    const hit = (slot, tag) => {
+      const d = O.mons[slot]; if (!d) return false;
+      const [dmg, ef] = Battle.damage(a, d);
+      const note = ef === 0 ? ' It has no effect...' : ef > 1 ? " It's super effective!" : ef < 1 ? " It's not very effective." : '';
+      this.log(`${a.card.name} uses ${a.card.move}${tag} on ${d.card.name} for ${dmg}.${note}`);
+      this.hurt(o, slot, dmg, ef, null); return true;
+    };
+    const ko0 = this.sides[me].koCount;
+    const done = () => { if (this.sides[me].koCount - ko0 >= 2) { this.splitKOs[me]++; this.events.push({ e: 'splitKO', side: me }); } };
+    if (isDouble(a.card)) {          // DOUBLE HIT: two hits on one target; if the first knocks it out, the second has nothing to hit
+      hit(t, ' (hit 1)');
+      if (this.over) return;
+      if (O.mons[t]) hit(t, ' (hit 2)'); else this.log(`The second hit has no target.`);
+      return;
+    }
+    if (isSpread(a.card) && t2 != null) { hit(t, ' (split)'); if (!this.over) hit(t2, ' (split)'); done(); return; }
+    hit(t, '');
   }
   hurt(s, slot, amt, ef, why) {
     const S = this.sides[s]; const m = S.mons[slot]; if (!m) return;
@@ -298,6 +352,7 @@ export class Battle {
     for (let i = 0; i < 6; i++) {
       const m = N.mons[i]; if (!m) continue;
       m.ready = true; m.attacked = false;
+      if (m.protected) { m.protected = false; this.events.push({ e: 'stat', side: n, slot: i, text: 'UNPROTECTED' }); }
       if (m.status === 'slp') { m.statusTurns++; if (m.statusTurns >= 2 || this.rng.chance(0.5)) { m.status = 'none'; m.statusTurns = 0; this.events.push({ e: 'status', side: n, slot: i, status: 'none' }); this.log(`${m.card.name} woke up!`); } }
     }
     this.events.push({ e: 'turn', side: n });
@@ -348,6 +403,9 @@ export const BattleAI = {
         });
         if (eff(c, 'healAll') > 0) { const miss = s.mons.filter(Boolean).map(m => Math.min(eff(c, 'healAll'), m.card.hp - m.hp)).reduce((x, y) => x + y, 0); consider({ t: 'spell', hand: i, target: null }, miss * 0.5 - 10); }
         if (eff(c, 'atkAll') > 0 && monCount(os) > 0) consider({ t: 'spell', hand: i, target: null }, monCount(s) * 14 - 8);
+        if (eff(c, 'heal2') > 0) { const miss = Battle.mostHurt(s, 2).map(t => Math.min(eff(c, 'heal2'), s.mons[t].card.hp - s.mons[t].hp)).reduce((x, y) => x + y, 0); consider({ t: 'spell', hand: i, target: null }, miss * 0.55 - (eff(c, 'heal2') > 60 ? 30 : 12)); }
+        if (eff(c, 'atk2') > 0 && monCount(os) > 0) consider({ t: 'spell', hand: i, target: null }, Math.min(2, monCount(s)) * 16 - 8);
+        if (eff(c, 'protect') > 0 && monCount(os) > 0) s.mons.forEach((m, t) => { if (m && !m.protected) consider({ t: 'spell', hand: i, target: t }, MV(m.card) * 0.12 * (m.hp < m.card.hp * 0.6 ? 1.6 : 0.7) - 10); });
         if (eff(c, 'defAll') > 0) consider({ t: 'spell', hand: i, target: null }, monCount(s) * 12 - 8);
       });
       if (best) return best[0];
@@ -358,14 +416,18 @@ export const BattleAI = {
         .sort((x, y) => trapsUp ? MV(x[1].card) - MV(y[1].card) : y[1].card.dmg - x[1].card.dmg);
       for (const [i, a] of attackers) {
         if (monCount(os) === 0) return { t: 'attack', from: i, to: null };
+        const hits = isDouble(a.card) ? 2 : 1;
+        const score = (d, skip) => { const [dmg] = Battle.damage(a, d); const tot = dmg * hits; if (dmg === 0) return -1;
+          return tot >= d.hp ? 1000 + MV(d.card) - (tot - d.hp) * 0.1 : tot + MV(d.card) * 0.15 + (d.card.hp - d.hp) * 0.2; };
         let best = null;
-        os.mons.forEach((d, t) => {
-          if (!d) return; const [dmg] = Battle.damage(a, d); let v;
-          if (dmg >= d.hp) v = 1000 + MV(d.card) - (dmg - d.hp) * 0.1; else v = dmg + MV(d.card) * 0.15 + (d.card.hp - d.hp) * 0.2;
-          if (dmg === 0) v = -1;
-          if (!best || v > best[1]) best = [t, v];
-        });
-        if (best && best[1] > 0) return { t: 'attack', from: i, to: best[0] };
+        os.mons.forEach((d, t) => { if (!targetable(d)) return; const v = score(d); if (!best || v > best[1]) best = [t, v]; });
+        if (best && best[1] > 0) {
+          if (isSpread(a.card)) {   // spread: add the best second target
+            let b2 = null; os.mons.forEach((d, t) => { if (t === best[0] || !targetable(d)) return; const v = score(d); if (v > 0 && (!b2 || v > b2[1])) b2 = [t, v]; });
+            if (b2) return { t: 'attack', from: i, to: best[0], to2: b2[0] };
+          }
+          return { t: 'attack', from: i, to: best[0] };
+        }
       }
     }
     return { t: 'end' };
@@ -389,11 +451,12 @@ export const DeckRules = {
     const mons = cards.filter(isMon).length;
     if (mons < 8) p.push(`At least 8 doremon cards (has ${mons}).`);
     if (cards.length - mons > 10) p.push('At most 10 spell/trap cards.');
-    const cnt = {}; for (const c of cards) cnt[c.id] = (cnt[c.id] || 0) + 1;
-    for (const id in cnt) { const c = card(id); if (cnt[id] > Rarity.copyLimit(c)) p.push(`Too many ${c.name} (max ${Rarity.copyLimit(c)}).`); }
+    // copy limit counts by doremon NAME across printings (like real TCGs): 2 total, 1 if any printing in the deck is Legendary/Mythical
+    const cnt = {}, lim = {}, nm = {}; for (const c of cards) { const k = nameKey(c); cnt[k] = (cnt[k] || 0) + 1; lim[k] = Math.min(lim[k] ?? 9, Rarity.copyLimit(c)); nm[k] = c.name; }
+    for (const k in cnt) if (cnt[k] > lim[k]) p.push(`Too many ${nm[k]} (max ${lim[k]}${DB.cards.filter(c => nameKey(c) === k).length > 1 ? ', all printings together' : ''}).`);
     return p;
   },
-  pref: { st_super_potion: 60, st_guard_wall: 58, st_static_web: 57, st_power_up: 56, st_doze_spores: 55, st_menace: 50, st_cheer_on: 48, st_iron_guard: 47, st_potion: 46, st_bramble_shield: 45, st_full_heal: 44, st_shield_pal: 42, st_wisp_scorch: 40, st_soothing_song: 38, st_metal_screech: 36, st_venom_dust: 34, st_bewilder_beam: 33, st_brace_up: 30, st_cute_growl: 28, st_glare_down: 26, st_paralyze_heal: 22, st_awakening: 20, st_antidote: 18, st_burn_heal: 18 },
+  pref: { st_super_potion: 60, st_guard_wall: 58, st_static_web: 57, st_power_up: 56, st_doze_spores: 55, st_menace: 50, st_cheer_on: 48, st_iron_guard: 47, st_potion: 46, st_bramble_shield: 45, st_full_heal: 44, st_shield_pal: 42, st_wisp_scorch: 40, st_soothing_song: 38, st_metal_screech: 36, st_venom_dust: 34, st_bewilder_beam: 33, st_brace_up: 30, st_mirror_veil: 50, st_duo_bloom: 54, st_twin_remedy: 43, st_twin_war_cry: 46, st_twin_growl: 47, st_double_glare: 39, st_toxic_spray: 49, st_cute_growl: 28, st_glare_down: 26, st_paralyze_heal: 22, st_awakening: 20, st_antidote: 18, st_burn_heal: 18 },
   autoBuild(owned, rng) {
     const mons = [];
     for (const id of Object.keys(owned).sort()) { const n = owned[id]; if (!(n > 0)) continue; const c = card(id); if (c && isMon(c)) for (let k = 0; k < Math.min(n, Rarity.copyLimit(c)); k++) mons.push([c, BattleAI.monValue(c) - k * 6 + rng.unit() * 4]); }
@@ -403,7 +466,8 @@ export const DeckRules = {
     sup.sort((a, b) => b[1] - a[1]);
     const nSup = Math.min(7, sup.length);
     let deck = sup.slice(0, nSup).map(x => x[0].id);
-    deck = deck.concat(mons.slice(0, 20 - deck.length).map(x => x[0].id));
+    const used = {}, lim = {};   // name-based limit across printings
+    for (const [c] of mons) { if (deck.length >= 20) break; const k = nameKey(c); const L = Math.min(lim[k] ?? 9, Rarity.copyLimit(c)); if ((used[k] || 0) >= L) continue; used[k] = (used[k] || 0) + 1; lim[k] = L; deck.push(c.id); }
     if (deck.length < 20) deck = deck.concat(sup.slice(nSup, nSup + Math.min(20 - deck.length, 10 - nSup)).map(x => x[0].id));
     return deck;
   },
@@ -430,6 +494,8 @@ export const ACHIEVEMENTS = [
   ['streak_5', 'On Fire', 'Win 5 battles in a row', { FL: 1 }, 0], ['silver', 'Silver League', 'Reach 1050 MR', { WW: 1 }, 0],
   ['gold', 'Gold League', 'Reach 1150 MR', { FL: 1 }, 500], ['platinum', 'Platinum League', 'Reach 1250 MR', { FL: 2 }, 0],
   ['number_one', 'Top of the Ladder', 'Be #1 on the league leaderboard', { FL: 2 }, 1000], ['first_trade', 'Fair Trade', 'Complete a trade', { WW: 1 }, 0],
+  ['t2_half', 'Split Decision', 'Collect 15 Troublesome 2 cards', { T2: 1 }, 0], ['t2_all', 'Double Trouble', 'Complete Troublesome 2 (30/30)', { T2: 3 }, 0],
+  ['t2_chase', 'Twice the Trouble', 'Pull a Troublesome 2 Legendary or Mythical', { T2: 1 }, 0], ['t2_split', 'Split Second', 'Knock out 2 doremon with one split attack', { T2: 1 }, 300],
   ['sell_10', 'Card Shark', 'Sell 10 cards', {}, 200], ['buy_single', 'Window Shopper', 'Buy a single card', { WW: 1 }, 0],
 ].map(([id, title, desc, packs, money]) => ({ id, title, desc, packs, money }));
 
@@ -453,6 +519,7 @@ export class Game {
       this.s = Object.assign(freshSave(), loaded);
       this.s.stats = Object.assign(freshStats(), this.s.stats || {});
       for (const P of this.s.ai) { P.earned ??= 0; P.spent ??= 0; P.auctionsWon ??= 0; P.auctionsSold ??= 0; }
+      for (const c of DB.cards) if (isMon(c) && !this.s.market[c.id]) this.s.market[c.id] = { factor: 1, history: [Rarity.baseValue(c.rarity)] };   // new sets (T2) in old saves
       if (!loaded.bank) this.s.bank = { initial: this.totalCash(), faucet: 0, sink: 0 };   // migrate v1 saves: start the ledger now
       this.rng = new SplitMix(BigInt.asUintN(64, BigInt(this.s.seed || '1') + BigInt(Math.floor(Date.now() / 1000))));
     } else { this.s = freshSave(); this.rng = new SplitMix(seed ?? randomSeed()); this.newGame(); }
@@ -468,7 +535,7 @@ export class Game {
       const p = { id: `ai${k}`, name: n, avatar: av, mr: s.mr, money: s.money, owned: {}, deck: [], pity: {}, wins: 0, losses: 0, packsOpened: 0, wants: [], earned: 0, spent: 0, auctionsWon: 0, auctionsSold: 0 };
       for (const id of STARTER_DECK) inc(p.owned, id);
       s.ai.push(p);
-      for (const set of ['WW', 'FL']) for (let i = 0; i < (s.packs[set] || 0); i++) this.aiOpenPack(k, set, true);
+      for (const set of SETS) for (let i = 0; i < (s.packs[set] || 0); i++) this.aiOpenPack(k, set, true);
       s.ai[k].deck = DeckRules.autoBuild(s.ai[k].owned, this.rng);
     });
     s.seed = this.rng.next().toString();
@@ -590,8 +657,8 @@ export class Game {
     s.nextOpp = k; return k;
   }
   /** won: true/false/null(draw). The AI opponent is paid exactly what the player would be paid in its place. */
-  recordResult(won, league, k) {
-    const s = this.s, st = s.stats.battles[league ? 'ranked' : 'friendly']; let bucks = 0, d = 0;
+  recordResult(won, league, k, splitKOs = 0) {
+    const s = this.s; s.splitKOs = (s.splitKOs || 0) + splitKOs; const st = s.stats.battles[league ? 'ranked' : 'friendly']; let bucks = 0, d = 0;
     if (won != null) {
       if (won) { s.wins++; s.streak++; s.bestStreak = Math.max(s.bestStreak, s.streak); st.w++; } else { s.losses++; s.streak = 0; st.l++; }
       if (league) {
@@ -630,7 +697,7 @@ export class Game {
     if (s.recent.length > 30) s.recent.length = 30;
     s.ai.forEach((P, k) => {
       // packs are bought only from the AI's own cash, keeping a reserve for the auction house
-      while (P.money >= 1300) { const set = this.aiMissing(k, 'FL') > 0 && this.rng.chance(0.55) ? 'FL' : 'WW'; if (!this.aiOpenPack(k, set).length) break; }
+      while (P.money >= 1300) { const set = this.aiMissing(k, 'FL') > 0 && this.rng.chance(0.55) ? 'FL' : this.aiMissing(k, 'T2') > 0 && this.rng.chance(0.5) ? 'T2' : 'WW'; if (!this.aiOpenPack(k, set).length) break; }
       P.wants = this.aiWants(k);
       const w = P.wants[0];
       if (w && P.money > this.value(w) * 2 + 600 && this.rng.chance(0.3)) { if (this.spend(k, this.value(w), 'shop')) { inc(P.owned, w); this.demand(w, 1.05); P.wants = this.aiWants(k); } }
@@ -831,6 +898,9 @@ export class Game {
       case 'first_lgd': return s.pulledRarities.includes('LGD'); case 'mythic': return s.pulledRarities.includes('MYT');
       case 'ww_half': return this.distinct('WW') >= 15; case 'ww_all': return this.distinct('WW') >= 30;
       case 'fl_half': return this.distinct('FL') >= 15; case 'fl_all': return this.distinct('FL') >= 30;
+      case 't2_half': return this.distinct('T2') >= 15; case 't2_all': return this.distinct('T2') >= 30;
+      case 't2_chase': return inSet('T2').some(c => Rarity.isChase(c.rarity) && this.s.owned[c.id] > 0);
+      case 't2_split': return (s.splitKOs || 0) >= 1;
       case 'first_deck': { const st = STARTER_DECK.slice().sort().join(); return s.decks.some(d => DeckRules.problems(d).length === 0 && d.slice().sort().join() !== st); }
       case 'first_win': return s.wins >= 1; case 'wins_10': return s.wins >= 10; case 'streak_5': return s.bestStreak >= 5;
       case 'silver': return s.bestMr >= 1050; case 'gold': return s.bestMr >= 1150; case 'platinum': return s.bestMr >= 1250;

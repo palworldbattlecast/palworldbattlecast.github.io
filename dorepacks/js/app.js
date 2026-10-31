@@ -1,6 +1,6 @@
 import * as E from './engine.js';
 import { Audio } from './audio.js';
-const { DB, card, inSet, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount } = E;
+const { SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount } = E;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('en-US');
@@ -9,6 +9,10 @@ const VERB = { plays: 'play', uses: 'use', sets: 'set', loses: 'lose', reveals: 
 const fixG = t => t.replace(/\bYou (plays|uses|sets|loses|reveals|goes|wins|attacks)\b/g, (m, v) => 'You ' + VERB[v]);
 const HEART = '<svg viewBox="0 0 24 22"><path d="M12 21.3 10.5 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.5 11.5z"/></svg>';
 const RCOL = { MYT: '#cc80ff', LGD: '#ffc73d', SSR: '#ff73f2', SR: '#ffcc40', R: '#d9e0f2', U: '#59d9bf', ITEM: '#80e699', C: '#8cb3ff' };
+const FORK = '<svg class="fork" viewBox="0 0 16 12"><path d="M1 6h5l4-4h3M6 6l4 4h3M11 0l3 2-3 2M11 8l3 2-3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const splitIcon = c => isDouble(c) ? '<span class="sx d" title="Double hit">x2</span>' : isSpread(c) ? `<span class="sx s" title="Split: up to 2 targets">${FORK}</span>` : '';
+const T2MONS = () => inSet('T2').map(c => c.mon);
+const packBack = set => { const l = T2MONS(); return IMG['cards/pack_t2_back_' + l[Math.floor(Math.random() * l.length)]]; };
 const SAVE_KEY = 'dorepacks_save_v1';
 
 // ---------- assets ----------
@@ -101,13 +105,14 @@ function screen() {
 }
 function packsView() {
   const s = G.s;
-  return `<h1>Packs</h1><div class="sub">Rip packs, chase the SSRs and Legends.</div>` + ['WW', 'FL'].map(set => {
+  return `<h1>Packs</h1><div class="sub">Rip packs, chase the SSRs and Legends.</div>` + SETS.map(set => {
     const r = Packs.rule(set), pity = s.pity[set] || 0;
     const chase = inSet(set).filter(c => Rarity.isChase(c.rarity));
-    return `<div class="panel"><div class="row"><img src="${IMG['cards/pack_' + set.toLowerCase()]}" style="width:96px;border-radius:8px" alt="">
+    const flip = set === 'T2' && UI.packBack === set;
+    return `<div class="panel"><div class="row"><img src="${flip ? packBack(set) : IMG['cards/pack_' + set.toLowerCase()]}" style="width:96px;border-radius:8px;image-rendering:pixelated${set === 'T2' ? ';cursor:pointer' : ''}" alt="" ${set === 'T2' ? `data-a="packFlip" data-v="${set}" title="Tap to see the back"` : ''}>
       <div class="grow col" style="gap:6px"><div class="title" style="font-size:22px;color:var(--yellow)">${r.name}</div>
       <div class="small">7 cards · ${money(r.price)} · you have <b style="color:#fff">${s.packs[set] || 0}</b></div>
-      <div class="small">Pity ${pity}/${r.pity - 1}</div><div class="bar"><i style="width:${pity / (r.pity - 1) * 100}%"></i></div>
+      ${set === 'T2' ? '<div class="small" style="color:#7ee0ff">Split attacks · tap the pack to flip it</div>' : ''}<div class="small">Pity ${pity}/${r.pity - 1}</div><div class="bar"><i style="width:${pity / (r.pity - 1) * 100}%"></i></div>
       <div class="row"><button class="btn y sm grow" data-a="open" data-v="${set}" ${s.packs[set] > 0 ? '' : 'disabled'}>Open</button><button class="btn sm grow" data-a="buyPack" data-v="${set}" ${s.money >= r.price ? '' : 'disabled'}>Buy ${money(r.price)}</button></div></div></div>
       <div class="row wrap" style="margin-top:8px;gap:4px">${chase.map(c => `<span style="opacity:${s.owned[c.id] > 0 ? 1 : .3}">${sprite(spriteId(c), 40)}</span>`).join('')}</div>
       <details style="margin-top:6px"><summary class="small">Odds &amp; pity</summary>${Packs.ratesText(set).map(([a, b]) => `<div class="small" style="margin-top:5px"><b style="color:#fff">${a}:</b> ${esc(b)}</div>`).join('')}</details></div>`;
@@ -116,7 +121,7 @@ function packsView() {
 function binderView() {
   const set = UI.binderSet, list = inSet(set), s = G.s;
   const have = list.filter(c => s.owned[c.id] > 0).length;
-  return `<h1>Binder</h1><div class="seg">${[['WW', 'Whispering Winds'], ['FL', 'Fallen Legends'], ['ST', 'Supplies']].map(([k, n]) => `<button class="${set === k ? 'on' : ''}" data-a="bset" data-v="${k}">${n}</button>`).join('')}</div>
+  return `<h1>Binder</h1><div class="seg">${[...SETS.map(k => [k, SET_NAMES[k]]), ['ST', 'Supplies']].map(([k, n]) => `<button class="${set === k ? 'on' : ''}" data-a="bset" data-v="${k}">${n}</button>`).join('')}</div>
    <div class="sub">${have}/${list.length} collected · tap a card to inspect</div>
    <div class="grid3">${list.map(c => `<div class="cell ${s.owned[c.id] > 0 ? '' : 'missing'}" data-a="inspect" data-v="${c.id}">${cardImg(c.id)}${s.owned[c.id] > 0 ? `<span class="cnt">×${s.owned[c.id]}</span>` : ''}</div>`).join('')}</div>`;
 }
@@ -175,7 +180,7 @@ function tradesView() {
 function shopView() {
   const s = G.s, t = UI.shopTab;
   let body = '';
-  if (t === 'packs') body = ['WW', 'FL'].map(set => { const r = Packs.rule(set); return `<div class="panel row"><img src="${IMG['cards/pack_' + set.toLowerCase()]}" style="width:60px" alt=""><div class="grow"><b>${r.name}</b><div class="small">You have ${s.packs[set] || 0}</div></div><button class="btn y sm" data-a="buyPack" data-v="${set}" ${s.money >= r.price ? '' : 'disabled'}>${money(r.price)}</button></div>`; }).join('');
+  if (t === 'packs') body = SETS.map(set => { const r = Packs.rule(set); return `<div class="panel row"><img src="${IMG['cards/pack_' + set.toLowerCase()]}" style="width:60px" alt=""><div class="grow"><b>${r.name}</b><div class="small">You have ${s.packs[set] || 0}</div></div><button class="btn y sm" data-a="buyPack" data-v="${set}" ${s.money >= r.price ? '' : 'disabled'}>${money(r.price)}</button></div>`; }).join('');
   if (t === 'singles' || t === 'supplies') { const list = t === 'singles' ? DB.cards.filter(isMon).sort((a, b) => G.value(b.id) - G.value(a.id)) : inSet('ST'); body = `<div class="panel list" style="padding:4px 12px">${list.map(c => `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow" data-a="inspect" data-v="${c.id}">${esc(c.name)} ${rar(c.rarity)}<div class="small">own ${s.owned[c.id] || 0}</div></div><button class="btn sm" data-a="buySingle" data-v="${c.id}" ${s.money >= G.buyPrice(c.id) ? '' : 'disabled'}>${money(G.buyPrice(c.id))}</button></div>`).join('')}</div>`; }
   if (t === 'sell') { const list = Object.keys(s.owned).filter(id => G.sellableCount(id) > 0).sort((a, b) => G.sellPrice(b) - G.sellPrice(a)); body = `<button class="btn p" style="width:100%;margin-bottom:10px" data-a="sellDupes">Sell all dupes (keeps 3 of each)</button><div class="panel list" style="padding:4px 12px">${list.map(id => { const c = card(id); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow">${esc(c.name)} ${rar(c.rarity)}<div class="small">${G.sellableCount(id)} spare</div></div><button class="btn g sm" data-a="sell" data-v="${id}">+${money(G.sellPrice(id))}</button></div>`; }).join('') || '<div class="small" style="padding:8px 0">Nothing spare to sell (you keep 1 of each doremon and what your decks use).</div>'}</div>`; }
   return `<h1>Shop</h1><div class="seg">${[['packs', 'Packs'], ['singles', 'Singles'], ['supplies', 'Supplies'], ['sell', 'Sell']].map(([k, n]) => `<button class="${t === k ? 'on' : ''}" data-a="shopTab" data-v="${k}">${n}</button>`).join('')}</div>${body}`;
@@ -234,11 +239,11 @@ function statsView() {
   const bp = t.bestPull ? card(t.bestPull) : null;
   return `<h1>Stats</h1>` +
   (bp ? `<div class="panel row">${sprite(spriteId(bp), 56)}<div class="grow"><div class="pix" style="color:var(--yellow)">BEST PULL</div><div class="title" style="font-size:22px">${esc(bp.name)}</div>${rar(bp.rarity)} <span class="small">worth ${money(G.value(bp.id))}</span></div></div>` : '') +
-  panel('Packs', [kv('Whispering Winds opened', s.packsOpened.WW || 0), kv('Fallen Legends opened', s.packsOpened.FL || 0), kv('Packs bought', sum(t.packsBought)), kv('Cards pulled', t.cardsPulled)]) +
+  panel('Packs', [...SETS.map(k => kv(SET_NAMES[k] + ' opened', s.packsOpened[k] || 0)), kv('Packs bought', sum(t.packsBought)), kv('Cards pulled', t.cardsPulled)]) +
   panel('Pulls by rarity', order.filter(r => t.pulls[r]).map(r => kv(`${rar(r)} ${Rarity.name(r)}`, t.pulls[r]))) +
   panel('Battles', [['Ranked', t.battles.ranked], ['Friendly', t.battles.friendly]].map(([n, b]) => kv(n, `${b.w}W ${b.l}L${b.d ? ' ' + b.d + 'D' : ''} · ${pct(b.w, b.l)}`)).concat([kv('Total', `${s.wins}W ${s.losses}L · ${pct(s.wins, s.losses)}`), kv('MR now / peak', `${s.mr} / ${s.bestMr}`), kv('Win streak now / best', `${s.streak} / ${s.bestStreak}`)])) +
   panel('Dorebucks', [kv('Cash', money(s.money)), kv('Earned', `<span style="color:#7dfc9f">${money(sum(t.earned))}</span>`)].concat(Object.entries(t.earned).map(([k, v]) => kv('&nbsp;&nbsp;' + esc(k), money(v))), [kv('Spent', `<span style="color:#ff9b9b">${money(sum(t.spent))}</span>`)], Object.entries(t.spent).map(([k, v]) => kv('&nbsp;&nbsp;' + esc(k), money(v))))) +
-  panel('Trading', [kv('Cards sold (shop + auction)', s.cardsSold), kv('Singles bought', s.singlesBought), kv('Auctions won', t.auctionsWon), kv('Auctions sold', t.auctionsSold), kv('Listings / bids placed', `${t.listings} / ${t.bids}`), kv('Trades done', s.trades), kv('Achievements', `${s.achievements.length}/${ACHIEVEMENTS.length}`)]) + newGameBtn();
+  panel('Trading', [kv('Cards sold (shop + auction)', s.cardsSold), kv('Singles bought', s.singlesBought), kv('Auctions won', t.auctionsWon), kv('Auctions sold', t.auctionsSold), kv('Listings / bids placed', `${t.listings} / ${t.bids}`), kv('Trades done', s.trades), kv('Split-attack double KOs', s.splitKOs || 0), kv('Achievements', `${s.achievements.length}/${ACHIEVEMENTS.length}`)]) + newGameBtn();
 }
 function achView() {
   return `<h1>Achievements</h1><div class="sub">${G.s.achievements.length}/${ACHIEVEMENTS.length} unlocked</div><div class="panel list" style="padding:4px 12px">${ACHIEVEMENTS.map(a => { const on = G.s.achievements.includes(a.id); return `<div class="it" style="opacity:${on ? 1 : .55}"><span style="font-size:24px">${on ? '🏅' : '🔒'}</span><div class="grow"><b>${esc(a.title)}</b><div class="small">${esc(a.desc)} · ${esc(G.rewardText(a))}</div></div></div>`; }).join('')}</div>`;
@@ -250,10 +255,13 @@ const RULES = [
   ['Your turn', 'Draw 1 card. Then in any order: play up to 1 doremon card into an empty DOREMON slot (6 slots), play up to 2 spell/trap cards, and attack. Hand limit is 10. Drawing from an empty deck costs 1 life.'],
   ['Take back', 'Misplayed? Tap a doremon you played this turn (marked ↩) or a trap you set this turn, then press ↩ Take back: the card returns to your hand and you get the play back. Not allowed once anything has happened to it (a spell or effect resolved on it) or after your turn ends. Instant spells resolve right away, so they can\'t be taken back.'],
   ['Attacking', 'Each of your doremon can attack once per turn, but not on the turn it was played. Tap your doremon (⚡ means ready), then tap an enemy doremon. If your opponent has no doremon on their mat, attack them directly for 1 life.'],
+  ['Split attacks (Troublesome 2)', 'Some Troublesome 2 doremon split their attack. x2 DOUBLE HIT: hits the same target twice; if the first hit knocks it out, the second hit fizzles. SPLIT (forked arrow): hits up to 2 different enemy doremon once each — tap the first target, then a second one (or press Hit one only). The damage printed on the card is per hit. A trap springs once per attack and applies to the whole attack (a stopping trap stops every hit), and a confused attacker rolls once.'],
+  ['Mirror Veil (protect)', 'The chosen doremon cannot be targeted by attacks until the start of your next turn. Poison/burn still tick. If every enemy doremon is protected you cannot attack at all (no direct hit either).'],
+  ['Reprints & deck limit', 'A doremon can be printed in more than one set; each printing is its own card in the binder, market and auctions. The deck limit counts by doremon NAME: max 2 copies of a doremon across all printings (1 for Legendary/Mythical).'],
   ['Damage', "Damage = the move's power on the card × type effectiveness (the standard type chart: 2× super effective, ½ not very effective, 0 no effect; dual types multiply, so 4× is possible) × ATK/DEF stages, rounded to 10. Burned doremon deal half damage."],
   ['Stages', 'ATK +1 = +50% damage, +2 = ×2. DEF +1 = take ⅔ damage, +2 = take half. Stages go from −4 to +4 and stay until the doremon leaves the mat.'],
-  ['Spells', 'Played from your hand and resolved right away: Potion (heal 50), Super Potion (heal 100), Soothing Song (heal 30 on all), status cures (Antidote, Burn Heal, Paralyze Heal, Awakening, Full Heal) and buffs (Power Up, Iron Guard, Brace Up, Cheer On, Shield Pal).'],
-  ['Traps', 'Set face-down in a SPELL/TRAP slot (6 slots). When the enemy declares an attack, your leftmost trap springs: Guard Wall stalls them (no more attacks that turn), Bramble Shield blocks and hits back for 30, debuffs (Menace, Cute Growl, Metal Screech, Glare Down) and status traps (Static Web, Doze Spores stop the attack; Wisp Scorch, Venom Dust, Bewilder Beam).'],
+  ['Spells', 'Played from your hand and resolved right away: Potion (heal 50), Super Potion (heal 100), Soothing Song (heal 30 on all), status cures (Antidote, Burn Heal, Paralyze Heal, Awakening, Full Heal) and buffs (Power Up, Iron Guard, Brace Up, Cheer On, Shield Pal). Troublesome 2 adds Mirror Veil (protect), Twin Remedy / Duo Bloom (heal your 2 most hurt doremon 60 / 100) and Twin War Cry (ATK +1 on your 2 strongest).'],
+  ['Traps', 'Set face-down in a SPELL/TRAP slot (6 slots). When the enemy declares an attack, your leftmost trap springs: Guard Wall stalls them (no more attacks that turn), Bramble Shield blocks and hits back for 30, debuffs (Menace, Cute Growl, Metal Screech, Glare Down) and status traps (Static Web, Doze Spores stop the attack; Wisp Scorch, Venom Dust, Bewilder Beam). Troublesome 2 multi-traps hit the attacker AND its strongest teammate: Twin Growl (ATK −1), Double Glare (DEF −1), Toxic Spray (poison).'],
   ['Status', 'Poison: −20 HP at the end of its owner\'s turn. Burn: −10 HP each turn and half damage. Paralysis: can\'t attack for one turn. Sleep: can\'t attack; 50% to wake each turn, always wakes by the 2nd. Confusion: 50% to hit itself for 30 instead, lasts 2 turns.'],
   ['Rewards', 'Friendly win $150 (loss $30). Ranked win $300 + $25 per win streak (loss $60) and MR via Elo (K=32). Tiers: Bronze, Silver 1050, Gold 1150, Platinum 1250, Diamond 1400, Master 1550.'],
   ['Packs', 'Every pack has 7 cards: 2 Commons, a Common-or-spell/trap slot (30% spell/trap), 1 guaranteed spell/trap, then 3 doremon slots where Uncommons, Rares and the chase cards live. Cheaper spells/traps drop more often. Pity guarantees a chase card if you go long enough without one.'],
@@ -272,7 +280,7 @@ function renderOverlay() {
   const d = document.createElement('div'); d.className = 'overlay'; d.dataset.a = 'ovTap';
   if (o.kind === 'pack') {
     const art = IMG['cards/pack_' + o.set.toLowerCase()];
-    if (o.phase === 0) d.innerHTML = `<div class="pix" style="color:var(--yellow);margin-bottom:18px">TAP TO TEAR OPEN</div><div class="pack sealed" id="pk${o.n}"><img class="packart" src="${art}" alt=""><div class="shine"></div></div><div class="small" style="margin-top:14px">${esc(Packs.rule(o.set).name)} · 7 cards</div>`;
+    if (o.phase === 0) d.innerHTML = `<div class="pix" style="color:var(--yellow);margin-bottom:18px">TAP TO TEAR OPEN</div><div class="pack sealed" id="pk${o.n}"><img class="packart" src="${art}" alt=""><div class="shine"></div></div><div class="small" style="margin-top:14px">${esc(Packs.rule(o.set).name)} · 7 cards</div>${o.set === 'T2' ? `<img src="${o.back || (o.back = packBack())}" style="width:64px;margin-top:8px;image-rendering:pixelated;opacity:.9" alt="pack back">` : ''}`;
     else if (o.phase === 0.5) d.innerHTML = `<div class="pix" style="color:var(--yellow);margin-bottom:18px;visibility:hidden">.</div><div class="pack ripping"><img class="packart" src="${art}" alt=""><img class="packart top" src="${art}" alt=""><div class="burst"></div></div><div class="small" style="margin-top:14px;visibility:hidden">.</div>`;
     else if (o.phase === 1) { const c = o.cards[o.i], chase = Rarity.isChase(c.rarity), flipped = o.flipped;
       d.innerHTML = `<div class="pix" style="margin-bottom:12px">CARD ${o.i + 1} / 7</div><div class="reveal"><div class="flip ${flipped && !o.anim ? '' : 'back'} ${flipped && chase ? 'glow' : ''}" id="pflip" style="border-radius:6%/4.3%">${cardImg(c.id)}${flipped && Rarity.rank(c.rarity) >= 3 ? '<div class="holo"></div>' : ''}<img class="cardimg bk" src="${IMG['cards/card_back']}" alt=""></div></div>
@@ -286,13 +294,13 @@ function renderOverlay() {
       const stg = m ? [m.atk ? `Attack ${m.atk > 0 ? '+' : ''}${m.atk}` : '', m.def ? `Defense ${m.def > 0 ? '+' : ''}${m.def}` : '', m.status !== 'none' ? STATUS[m.status].join(' ') : ''].filter(Boolean).join(' · ') : '';
       d.innerHTML = `<div class="insp"><div class="inspc">${cardImg(c.id)}${Rarity.rank(c.rarity) >= 3 ? '<div class="holo"></div>' : ''}</div>
         <div class="inspt"><div class="title" style="font-size:24px;color:${RCOL[c.rarity] || '#fff'}">${esc(c.name)} ${rar(c.rarity)}</div>
-        ${isMon(c) ? `<div class="kv"><span>Type</span><b>${c.types.join(' / ')}</b></div><div class="kv"><span>HP</span><b>${m ? `${m.hp} / ${c.hp}` : c.hp}</b></div><div class="kv"><span>Move</span><b>${esc(c.move)} · ${c.dmg} dmg (${c.moveType})</b></div>${stg ? `<div class="kv"><span>Now</span><b style="color:#ffb84d">${esc(stg)}</b></div>` : ''}${o.live ? `<div class="kv"><span>Side</span><b>${o.live.side === 0 ? 'Yours' : 'Opponent'}</b></div>` : ''}`
+        ${isMon(c) ? `<div class="kv"><span>Type</span><b>${c.types.join(' / ')}</b></div><div class="kv"><span>HP</span><b>${m ? `${m.hp} / ${c.hp}` : c.hp}</b></div><div class="kv"><span>Move</span><b>${esc(c.move)} · ${c.dmg}${isDouble(c) ? '×2' : ''} dmg (${c.moveType})</b></div>${c.split ? `<div class="kv"><span>Split</span><b style="color:#7ee0ff">${isDouble(c) ? 'Double hit: strikes the same target twice' : 'Hits up to 2 different targets'}</b></div>` : ''}${m && m.protected ? '<div class="kv"><span>Shield</span><b style="color:#7ee0ff">🛡 Protected — can\'t be targeted</b></div>' : ''}${stg ? `<div class="kv"><span>Now</span><b style="color:#ffb84d">${esc(stg)}</b></div>` : ''}${o.live ? `<div class="kv"><span>Side</span><b>${o.live.side === 0 ? 'Yours' : 'Opponent'}</b></div>` : ''}`
           : `<div class="kv"><span>Kind</span><b>${isTrap(c) ? 'Trap' : 'Spell'}</b></div><div class="txt">${esc(c.text || '')}</div>`}
         </div></div><button class="btn" data-a="closeOv" style="margin-top:12px;min-width:160px">Close</button>`;
       document.body.appendChild(d); return;
     }
     d.innerHTML = `<div class="reveal" id="tilt" style="width:74vw;max-width:320px"><div class="flip ${o.back ? 'back' : ''}" id="tiltc">${cardImg(c.id)}${Rarity.rank(c.rarity) >= 3 && !o.back ? '<div class="holo"></div>' : ''}<img class="cardimg bk" src="${IMG['cards/card_back']}" alt=""></div></div>
-      <div style="text-align:center;margin-top:12px"><div class="title" style="font-size:24px">${esc(c.name)}</div><div class="small">${rar(c.rarity)} · ${c.set} #${c.num} · owned ${owned} · value ${money(G.value(c.id))}${isMon(c) ? ` · ${c.types.join('/')} · HP ${c.hp} · ${esc(c.move)} ${c.dmg} (${c.moveType})` : c.text ? ' · ' + esc(c.text) : ''}</div></div>
+      <div style="text-align:center;margin-top:12px"><div class="title" style="font-size:24px">${esc(c.name)}</div><div class="small">${rar(c.rarity)} · ${c.set} #${c.num} · owned ${owned} · value ${money(G.value(c.id))}${isMon(c) ? ` · ${c.types.join('/')} · HP ${c.hp} · ${esc(c.move)} ${c.dmg}${isDouble(c) ? '×2' : ''} (${c.moveType})${isSpread(c) ? ' · split: 2 targets' : ''}` : c.text ? ' · ' + esc(c.text) : ''}</div></div>
       <div class="row" style="margin-top:12px"><button class="btn k sm" data-a="flipInspect">Flip</button><button class="btn sm" data-a="closeOv">Close</button></div>`;
   } else if (o.kind === 'result') {
     d.innerHTML = `<div class="logo" style="font-size:52px;color:${o.won ? 'var(--yellow)' : o.won === false ? 'var(--red)' : '#fff'}">${o.won ? 'VICTORY!' : o.won === false ? 'DEFEAT' : 'DRAW'}</div>
@@ -350,16 +358,19 @@ function slotHTML(side, i) {
   const sel = B.sel;
   if (m) {
     cls += ' mon';
-    if (me && (sel?.kind === 'mon' || sel?.kind === 'fresh') && sel.i === i) cls += ' sel';
+    if (me && (sel?.kind === 'mon' || sel?.kind === 'mon2' || sel?.kind === 'fresh') && sel.i === i) cls += ' sel';
     if (my && me && sel?.kind === 'hand') { const c = S.hand[sel.i]; if (isSpell(c) && b.isLegal({ t: 'spell', hand: sel.i, target: i })) cls += ' can'; }
     if (my && me && !sel && canAttack(m) && !S.stalled) cls += ' can';
-    if (my && !me && sel?.kind === 'mon') { const a = b.sides[0].mons[sel.i]; if (a) { const [dmg, ef] = Battle.damage(a, m); cls += ' tgt'; extra = `<span class="tg" style="color:${ef > 1 ? '#7dfc9f' : ef < 1 ? '#ffb3b3' : '#fff'};background:#000a;border-radius:4px;padding:0 3px">-${dmg}${ef > 1 ? ' ▲' : ef < 1 ? ' ▼' : ''}</span>`; } }
+    if (my && !me && (sel?.kind === 'mon' || sel?.kind === 'mon2')) { const a = b.sides[0].mons[sel.i];
+      const first = sel.kind === 'mon2' && sel.t === i, ok = sel.kind === 'mon' ? b.isLegal({ t: 'attack', from: sel.i, to: i }) : first || b.isLegal({ t: 'attack', from: sel.i, to: sel.t, to2: i });
+      if (a && ok) { const [dmg, ef] = Battle.damage(a, m); cls += first ? ' tgt t1' : ' tgt'; extra = `<span class="tg" style="color:${ef > 1 ? '#7dfc9f' : ef < 1 ? '#ffb3b3' : '#fff'};background:#000a;border-radius:4px;padding:0 3px">${first ? '① ' : sel.kind === 'mon2' ? '② ' : ''}-${dmg}${isDouble(a.card) ? '×2' : ''}${ef > 1 ? ' ▲' : ef < 1 ? ' ▼' : ''}</span>`; } }
     const pct = m.hp / m.card.hp * 100, col = pct > 50 ? 'var(--green)' : pct > 25 ? 'var(--yellow)' : 'var(--red)';
     const st = m.status !== 'none' ? `<span style="color:#ffb84d">${STATUS[m.status][0]}</span> ` : '';
     const stg = (m.atk ? `A${m.atk > 0 ? '+' : ''}${m.atk} ` : '') + (m.def ? `D${m.def > 0 ? '+' : ''}${m.def}` : '');
-    const tag = extra || `<span class="tg">${st}${stg}${me && canAttack(m) && b.current === 0 && !S.stalled ? '⚡' : ''}${me && !B.spec && my && b.canUndo(0, 'mon', i) ? '<span class="undo">↩</span>' : ''}</span>`;
+    const tag = extra || `<span class="tg">${m.protected ? '<span class="prot" title="Protected">🛡</span>' : ''}${st}${stg}${me && canAttack(m) && b.current === 0 && !S.stalled ? '⚡' : ''}${me && !B.spec && my && b.canUndo(0, 'mon', i) ? '<span class="undo">↩</span>' : ''}</span>`;
     const tc = E.DB.typeColors[m.card.types[0]];
-    return `<div class="${cls}" data-a="slot" data-v="${side}:${i}" data-card="${m.card.id}" id="s${side}${i}" style="--tc:${tc ? 'rgb(' + tc.join(',') + ')' : '#fff'}"><div class="sh"><span class="nm">${esc(m.card.name)}</span>${tag}</div><span class="sp" data-sp="${spriteId(m.card)}"></span><div class="hp"><i style="width:${pct}%;background:${col}"></i><span>${m.hp}/${m.card.hp}</span></div></div>`;
+    if (m.protected) cls += ' protected';
+    return `<div class="${cls}" data-a="slot" data-v="${side}:${i}" data-card="${m.card.id}" id="s${side}${i}" style="--tc:${tc ? 'rgb(' + tc.join(',') + ')' : '#fff'}"><div class="sh"><span class="nm">${splitIcon(m.card)}${esc(m.card.name)}</span>${tag}</div><span class="sp" data-sp="${spriteId(m.card)}"></span><div class="hp"><i style="width:${pct}%;background:${col}"></i><span>${m.hp}/${m.card.hp}</span></div></div>`;
   }
   if (my && me && sel?.kind === 'hand' && isMon(S.hand[sel.i]) && b.isLegal({ t: 'playMon', hand: sel.i, slot: i })) cls += ' can';
   return `<div class="${cls}" data-a="slot" data-v="${side}:${i}" id="s${side}${i}"></div>`;
@@ -379,7 +390,8 @@ function battleView() {
   else if (B.sel?.kind === 'hand') { const c = me.hand[B.sel.i]; hint = isMon(c) ? (me.monsPlayed ? 'Already played a doremon this turn' : 'Tap an empty slot on your mat') : isTrap(c) ? 'Tap a SPELL/TRAP slot to set it' : b.spellNeedsTarget(c) ? 'Tap one of your doremon' : ''; }
   else if (B.sel?.kind === 'fresh') hint = `Played this turn — take ${esc(me.mons[B.sel.i].card.name)} back to your hand?`;
   else if (B.sel?.kind === 'ftrap') hint = `Set this turn — pick ${esc(me.traps[B.sel.i].name)} back up?`;
-  else if (B.sel?.kind === 'mon') hint = monCount(op) ? 'Tap an enemy to attack' : 'No enemies — attack directly!';
+  else if (B.sel?.kind === 'mon2') hint = `Split! Tap a 2nd target, or hit ${esc(op.mons[B.sel.t].card.name)} only`;
+  else if (B.sel?.kind === 'mon') { const a = me.mons[B.sel.i]; hint = !monCount(op) ? 'No enemies — attack directly!' : !op.mons.some((x, j) => x && b.isLegal({ t: 'attack', from: B.sel.i, to: j })) ? 'Every enemy is protected — no attack this turn' : isSpread(a.card) ? 'Split attack: tap the 1st target' : isDouble(a.card) ? 'Double hit: tap an enemy to hit it twice' : 'Tap an enemy to attack'; }
   else if (b.turnNumber <= 2 && !G.s.seenHoldTip) hint = 'Tip: hold any card (or tap an enemy) to read it';
   else hint = `Turn ${b.turnNumber} · doremon ${me.monsPlayed}/1 · spell/trap ${me.stPlayed}/2${me.stalled ? ' · STALLED' : ''}`;
   const selC = B.sel?.kind === 'hand' ? me.hand[B.sel.i] : null;
@@ -387,6 +399,7 @@ function battleView() {
   const backBtn = my && (B.sel?.kind === 'fresh' || B.sel?.kind === 'ftrap') ? `<button class="btn p sm" data-a="takeBack">↩ Take back</button>` : '';
   const selId = B.sel ? (B.sel.kind === 'hand' ? me.hand[B.sel.i]?.id : B.sel.kind === 'ftrap' ? me.traps[B.sel.i]?.id : me.mons[B.sel.i]?.card.id) : null;
   const infoBtn = selId ? `<button class="btn k sm" data-a="inspectB" data-v="${B.sel.kind === 'hand' || B.sel.kind === 'ftrap' ? 'c:' + selId : 'm:0:' + B.sel.i}" aria-label="Card details">ⓘ</button>` : '';
+  const oneBtn = my && B.sel?.kind === 'mon2' ? `<button class="btn r sm" data-a="hitOne">Hit one only</button>` : '';
   const directBtn = my && B.sel?.kind === 'mon' && b.isLegal({ t: 'attack', from: B.sel.i, to: null }) ? `<button class="btn r sm" data-a="direct">Direct attack!</button>` : '';
   const top = B.spec ? `<div class="top" style="padding-bottom:4px"><button class="btn k sm" data-a="leaveSpec">✕</button><div class="grow" style="text-align:center;font-weight:800">📺 ${B.spec.title}</div><button class="btn k sm" data-a="log">Log</button></div>`
     : `<div class="top" style="padding-bottom:4px"><button class="btn k sm" data-a="forfeit">✕</button><div class="grow" style="text-align:center;font-weight:800">${B.league ? 'Ranked' : 'Friendly'} vs ${esc(o.name)}</div><button class="btn k sm" data-a="log">Log</button></div>`;
@@ -403,7 +416,7 @@ function battleView() {
    ${stRow(0)}
    <div class="bhead">${sprite(avA, 26)}<b class="bn">${nA}</b>${hearts(0, me.life)}<span class="grow"></span><span class="small">${B.spec ? `✋${me.hand.length} · ` : ''}🂠${me.deck.length}</span></div>
    ${bar ? bar : `<div class="hand">${me.hand.map((c, i) => { const can = my && (isMon(c) ? me.monsPlayed < 1 && monCount(me) < 6 : me.stPlayed < 2); return `<div class="hc ${B.sel?.kind === 'hand' && B.sel.i === i ? 'sel' : ''} ${can ? '' : 'dis'}" data-a="hand" data-v="${i}" data-card="${c.id}">${cardImg(c.id)}</div>`; }).join('')}</div>
-   <div class="bbar">${infoBtn}${castBtn}${backBtn}${directBtn}<span class="grow"></span><button class="btn y" data-a="endTurn" ${my ? '' : 'disabled'}>End turn</button></div>`}
+   <div class="bbar">${infoBtn}${castBtn}${backBtn}${oneBtn}${directBtn}<span class="grow"></span><button class="btn y" data-a="endTurn" ${my ? '' : 'disabled'}>End turn</button></div>`}
   </div>`;
 }
 // ---------- spectate ----------
@@ -446,7 +459,7 @@ function act(a) { const B = UI.battle; if (!B.b.apply(a)) return false; B.sel = 
 function checkOver() {
   const B = UI.battle; if (!B || !B.b.over || UI.overlay) return;
   const w = B.b.winner, won = w == null ? null : w === 0;
-  const [bucks, d] = G.recordResult(won, B.league, B.k);
+  const [bucks, d] = G.recordResult(won, B.league, B.k, B.b.splitKOs[0]);
   setTimeout(() => { sfx(won ? 'win' : 'lose'); UI.overlay = { kind: 'result', won, bucks, d, league: B.league, avatar: G.s.ai[B.k].avatar, ko: [B.b.sides[0].koCount, B.b.sides[1].koCount] }; render(); }, 900);
 }
 function aiTurn() {
@@ -468,9 +481,14 @@ function tapSlot(side, i) {
       if (isSpell(c) && act({ t: 'spell', hand: sel.i, target: i })) return; }
     const m = me.mons[i];
     if (m && b.canUndo(0, 'mon', i)) { B.sel = sel?.kind === 'fresh' && sel.i === i ? null : { kind: 'fresh', i }; render(); return; }
-    B.sel = m && canAttack(m) && !me.stalled && !(sel?.kind === 'mon' && sel.i === i) ? { kind: 'mon', i } : null; render(); return;
+    B.sel = m && canAttack(m) && !me.stalled && !((sel?.kind === 'mon' || sel?.kind === 'mon2') && sel.i === i) ? { kind: 'mon', i } : null; render(); return;
   }
-  if (sel?.kind === 'mon' && b.sides[1].mons[i]) act({ t: 'attack', from: sel.i, to: i });
+  if (sel?.kind === 'mon2' && b.sides[1].mons[i]) { if (i === sel.t) act({ t: 'attack', from: sel.i, to: i }); else if (!act({ t: 'attack', from: sel.i, to: sel.t, to2: i })) inspectMon(1, i); return; }
+  if (sel?.kind === 'mon' && b.sides[1].mons[i]) {
+    if (!b.isLegal({ t: 'attack', from: sel.i, to: i })) { if (b.sides[1].mons[i].protected) banner('🛡 Protected — pick another target'); return; }
+    const a = me.mons[sel.i];
+    if (isSpread(a.card) && b.sides[1].mons.some((x, j) => j !== i && x && b.isLegal({ t: 'attack', from: sel.i, to: i, to2: j }))) { B.sel = { kind: 'mon2', i: sel.i, t: i }; sfx('click'); render(); return; }
+    act({ t: 'attack', from: sel.i, to: i }); }
   else if (b.sides[1].mons[i]) inspectMon(1, i);
 }
 // large readable card view during a battle (live HP / stages / status for doremon on the mat)
@@ -520,6 +538,8 @@ const A = {
     if (B.b.canUndo(0, 'trap', i)) { B.sel = B.sel?.kind === 'ftrap' && B.sel.i === i ? null : { kind: 'ftrap', i }; render(); } },
   hand: v => { const B = UI.battle; if (B.b.current !== 0 || B.busy) return; const i = +v; B.sel = B.sel?.kind === 'hand' && B.sel.i === i ? null : { kind: 'hand', i }; render(); },
   cast: () => { const B = UI.battle; act({ t: 'spell', hand: B.sel.i, target: null }); },
+  hitOne: () => { const B = UI.battle, s = B.sel; if (s?.kind === 'mon2') act({ t: 'attack', from: s.i, to: s.t }); },
+  packFlip: v => { UI.packBack = UI.packBack === v ? null : v; sfx('flip'); render(); },
   direct: () => { const B = UI.battle; act({ t: 'attack', from: B.sel.i, to: null }); },
   endTurn: () => { const B = UI.battle; B.sel = null; if (act({ t: 'end' }) && !B.b.over) setTimeout(aiTurn, 500); },
   log: () => { UI.overlay = { kind: 'log', lines: UI.battle.lines }; renderOverlay(); },
@@ -562,12 +582,28 @@ function demo() {
   g.s.money = 4200;
   for (let i = 0; i < 12; i++) { g.s.packs.WW = (g.s.packs.WW || 0) + 1; g.openPack('WW'); }
   for (let i = 0; i < 10; i++) { g.s.packs.FL = (g.s.packs.FL || 0) + 1; g.openPack('FL'); }
-  g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.packs = { WW: 3, FL: 2 };
+  for (let i = 0; i < 12; i++) { g.s.packs.T2 = (g.s.packs.T2 || 0) + 1; g.openPack('T2'); }
+  g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.owned.t2_peaflora = 1; g.s.owned.t2_blizzbear = 1; g.s.packs = { WW: 3, FL: 2, T2: 4 };
   for (let i = 0; i < 4; i++) { g.recordResult(i % 3 !== 2, true, g.nextLeagueOpponent()); g.skipDay(); }
   g.newAchievements = [];
   g.s.decks[1] = DeckRules.autoBuild(g.s.owned, g.rng); g.s.deckNames[1] = 'Deck 2';
   switch (SNAP) {
     case 'binder': UI.tab = 'binder'; UI.binderSet = 'FL'; break;
+    case 'binder_t2': UI.tab = 'binder'; UI.binderSet = 'T2'; break;
+    case 'packs': UI.tab = 'packs'; break;
+    case 'packs_back': UI.tab = 'packs'; UI.packBack = 'T2'; setTimeout(() => { const el = document.querySelector('[data-a="packFlip"]'); if (el) el.scrollIntoView(); }, 50); break;
+    case 't2_open': { UI.tab = 'packs'; UI.overlay = { kind: 'pack', set: 'T2', cards: [], fresh: new Set(), phase: 0 }; break; }
+    case 't2_chase': { const ch = inSet('T2').filter(c => Rarity.isChase(c.rarity)); UI.overlay = { kind: 'pack', set: 'T2', cards: [...inSet('T2').slice(20, 23), ...ch], fresh: new Set(ch.map(c => c.id)), phase: 2 }; break; }
+    case 't2_mythic': { const c = inSet('T2').find(c => c.rarity === 'MYT'); UI.overlay = { kind: 'pack', set: 'T2', cards: [c], fresh: new Set([c.id]), phase: 1, i: 0, flipped: true }; break; }
+    case 'split_target': case 'split_pick2': case 'protect': {
+      const f = Array(20).fill(card('ww_snarlpup')); const b = new Battle(f, 'You', f, g.s.ai[2].name, 31n, 0);
+      const put = (sd, sl, id, o) => { b.sides[sd].mons[sl] = Object.assign(E.newMon(card(id)), { ready: true }, o || {}); };
+      put(0, 0, 't2_drakaroo'); put(0, 1, 't2_bonkbob'); put(0, 2, 't2_peaflora'); put(1, 0, 'fl_swirlgon'); put(1, 1, 'ww_gruugy', { hp: 120 }); put(1, 2, 'ww_hootuft');
+      if (SNAP === 'protect') b.sides[1].mons[2].protected = true;
+      b.sides[0].hand = [card('st_mirror_veil'), card('st_twin_remedy'), card('t2_grinhorn'), card('st_toxic_spray')];
+      UI.battle = { b, k: 2, league: true, sel: SNAP === 'split_target' ? { kind: 'mon', i: 0 } : { kind: 'mon2', i: 0, t: 1 }, ei: b.events.length, busy: false, floats: [], lines: [] };
+      if (SNAP === 'protect') UI.battle.sel = { kind: 'mon', i: 1 };
+      break; }
     case 'decks': UI.tab = 'decks'; UI.deck = 1; break;
     case 'battle_setup': UI.tab = 'battle'; break;
     case 'league': UI.tab = 'more'; UI.more = 'league'; break;
