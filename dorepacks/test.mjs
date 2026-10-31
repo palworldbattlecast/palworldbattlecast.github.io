@@ -170,9 +170,9 @@ let g = new Game(null, 99n);
 // ---- auction mechanics ----
 {
   const g0 = new Game(null, 77n); g0.save = () => {};
-  g0.s.owned.ww_rokbru = 3; const before = g0.s.money;
+  g0.s.owned.ww_rokbru = 4; const before = g0.s.money;
   const l = g0.list(E.ME, 'ww_rokbru', 'auction', 100, 1);
-  check(l && g0.s.owned.ww_rokbru === 2, 'listing a card puts it in escrow');
+  check(l && g0.s.owned.ww_rokbru === 3, 'listing a card puts it in escrow');
   g0.s.ai[0].money = 5000; g0.s.ai[1].money = 5000;
   check(g0.bid(0, l.id, 100) && g0.s.ai[0].money === 4900, 'AI bid takes cash into escrow');
   check(!g0.bid(1, l.id, 101), 'bid must beat the minimum increment');
@@ -196,8 +196,43 @@ let g = new Game(null, 99n);
 g = new Game(null, 5n);
 const sells = { C: 'ww_snarlpup', U: 'ww_sprigchimp', R: 'ww_glootios', SR: 'ww_rokbru', SSR: 'ww_axerupi' }, expect = { C: 10, U: 25, R: 60, SR: 150, SSR: 1000 };
 for (const r in sells) { g.s.market[sells[r]].factor = 1; check(g.sellPrice(sells[r]) === expect[r], `sell ${r} = $${expect[r]} at neutral market (got ${g.sellPrice(sells[r])})`); }
-g.s.owned.ww_axerupi = 1; check(!g.sell('ww_axerupi'), "can't sell your last copy");
-g.s.owned.ww_axerupi = 3; const m0 = g.s.money; check(g.sell('ww_axerupi') && g.s.money > m0 && g.s.owned.ww_axerupi === 2, 'selling a dupe pays');
+g.s.owned.ww_axerupi = 3; check(!g.sell('ww_axerupi') && g.sellableCount('ww_axerupi') === 0, "3 copies are kept (2 for a deck + 1 to trade): not dupes");
+g.s.owned.ww_axerupi = 5; const m0 = g.s.money; check(g.sellableCount('ww_axerupi') === 2 && g.sell('ww_axerupi') && g.s.money > m0 && g.s.owned.ww_axerupi === 4, 'copies beyond 3 are dupes and sell');
+g.s.owned.st_power_up = 6; check(g.sellableCount('st_power_up') === 3, 'spells/traps follow the same keep-3 rule');
+{ const [n] = g.sellAllDupes(); check(n > 0 && Object.keys(g.s.owned).every(id => g.s.owned[id] <= Math.max(3, g.inDecks(id))), `Sell all dupes leaves exactly 3 (or what decks use) of everything (${n} sold)`); }
+// ---- deck limit ----
+check(DeckRules.problems(Array(3).fill('ww_snarlpup').concat(E.STARTER_DECK.slice(3))).some(p => p.includes('max 2')), 'a 3rd copy of a card is illegal (max 2)');
+check(DeckRules.problems(['fl_spiraquill', 'fl_spiraquill'].concat(E.STARTER_DECK.slice(2))).some(p => p.includes('max 1')), 'Legendary/Mythical stay at 1 copy');
+{ const own = {}; for (const c of E.DB.cards) own[c.id] = 9; let ok = true; for (let i = 0; i < 30; i++) { const d = DeckRules.autoBuild(own, new SplitMix(BigInt(i + 1))); const cnt = {}; d.forEach(x => cnt[x] = (cnt[x] || 0) + 1); ok = ok && DeckRules.problems(d).length === 0 && Object.values(cnt).every(v => v <= 2); } check(ok, 'auto-builder never puts more than 2 of a card in a deck'); }
+check(g.s.ai.every(p => DeckRules.problems(p.deck).length === 0), 'every AI deck respects the 2-copy limit');
+// ---- take back ----
+{
+  const deck = E.STARTER_DECK.map(card);
+  const b = new Battle(deck, 'You', deck, 'AI', 4242n, 0), S = b.sides[0];
+  const h = S.hand.findIndex(E.isMon), n0 = S.hand.length; b.apply({ t: 'playMon', hand: h, slot: 2 });
+  check(b.canUndo(0, 'mon', 2) && b.apply({ t: 'undo', kind: 'mon', slot: 2 }) && !S.mons[2] && S.monsPlayed === 0 && S.hand.length === n0, 'a doremon played this turn can be taken back (hand + counter restored)');
+  const h2 = S.hand.findIndex(E.isMon); b.apply({ t: 'playMon', hand: h2, slot: 0 });
+  S.hand.push(card('st_super_potion')); S.mons[0].hp -= 50; const sp = S.hand.length - 1;
+  b.apply({ t: 'spell', hand: sp, target: 0 });
+  check(!b.canUndo(0, 'mon', 0), 'a doremon that had a spell resolve on it cannot be taken back');
+  check(!b.isLegal({ t: 'undo', kind: 'spell', slot: 0 }), 'a resolved instant spell cannot be taken back');
+  S.hand.push(card('st_guard_wall')); const st0 = S.stPlayed; b.apply({ t: 'setTrap', hand: S.hand.length - 1, slot: 4 });
+  check(b.apply({ t: 'undo', kind: 'trap', slot: 4 }) && !S.traps[4] && S.stPlayed === st0 && S.hand.some(c => c.id === 'st_guard_wall'), 'a trap set this turn can be picked back up');
+  S.hand.push(card('st_guard_wall')); b.apply({ t: 'setTrap', hand: S.hand.length - 1, slot: 4 });
+  b.apply({ t: 'end' }); check(!b.canUndo(0, 'trap', 4) && !b.canUndo(1, 'trap', 4), 'after the turn ends nothing can be taken back');
+  b.apply({ t: 'end' }); check(!b.canUndo(0, 'mon', 0), "last turn's doremon is locked in");
+}
+// ---- coin flip & matchmaking ----
+check(BattleAI.chooseFirst() === true, 'AI that wins the toss chooses to go first');
+{
+  const g1 = new Game(null, 55n); g1.save = () => {}; const seen = {}; let repeats = 0, prev = -1, recent3 = 0;
+  for (let i = 0; i < 400; i++) { const k = g1.nextLeagueOpponent(); check.quiet = true; seen[k] = (seen[k] || 0) + 1; if (k === prev) repeats++; if ((g1.s.oppHistory || []).slice(0, 3).includes(k)) recent3++; prev = k; g1.recordResult(i % 2 === 0, true, k); }
+  console.log('ranked opponents over 400 games:', JSON.stringify(seen), 'in last-3:', recent3);
+  check(repeats === 0, 'ranked never matches you with the same opponent twice in a row');
+  check(Object.keys(seen).length === 8, 'every AI shows up as a ranked opponent');
+  check(recent3 < 400 * 0.35, `recent opponents are avoided (${recent3}/400 were among the previous 3)`);
+  const g2 = new Game(null, 56n); check(g2.nextLeagueOpponent() === g2.nextLeagueOpponent(), 'the chosen opponent stays put until the match is played');
+}
 check(g.buyPrice('ww_glootios') >= g.sellPrice('ww_glootios') * 2, 'no buy/sell arbitrage');
 g.s.money = 10000; g.s.bank.initial += 10000 - 1500; check(g.buyPack('FL') && g.s.money === 9200, 'Fallen Legends pack costs $800');
 const sum = () => g.s.ai.reduce((a, p) => a + p.mr, 0); const s0 = sum();
@@ -217,4 +252,14 @@ if (g.s.offers.length) { const o = g.s.offers[0], before = g.s.owned[o.give] || 
 const mem = { t: null, load() { return this.t; }, save(x) { this.t = x; } };
 const g2 = new Game(mem, 1n); g2.s.money = 4242; g2.save();
 const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 8, 'save/load round trip');
+// ---- real-time league days ----
+{ const gc = new Game(null, 9n); gc.save = () => {}; const T = 1_000_000_000_000; const M = E.DAY_MS;
+  check(gc.daysDue(T) === 0 && gc.s.clock === T, 'clock anchors on first tick');
+  const d0 = gc.s.day; check(gc.daysDue(T + M - 1) === 0 && gc.advanceDays(9, T + 3 * M + 5) === 3 && gc.s.day === d0 + 3, '3 days pass after 30 real minutes');
+  check(gc.msToNextDay(T + 3 * M + 5) === M - 5, 'countdown to next day');
+  const d1 = gc.s.day, t0 = Date.now(); let got = 0; const far = T + 3 * M + 30 * 86400000; while (gc.daysDue(far)) got += gc.advanceDays(100, far);
+  check(got === E.MAX_CATCHUP && gc.s.day === d1 + E.MAX_CATCHUP && gc.daysDue(far) === 0, `catch-up capped at 1 week (${E.MAX_CATCHUP} days in ${Date.now() - t0} ms)`);
+  check(gc.advanceDays(5, T) === 0 && gc.daysDue(T + M) === 1, 'clock going backwards re-anchors without granting days');
+  const gr = new Game(null, 10n); gr.save = () => {}; const dd = gr.s.day; gr.recordResult(true, true, gr.nextLeagueOpponent()); check(gr.s.day === dd, 'battles no longer advance the day');
+}
 console.log(fails === 0 ? 'ALL TESTS PASSED' : `${fails} FAILURES`); process.exit(fails ? 1 : 0);
