@@ -11,7 +11,7 @@ check(E.ofRarity('FL', 'LGD').length === 3 && E.ofRarity('FL', 'MYT').length ===
 check(E.supplies().filter(E.isSpell).length >= 10 && E.supplies().filter(E.isTrap).length >= 8, 'spells and traps present');
 
 const tally = packs => { const t = {}; for (const p of packs) for (const c of p) t[c.rarity] = (t[c.rarity] || 0) + 1; return t; };
-for (const set of ['WW', 'FL']) {
+for (const set of ['WW', 'FL', 'T2']) {
   const N = 60000; const g = new Game(null, 42n); g.s.packs[set] = N; g.save = () => {}; g.checkAchievements = () => {};
   const rule = Packs.rule(set);
   const player = [], gaps = []; let since = 0;
@@ -33,6 +33,11 @@ for (const set of ['WW', 'FL']) {
     const worst = Math.max(...Packs.itemOdds().map(([c, p]) => Math.abs((cnt[c.id] || 0) / tot - p)));
     check(worst < 0.006 && Packs.itemOdds().every(([c]) => cnt[c.id] > 0), `every spell/trap can drop, per-card rate within ${worst.toFixed(4)} of its listed odds`);
     console.log('spell/trap odds:', Packs.itemOdds().map(([c, p]) => `${c.name} ${(p * 100).toFixed(1)}%`).join(', ')); }
+  if (set === 'T2') { const myt = (tp.MYT || 0) / N; check(myt > 0.003 && myt < 0.01, 'T2 mythical rate sane');
+    let t2i = 0, it = 0; for (const p of player) for (const c of p) if (!E.isMon(c)) { it++; if (c.pack === 'T2') t2i++; }
+    const exp = Packs.itemOdds('T2').filter(x => x[0].pack === 'T2').reduce((a, x) => a + x[1], 0);
+    check(Math.abs(t2i / it - exp) < 0.01, `T2 packs: new spells/traps ${(t2i / it * 100).toFixed(1)}% of item pulls (listed ${(exp * 100).toFixed(1)}%)`); }
+  if (set !== 'T2') check(player.every(p => p.every(c => !c.pack)), `${set}: never drops Troublesome 2-only spells/traps`);
   if (set === 'FL') { const myt = (tp.MYT || 0) / N, lgd = (tp.LGD || 0) / N; console.log(`FL observed: legendary ${f4(lgd)} mythical ${f4(myt)} per pack`); check(myt > 0.003 && myt < 0.01, 'FL mythical rate sane'); }
 }
 // RNG parity with Swift SplitMix (seed 42 first output, from the reference algorithm)
@@ -261,5 +266,99 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 8, 'sa
   check(got === E.MAX_CATCHUP && gc.s.day === d1 + E.MAX_CATCHUP && gc.daysDue(far) === 0, `catch-up capped at 1 week (${E.MAX_CATCHUP} days in ${Date.now() - t0} ms)`);
   check(gc.advanceDays(5, T) === 0 && gc.daysDue(T + M) === 1, 'clock going backwards re-anchors without granting days');
   const gr = new Game(null, 10n); gr.save = () => {}; const dd = gr.s.day; gr.recordResult(true, true, gr.nextLeagueOpponent()); check(gr.s.day === dd, 'battles no longer advance the day');
+}
+
+// ---------- Troublesome 2: split attacks, protect, split heals, multi-target traps ----------
+{
+  const t2 = E.inSet('T2');
+  check(t2.length === 30 && E.ofRarity('T2', 'LGD').length === 3 && E.ofRarity('T2', 'MYT').length === 1, 'Troublesome 2: 30 cards, 3 legendaries + 1 mythical');
+  const seen = new Set(E.DB.cards.filter(c => c.set === 'WW' || c.set === 'FL').map(c => c.mon));
+  check(t2.every(c => !seen.has(c.mon)), 'Troublesome 2 only uses doremon never printed in WW/FL');
+  check(t2.filter(c => c.split === 'double').length >= 8 && t2.filter(c => c.split === 'spread').length >= 8, 'T2 has plenty of double-hit and spread cards');
+  const filler = Array(20).fill(card('ww_snarlpup'));
+  const board = (A, B) => {    // A/B: arrays of [id, overrides]; side 0 attacks
+    const b = new Battle(filler, 'Me', filler, 'Foe', 3n, 0);
+    A.forEach(([id, o], i) => { b.sides[0].mons[i] = Object.assign(newMon(card(id)), { ready: true }, o || {}); });
+    B.forEach(([id, o], i) => { if (id) b.sides[1].mons[i] = Object.assign(newMon(card(id)), { ready: true }, o || {}); });
+    return b; };
+  const hp = (b, s, i) => b.sides[s].mons[i] ? b.sides[s].mons[i].hp : 0;
+  // double hit
+  { const b = board([['t2_bonkbob']], [['ww_hootuft', { hp: 500 }]]); const [d1] = Battle.damage(b.sides[0].mons[0], b.sides[1].mons[0]);
+    check(b.apply({ t: 'attack', from: 0, to: 0 }) && hp(b, 1, 0) === 500 - 2 * d1, `double hit: two hits of ${d1} on one target`);
+    check(!b.isLegal({ t: 'attack', from: 0, to: 0, to2: 1 }), 'double-hit cards cannot take a 2nd target'); }
+  { const b = board([['t2_bonkbob']], [['ww_hootuft', { hp: 10 }], ['ww_snarlpup']]); const l = b.sides[1].life;
+    b.apply({ t: 'attack', from: 0, to: 0 }); check(!b.sides[1].mons[0] && hp(b, 1, 1) === card('ww_snarlpup').hp && b.sides[1].life === l - 1, 'double hit: if hit 1 knocks out, hit 2 fizzles (no spill-over)'); }
+  // spread
+  { const b = board([['t2_grinhorn']], [['ww_hootuft', { hp: 400 }], ['ww_gruugy', { hp: 400 }]]);
+    const [d0] = Battle.damage(b.sides[0].mons[0], b.sides[1].mons[0]), [d1] = Battle.damage(b.sides[0].mons[0], b.sides[1].mons[1]);
+    check(!b.isLegal({ t: 'attack', from: 0, to: 0, to2: 0 }), 'spread: the 2 targets must differ');
+    check(b.apply({ t: 'attack', from: 0, to: 0, to2: 1 }) && hp(b, 1, 0) === 400 - d0 && hp(b, 1, 1) === 400 - d1, `spread: hits 2 targets (${d0} + ${d1})`); }
+  { const b = board([['t2_grinhorn']], [['ww_hootuft', { hp: 400 }]]); check(b.apply({ t: 'attack', from: 0, to: 0 }), 'spread with a single enemy hits just that one'); }
+  { const b = board([['ww_snarlpup']], [['ww_hootuft'], ['ww_gruugy']]); check(!b.isLegal({ t: 'attack', from: 0, to: 0, to2: 1 }), 'normal cards cannot spread'); }
+  { const b = board([['t2_grinhorn']], [['ww_hootuft', { hp: 10 }], ['ww_gruugy', { hp: 10 }]]); const g = new Game(null, 9n); g.save = () => {};
+    b.apply({ t: 'attack', from: 0, to: 0, to2: 1 }); check(b.splitKOs[0] === 1 && b.sides[1].life === Battle.startLife - 2, 'spread KO of 2 doremon: 2 lives + split-KO counted');
+    g.recordResult(true, false, 0, b.splitKOs[0]); g.checkAchievements(); check(g.s.achievements.includes('t2_split'), "'Split Second' achievement unlocks"); }
+  // per-hit fairness: a split card's total is ~1.1x (double) / ~1.3x over two targets of a normal card of its rarity
+  { const avg = (f) => { const a = t2.filter(f); return a.reduce((x, c) => x + c.dmg * (c.split ? 2 : 1), 0) / a.length; };
+    console.log(`T2 avg printed damage: single ${avg(c => !c.split).toFixed(0)}, double total ${avg(c => c.split === 'double').toFixed(0)}, spread total (2 targets) ${avg(c => c.split === 'spread').toFixed(0)}`); }
+  // protect
+  { const b = board([['ww_snarlpup'], ['t2_grinhorn']], [['ww_hootuft'], ['ww_gruugy']]);
+    b.sides[1].mons[0].protected = true;
+    check(!b.isLegal({ t: 'attack', from: 0, to: 0 }) && b.isLegal({ t: 'attack', from: 0, to: 1 }), 'protected doremon cannot be targeted');
+    check(!b.isLegal({ t: 'attack', from: 1, to: 1, to2: 0 }), 'protected doremon cannot be a spread 2nd target');
+    b.sides[1].mons[1].protected = true; check(!b.isLegal({ t: 'attack', from: 0, to: null }) && !b.isLegal({ t: 'attack', from: 0, to: 1 }), 'all enemies protected: no attack and no direct hit');
+    check(BattleAI.next(b).t !== 'attack', 'AI does not try to attack protected doremon'); }
+  { const b = board([['ww_snarlpup']], []); b.sides[0].hand = [card('st_mirror_veil')];
+    check(b.apply({ t: 'spell', hand: 0, target: 0 }) && b.sides[0].mons[0].protected, 'Mirror Veil protects the chosen doremon');
+    b.apply({ t: 'end' }); check(b.sides[0].mons[0].protected, 'protection lasts through the opponent\'s turn');
+    b.sides[1].mons[0] = Object.assign(newMon(card('ww_gruugy')), { ready: true }); check(!b.isLegal({ t: 'attack', from: 0, to: 0 }), 'opponent cannot target it');
+    b.apply({ t: 'end' }); check(!b.sides[0].mons[0].protected, 'protection ends at the start of your next turn'); }
+  { // protected doremon still gets hit by its own end-of-turn poison, and traps still trigger on its attacks
+    const b = board([['ww_snarlpup', { protected: true, status: 'psn', hp: 100 }]], [['ww_gruugy']]); b.apply({ t: 'end' });
+    check(hp(b, 0, 0) === 80, 'protect does not stop poison damage'); }
+  // split heal
+  { const b = board([['ww_snarlpup', { hp: 50 }], ['ww_gruugy', { hp: 20 }], ['ww_spydo', { hp: 100 }]], []); b.sides[0].hand = [card('st_twin_remedy')];
+    const full = c => card(c).hp;
+    check(b.apply({ t: 'spell', hand: 0, target: null }) && hp(b, 0, 0) === Math.min(110, full('ww_snarlpup')) && hp(b, 0, 1) === Math.min(80, full('ww_gruugy')) && hp(b, 0, 2) === 100, 'Twin Remedy heals the 2 most hurt doremon by 60'); }
+  { const b = board([['ww_snarlpup']], []); b.sides[0].hand = [card('st_duo_bloom')]; check(!b.isLegal({ t: 'spell', hand: 0, target: null }), 'split heal needs a hurt doremon'); }
+  { const b = board([['ww_snarlpup'], ['ww_gruugy'], ['ww_spydo']], []); b.sides[0].hand = [card('st_twin_war_cry')]; b.apply({ t: 'spell', hand: 0, target: null });
+    check(b.sides[0].mons.filter(m => m && m.atk === 1).length === 2, 'Twin War Cry: 2 doremon get ATK +1'); }
+  // multi-target traps
+  for (const [id, test, what] of [['st_twin_growl', m => m.atk === -1, 'ATK -1'], ['st_double_glare', m => m.def === -1, 'DEF -1'], ['st_toxic_spray', m => m.status === 'psn', 'Poisoned']]) {
+    const b = board([['ww_snarlpup'], ['t2_madbuzz'], ['ww_spydo']], [['ww_gruugy', { hp: 900 }]]); b.sides[1].traps[0] = card(id);
+    b.apply({ t: 'attack', from: 0, to: 0 });
+    const hit = b.sides[0].mons.map(m => m && test(m));
+    check(hit[0] && hit[1] && !hit[2], `${card(id).name}: the attacker and its strongest teammate are ${what}, nobody else`); }
+  { // trap vs split: one trap fires once per attack, and a Paralyze trap stops BOTH hits / BOTH targets
+    const b = board([['t2_bonkbob']], [['ww_gruugy', { hp: 900 }]]); b.sides[1].traps[0] = card('st_static_web'); b.sides[1].traps[1] = card('st_cute_growl');
+    b.apply({ t: 'attack', from: 0, to: 0 }); check(hp(b, 1, 0) === 900 && b.sides[1].traps[1], 'Static Web stops a double hit completely; only one trap fires per attack');
+    const c = board([['t2_grinhorn']], [['ww_gruugy', { hp: 900 }], ['ww_hootuft', { hp: 900 }]]); c.sides[1].traps[0] = card('st_guard_wall');
+    c.apply({ t: 'attack', from: 0, to: 0, to2: 1 }); check(hp(c, 1, 0) === 900 && hp(c, 1, 1) === 900 && c.sides[0].stalled, 'Guard Wall blocks a spread attack on both targets');
+    const d = board([['t2_bonkbob']], [['ww_gruugy', { hp: 900 }]]); d.sides[1].traps[0] = card('st_menace');
+    const before = Battle.damage(d.sides[0].mons[0], d.sides[1].mons[0])[0]; d.apply({ t: 'attack', from: 0, to: 0 });
+    const after = Battle.damage(d.sides[0].mons[0], d.sides[1].mons[0])[0];
+    check(hp(d, 1, 0) === 900 - 2 * after && after < before, `Menace lowers ATK before both hits (${before} -> ${after} x2)`); }
+  { // confusion: one check for the whole split attack
+    const b = board([['t2_bonkbob', { status: 'cnf' }]], [['ww_gruugy', { hp: 900 }]]); b.apply({ t: 'attack', from: 0, to: 0 });
+    const v = hp(b, 1, 0), [d1] = Battle.damage(b.sides[0].mons[0] || mk('t2_bonkbob'), b.sides[1].mons[0]);
+    check(v === 900 || v === 900 - 2 * d1, 'confused double hitter: either hurts itself (no hits) or lands both hits'); }
+  // AI uses spread with 2 targets
+  { const b = board([['t2_grinhorn']], [['ww_hootuft'], ['ww_gruugy']]); b.sides[0].hand = []; const a = BattleAI.next(b);
+    check(a.t === 'attack' && a.to2 != null && a.to2 !== a.to, 'AI picks 2 targets for a spread move'); }
+  // deck copy limit counts by doremon NAME across printings (synthetic reprint)
+  { const base = card('t2_bonkbob'); const rp = Object.assign({}, base, { id: 'zz_bonkbob', set: 'ZZ', rarity: 'R', num: 1 }); E.DB.cards.push(rp); E.DB.byId[rp.id] = rp;
+    const fill = ['ww_snarlpup', 'ww_snarlpup', 'ww_acornix', 'ww_acornix', 'ww_gruugy', 'ww_gruugy', 'ww_spydo', 'ww_spydo', 'ww_zapwing', 'ww_zapwing', 'ww_hootuft', 'ww_hootuft', 'ww_giggleti', 'ww_giggleti', 'ww_embertail', 'ww_embertail', 'st_potion', 'st_potion'];
+    check(DeckRules.problems([...fill, 't2_bonkbob', 'zz_bonkbob']).length === 0, 'reprints: 2 copies of one doremon across 2 printings is legal');
+    check(DeckRules.problems([...fill.slice(1), 't2_bonkbob', 't2_bonkbob', 'zz_bonkbob']).some(p => p.includes('Bonkbob')), 'reprints: a 3rd copy via another printing is rejected');
+    const g = new Game(null, 5n); const own = { t2_bonkbob: 3, zz_bonkbob: 3 }; for (const id of fill) own[id] = 2;
+    const d = DeckRules.autoBuild(own, new SplitMix(1n)); check(d.filter(id => card(id).mon === 'bonkbob').length <= 2 && DeckRules.problems(d).length === 0, 'autoBuild respects the by-name limit');
+    E.DB.cards.pop(); delete E.DB.byId[rp.id]; }
+  // AI decks can use T2
+  { const g = new Game(null, 77n); g.save = () => {}; for (let i = 0; i < 30; i++) g.aiOpenPack(0, 'T2', true); g.s.ai[0].deck = DeckRules.autoBuild(g.s.ai[0].owned, g.rng);
+    check(g.s.ai[0].deck.some(id => card(id).set === 'T2') && DeckRules.problems(g.s.ai[0].deck).length === 0, 'AI builds legal decks with Troublesome 2 cards'); }
+  // whole games with split cards: AI vs AI never stalls or errors
+  { let n = 0; for (let k = 0; k < 200; k++) { const pool = t2.concat(E.supplies()); const r = new SplitMix(BigInt(k + 1)); const d = () => { const own = {}; for (let i = 0; i < 60; i++) { const c = pool[r.int(pool.length)]; own[c.id] = (own[c.id] || 0) + 1; } return DeckRules.autoBuild(own, r).map(card); };
+      const b = new Battle(d(), 'A', d(), 'B', BigInt(k + 9)); BattleAI.simulate(b); if (b.over) n++; }
+    check(n === 200, `200 all-T2 AI games finish (${n})`); }
 }
 console.log(fails === 0 ? 'ALL TESTS PASSED' : `${fails} FAILURES`); process.exit(fails ? 1 : 0);
