@@ -24,7 +24,8 @@ export const Rarity = {
   name: r => ({ C: 'Common', U: 'Uncommon', R: 'Rare', SR: 'Super Rare', SSR: 'SSR', LGD: 'Legendary', MYT: 'Mythical', ITEM: 'Spell/Trap' }[r] || 'Supply'),
   isChase: r => r === 'SSR' || r === 'LGD' || r === 'MYT',
   baseValue: r => ({ C: 30, U: 75, R: 180, SR: 450, SSR: 3000, LGD: 4500, MYT: 9000 }[r] ?? 100),
-  copyLimit: c => (c.rarity === 'LGD' || c.rarity === 'MYT') ? 1 : (c.rarity === 'SR' || c.rarity === 'SSR') ? 2 : 3,
+  copyLimit: c => (c.rarity === 'LGD' || c.rarity === 'MYT') ? 1 : 2,   // max 2 of any card in a deck; Legendary/Mythical 1
+  keepCopies: 3,   // a card is a dupe (sellable) only beyond 3 owned copies: 2 for a deck + 1 to trade
 };
 
 // ---------- RNG: SplitMix64, bit-identical to the Swift version ----------
@@ -107,12 +108,13 @@ export const STATUS = { none: ['', ''], psn: ['PSN', 'Poisoned'], brn: ['BRN', '
 let monUid = 0;
 export const newMon = (c) => ({ uid: ++monUid, card: c, hp: c.hp, atk: 0, def: 0, status: 'none', statusTurns: 0, ready: false, attacked: false });
 export const canAttack = m => m.ready && !m.attacked && m.status !== 'par' && m.status !== 'slp';
-const newSide = (name, deck) => ({ name, deck, hand: [], discard: [], mons: Array(6).fill(null), traps: Array(6).fill(null), life: Battle.startLife, monsPlayed: 0, stPlayed: 0, stalled: false, koCount: 0 });
+const newSide = (name, deck) => ({ name, deck, hand: [], discard: [], mons: Array(6).fill(null), traps: Array(6).fill(null), life: Battle.startLife, monsPlayed: 0, stPlayed: 0, stalled: false, koCount: 0, freshTraps: [] });
 export const monCount = s => s.mons.filter(Boolean).length;
 const hasAnyMonLeft = s => monCount(s) > 0 || s.hand.some(isMon) || s.deck.some(isMon);
 const clamp4 = v => Math.max(-4, Math.min(4, v));
 
 // actions: {t:'playMon',hand,slot} {t:'spell',hand,target} {t:'setTrap',hand,slot} {t:'attack',from,to} {t:'end'}
+//          {t:'undo',kind:'mon'|'trap',slot}  take back a doremon/trap played this turn (nothing resolved from it yet)
 export class Battle {
   static startLife = 5; static handStart = 5; static handMax = 10; static turnCap = 80;
   constructor(deckA, nameA, deckB, nameB, seed, first = 0) {
@@ -171,6 +173,7 @@ export class Battle {
     const s = this.sides[this.current];
     switch (a.t) {
       case 'end': return true;
+      case 'undo': return this.canUndo(this.current, a.kind, a.slot);
       case 'playMon': return a.hand >= 0 && a.hand < s.hand.length && isMon(s.hand[a.hand]) && s.monsPlayed < 1 && a.slot >= 0 && a.slot < 6 && !s.mons[a.slot];
       case 'setTrap': return a.hand >= 0 && a.hand < s.hand.length && isTrap(s.hand[a.hand]) && s.stPlayed < 2 && a.slot >= 0 && a.slot < 6 && !s.traps[a.slot];
       case 'spell': return a.hand >= 0 && a.hand < s.hand.length && isSpell(s.hand[a.hand]) && s.stPlayed < 2 && this.spellValid(s.hand[a.hand], this.current, a.target);
@@ -188,16 +191,32 @@ export class Battle {
     const me = this.current, S = this.sides[me];
     switch (a.t) {
       case 'end': this.endTurn(); break;
-      case 'playMon': { const c = S.hand.splice(a.hand, 1)[0]; S.mons[a.slot] = newMon(c); S.monsPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`); break; }
-      case 'setTrap': { const c = S.hand.splice(a.hand, 1)[0]; S.traps[a.slot] = c; S.stPlayed++; this.log(`${S.name} sets a trap face-down.`); break; }
+      case 'undo': {
+        const c = a.kind === 'mon' ? S.mons[a.slot].card : S.traps[a.slot];
+        if (a.kind === 'mon') { S.mons[a.slot] = null; S.monsPlayed--; } else { S.traps[a.slot] = null; S.stPlayed--; S.freshTraps = S.freshTraps.filter(x => x !== a.slot); }
+        S.hand.push(c); this.events.push({ e: 'undo', side: me, card: c, kind: a.kind, slot: a.slot });
+        this.log(a.kind === 'mon' ? `${S.name} takes back ${c.name}.` : `${S.name} picks a set trap back up.`); break;
+      }
+      case 'playMon': { const c = S.hand.splice(a.hand, 1)[0]; S.mons[a.slot] = newMon(c); S.mons[a.slot].fresh = true; S.monsPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`); break; }
+      case 'setTrap': { const c = S.hand.splice(a.hand, 1)[0]; S.traps[a.slot] = c; S.freshTraps.push(a.slot); S.stPlayed++; this.events.push({ e: 'set', side: me, slot: a.slot }); this.log(`${S.name} sets a trap face-down.`); break; }
       case 'spell': { const c = S.hand.splice(a.hand, 1)[0]; S.stPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.castSpell(c, me, a.target); S.discard.push(c); break; }
       case 'attack': this.attack(a.from, a.to); break;
     }
     this.checkBoardLoss();
     return true;
   }
+  /** take-back rule: only on your own turn, only something placed THIS turn, and only while nothing has resolved from or onto it */
+  canUndo(s, kind, slot) {
+    if (this.over || s !== this.current || slot == null || slot < 0 || slot >= 6) return false;
+    const S = this.sides[s];
+    if (kind === 'mon') { const m = S.mons[slot]; return !!m && m.fresh === true && !m.attacked && m.hp === m.card.hp && m.atk === 0 && m.def === 0 && m.status === 'none' && S.hand.length < Battle.handMax; }
+    if (kind === 'trap') return !!S.traps[slot] && S.freshTraps.includes(slot) && S.hand.length < Battle.handMax;
+    return false;
+  }
   castSpell(c, s, t) {
     const S = this.sides[s], who = S.name;
+    if (t != null && S.mons[t]) S.mons[t].fresh = false;                                 // a spell resolved onto it: locked in
+    if (eff(c, 'healAll') > 0 || eff(c, 'atkAll') !== 0 || eff(c, 'defAll') !== 0) for (const m of S.mons) if (m) m.fresh = false;
     if (eff(c, 'heal') > 0 && t != null && S.mons[t]) { const m = S.mons[t]; const amt = Math.min(eff(c, 'heal'), m.card.hp - m.hp); m.hp += amt; this.events.push({ e: 'heal', side: s, slot: t, amount: amt }); this.log(`${who} uses ${c.name}: ${m.card.name} heals ${amt}.`); }
     if (eff(c, 'healAll') > 0) {
       for (let i = 0; i < 6; i++) { const m = S.mons[i]; if (m && m.hp < m.card.hp) { const amt = Math.min(eff(c, 'healAll'), m.card.hp - m.hp); m.hp += amt; this.events.push({ e: 'heal', side: s, slot: i, amount: amt }); } }
@@ -274,7 +293,8 @@ export class Battle {
     this.turnNumber++;
     if (this.turnNumber > Battle.turnCap) { const a = this.sides[0].life, b = this.sides[1].life; this.finish(a === b ? null : a > b ? 0 : 1); return; }
     this.current = 1 - me; const n = this.current, N = this.sides[n];
-    N.monsPlayed = 0; N.stPlayed = 0; N.stalled = false;
+    N.monsPlayed = 0; N.stPlayed = 0; N.stalled = false; S.freshTraps = []; N.freshTraps = [];
+    for (const m of S.mons) if (m) m.fresh = false;
     for (let i = 0; i < 6; i++) {
       const m = N.mons[i]; if (!m) continue;
       m.ready = true; m.attacked = false;
@@ -350,6 +370,8 @@ export const BattleAI = {
     }
     return { t: 'end' };
   },
+  /** coin-flip winner's choice. Playtests show the first player wins ~60% of decided games, so the sensible pick is to go first. */
+  chooseFirst() { return true; },
   simulate(b, maxActions = 4000) {
     let n = 0;
     while (!b.over && n < maxActions) { const a = BattleAI.next(b); if (!b.apply(a)) b.apply({ t: 'end' }); n++; }
@@ -415,11 +437,12 @@ export const tier = mr => mr < 1050 ? 'Bronze' : mr < 1150 ? 'Silver' : mr < 125
 export const elo = (a, b, aWon) => swiftRound(32 * ((aWon ? 1 : 0) - 1 / (1 + Math.pow(10, (b - a) / 400))));
 
 const freshStats = () => ({ pulls: {}, bestPull: null, packsBought: {}, battles: { ranked: { w: 0, l: 0, d: 0 }, friendly: { w: 0, l: 0, d: 0 } }, earned: {}, spent: {}, auctionsWon: 0, auctionsSold: 0, listings: 0, bids: 0, cardsBought: 0, cardsPulled: 0 });
-const freshSave = () => ({ version: 2, money: 1500, owned: {}, packs: { WW: 2, FL: 1 }, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
+const freshSave = () => ({ version: 2, oppHistory: [], nextOpp: null, money: 1500, owned: {}, packs: { WW: 2, FL: 1 }, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
   mr: 1000, bestMr: 1000, wins: 0, losses: 0, streak: 0, bestStreak: 0, leagueWins: 0, cardsSold: 0, singlesBought: 0, trades: 0, achievements: [], ai: [], offers: [], market: {}, day: 0, recent: [], seed: '0', pulledRarities: [],
   stats: freshStats(), bank: { initial: 0, faucet: 0, sink: 0 }, auctions: [], auctionLog: [], nextId: 1, lastDay: [] });
 export const ME = -1;   // "who" id for the player in the ledger / auctions; AIs are 0..7
 
+export const DAY_MS = 10 * 60 * 1000, MAX_CATCHUP = 7 * 24 * 6;   // a league day every 10 real minutes; at most 1 week caught up
 export class Game {
   /** storage: {load():string|null, save(string)} or null */
   constructor(storage = null, seed = null) {
@@ -538,13 +561,13 @@ export class Game {
   inDecks(id) { return Math.max(0, ...this.s.decks.map(d => d.filter(x => x === id).length)); }
   sell(id) {
     const n = this.s.owned[id] || 0; const c = card(id); if (!c) return false;
-    if (!(n > Math.max(isMon(c) ? 1 : 0, this.inDecks(id)))) return false;
+    if (!(n > Math.max(Rarity.keepCopies, this.inDecks(id)))) return false;
     this.s.owned[id] = n - 1; this.earn(ME, this.sellPrice(id), 'shop sales'); this.s.cardsSold++;
     if (isMon(c)) this.supply(id, 0.985);
     this.checkAchievements(); this.save(); return true;
   }
-  sellableCount(id) { const c = card(id); if (!c) return 0; return Math.max(0, (this.s.owned[id] || 0) - Math.max(isMon(c) ? 1 : 0, this.inDecks(id))); }
-  sellAllDupes() { let n = 0, total = 0; for (const id of Object.keys(this.s.owned).sort()) { if (!isMon(card(id) || {})) continue; while (this.sellableCount(id) > 0) { const p = this.sellPrice(id); if (this.sell(id)) { n++; total += p; } else break; } } return [n, total]; }
+  sellableCount(id) { const c = card(id); if (!c) return 0; return Math.max(0, (this.s.owned[id] || 0) - Math.max(Rarity.keepCopies, this.inDecks(id))); }
+  sellAllDupes() { let n = 0, total = 0; for (const id of Object.keys(this.s.owned).sort()) { if (!card(id)) continue; while (this.sellableCount(id) > 0) { const p = this.sellPrice(id); if (this.sell(id)) { n++; total += p; } else break; } } return [n, total]; }
   // decks
   get activeDeckCards() { return this.s.decks[this.s.activeDeck].map(card).filter(Boolean); }
   ownsDeck(d) { const c = {}; for (const id of d) inc(c, id); return Object.entries(c).every(([k, v]) => (this.s.owned[k] || 0) >= v); }
@@ -552,10 +575,19 @@ export class Game {
   // league
   aiDeck(k) { if (DeckRules.problems(this.s.ai[k].deck).length || !this.aiOwnsDeck(k)) this.s.ai[k].deck = DeckRules.autoBuild(this.s.ai[k].owned, this.rng); return this.s.ai[k].deck.map(card); }
   aiOwnsDeck(k) { const c = {}, o = this.s.ai[k].owned; for (const id of this.s.ai[k].deck) inc(c, id); return Object.entries(c).every(([id, v]) => (o[id] || 0) >= v); }
+  /** Ranked matchmaking: a random AI, weighted toward similar MR, never the previous opponent, recent ones (last 3) much less likely.
+   *  The pick is stored so the League screen shows the same opponent until that match is played. */
+  matchWeights() {
+    const s = this.s, hist = s.oppHistory || [], last = hist[0];
+    return s.ai.map((p, i) => { if (i === last) return 0; let w = Math.exp(-Math.abs(p.mr - s.mr) / 150); const r = hist.indexOf(i); if (r > 0 && r < 3) w *= 0.25; return w; });
+  }
   nextLeagueOpponent() {
-    const last = this.s.recent[0]?.b;
-    const c = this.s.ai.map((_, i) => i).sort((a, b) => Math.abs(this.s.ai[a].mr - this.s.mr) - Math.abs(this.s.ai[b].mr - this.s.mr));
-    return c.find(i => this.s.ai[i].name !== last) ?? c[0];
+    const s = this.s;
+    if (s.nextOpp != null && s.nextOpp >= 0 && s.nextOpp < s.ai.length && s.nextOpp !== (s.oppHistory || [])[0]) return s.nextOpp;
+    const w = this.matchWeights(), tot = w.reduce((a, b) => a + b, 0); let r = this.rng.unit() * tot, k = 0;
+    for (; k < w.length - 1; k++) { r -= w[k]; if (r < 0) break; }
+    while (w[k] === 0) k = (k + 1) % w.length;
+    s.nextOpp = k; return k;
   }
   /** won: true/false/null(draw). The AI opponent is paid exactly what the player would be paid in its place. */
   recordResult(won, league, k) {
@@ -566,12 +598,12 @@ export class Game {
         d = elo(s.mr, s.ai[k].mr, won); s.mr = Math.max(0, s.mr + d); s.bestMr = Math.max(s.bestMr, s.mr); s.ai[k].mr -= d;
         if (won) { s.ai[k].losses++; s.leagueWins++; this.earn(k, 60, 'league'); } else { s.ai[k].wins++; this.earn(k, 300, 'league'); }
         bucks = won ? 300 + Math.max(0, s.streak - 1) * 25 : 60;
+        s.oppHistory = [k].concat((s.oppHistory || []).filter(x => x !== k)).slice(0, 4); s.nextOpp = null;
         s.recent.unshift({ id: uuid(), a: 'You', b: s.ai[k].name, winner: won ? 'You' : s.ai[k].name, mrChange: d });
       } else bucks = won ? 150 : 30;
     } else { bucks = 40; st.d++; }
     this.earn(ME, bucks, league ? 'ranked battles' : 'friendly battles');
-    this.worldStep(league ? k : null);
-    this.checkAchievements(); this.save();
+    this.checkAchievements(); this.save();     // league days now run on the real-time clock (see tickClock)
     return [bucks, d];
   }
   /** one league day: AI matches (stored so they can be replayed in Spectate), AI shopping, auctions, trades, market */
@@ -582,7 +614,8 @@ export class Game {
     s.lastDay = [];
     while (pool.length >= 2) {
       const a = pool.pop(), b = pool.pop();
-      const da = this.aiDeck(a), db = this.aiDeck(b), seed = this.rng.next(), first = this.rng.int(2);
+      // coin flip: the winner of the toss chooses, and (like the AI vs you) chooses to go first
+      const da = this.aiDeck(a), db = this.aiDeck(b), seed = this.rng.next(), toss = this.rng.int(2), first = BattleAI.chooseFirst() ? toss : 1 - toss;
       const bt = new Battle(da, s.ai[a].name, db, s.ai[b].name, seed, first);
       const w = BattleAI.simulate(bt);
       s.lastDay.push({ a, b, deckA: da.map(c => c.id), deckB: db.map(c => c.id), seed: seed.toString(), first, winner: w, day: s.day + 1 });
@@ -608,6 +641,22 @@ export class Game {
     this.marketTick();
     this.settleAuctions();
   }
+  /** real-time league days: one every DAY_MS of wall-clock time, caught up (capped) when the app reopens.
+   *  Returns how many days are due; call advanceDays to process them (in chunks if you like). */
+  daysDue(now = Date.now()) {
+    const s = this.s; if (!s.clock) { s.clock = now; return 0; }
+    if (now < s.clock) { s.clock = now; return 0; }      // clock went backwards: re-anchor, never lose days
+    return Math.floor((now - s.clock) / DAY_MS);
+  }
+  /** processes up to n due days; days beyond MAX_CATCHUP are dropped (the clock still moves on) */
+  advanceDays(n, now = Date.now()) {
+    const s = this.s; const due = this.daysDue(now); n = Math.min(n, due); if (n <= 0) return 0;
+    if (due > MAX_CATCHUP) { s.clock += (due - MAX_CATCHUP) * DAY_MS; n = Math.min(n, MAX_CATCHUP); }
+    for (let i = 0; i < n; i++) this.worldStep(null);
+    s.clock += n * DAY_MS; this.checkAchievements(); this.save();
+    return n;
+  }
+  msToNextDay(now = Date.now()) { const c = this.s.clock || now; return Math.max(0, DAY_MS - ((now - c) % DAY_MS)); }
   /** advance a league day without the player battling (auctions tick, AIs play each other) */
   skipDay() { this.worldStep(null); this.checkAchievements(); this.save(); }
   availableOwned(k) { return this.s.ai[k].owned; }
@@ -680,7 +729,7 @@ export class Game {
   aiSpare(k, id) {
     const P = this.s.ai[k], c = card(id); if (!c) return 0;
     const inDeck = P.deck.filter(x => x === id).length;
-    return Math.max(0, (P.owned[id] || 0) - Math.max(inDeck, Rarity.copyLimit(c), isMon(c) ? 1 : 0));
+    return Math.max(0, (P.owned[id] || 0) - Math.max(inDeck, Rarity.keepCopies));
   }
   /** what card `id` is worth to AI k (it never bids above this). Based on market value and need, with a small per-AI taste. */
   aiValuation(k, id) {
