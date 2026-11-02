@@ -327,7 +327,7 @@ export class Battle {
       const d = O.mons[slot]; if (!d) return false;
       const [dmg, ef] = Battle.damage(a, d);
       const note = ef === 0 ? ' It has no effect...' : ef > 1 ? " It's super effective!" : ef < 1 ? " It's not very effective." : '';
-      this.log(`${a.card.name} uses ${a.card.move}${tag} on ${d.card.name} for ${dmg}.${note}`);
+      this.log(`${a.card.name} uses ${a.card.move} (${a.card.moveType})${tag} on ${d.card.name} (${d.card.types.join('/')}) for ${dmg}.${note}`);
       this.hurt(o, slot, dmg, ef, null);
       // move side effect (Nov 2 balance): e.g. Sludge Bomb may poison. One roll per hit that lands on a survivor with no status.
       const t2 = O.mons[slot];
