@@ -116,6 +116,11 @@ export const Packs = {
 export const STATUS = { none: ['', ''], psn: ['PSN', 'Poisoned'], brn: ['BRN', 'Burned'], par: ['PAR', 'Paralyzed'], slp: ['SLP', 'Asleep'], cnf: ['CNF', 'Confused'] };
 let monUid = 0;
 export const newMon = (c) => ({ uid: ++monUid, card: c, hp: c.hp, atk: 0, def: 0, status: 'none', statusTurns: 0, ready: false, attacked: false, protected: false });
+/** what tapping your own doremon in slot i selects in the UI (web app.js calls exactly this): attacker beats take-back */
+export const tapOwnMonSel = (b, s, i, sel) => { const m = b.sides[s].mons[i]; if (!m) return null;
+  if (b.canPickAttacker(s, i)) return (sel?.kind === 'mon' || sel?.kind === 'mon2') && sel.i === i ? null : { kind: 'mon', i };
+  if (b.canUndo(s, 'mon', i)) return sel?.kind === 'fresh' && sel.i === i ? null : { kind: 'fresh', i };
+  return null; };
 export const isDouble = c => c && c.split === 'double', isSpread = c => c && c.split === 'spread';
 /** an enemy doremon an attack may target (Mirror Veil = protected until its owner's next turn) */
 export const targetable = m => !!m && !m.protected;
@@ -233,7 +238,7 @@ export class Battle {
         this.log(a.kind === 'mon' ? `${S.name} takes back ${c.name}.` : `${S.name} picks a set trap back up.`); break;
       }
       case 'playMon': { const c = S.hand.splice(a.hand, 1)[0]; S.mons[a.slot] = newMon(c); S.mons[a.slot].fresh = true; S.monsPlayed++;
-        if (S.quickStart) { S.quickStart = false; S.mons[a.slot].ready = true; S.mons[a.slot].quick = true; S.mons[a.slot].quickTurn = this.turnNumber; this.log(`${c.name} gets a quick start and can attack right away!`); } this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`); break; }
+        if (S.quickStart) { S.quickStart = false; S.mons[a.slot].ready = true; S.mons[a.slot].quick = true; this.log(`${c.name} gets a quick start and can attack right away!`); } this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`); break; }
       case 'setTrap': { const c = S.hand.splice(a.hand, 1)[0]; S.traps[a.slot] = c; S.freshTraps.push(a.slot); S.stPlayed++; this.events.push({ e: 'set', side: me, slot: a.slot }); this.log(`${S.name} sets a trap face-down.`); break; }
       case 'spell': { const c = S.hand.splice(a.hand, 1)[0]; S.stPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.castSpell(c, me, a.target); S.discard.push(c); break; }
       case 'attack': this.attack(a.from, a.to, a.to2); break;
@@ -242,6 +247,8 @@ export class Battle {
     return true;
   }
   /** take-back rule: only on your own turn, only something placed THIS turn, and only while nothing has resolved from or onto it */
+  /** the UI's "can I pick this doremon as an attacker?" decision (shared by web + Mac so it can't drift from the rules) */
+  canPickAttacker(s, i) { const S = this.sides[s], m = S.mons[i]; return !this.over && this.current === s && !!m && canAttack(m) && !S.stalled; }
   canUndo(s, kind, slot) {
     if (this.over || s !== this.current || slot == null || slot < 0 || slot >= 6) return false;
     const S = this.sides[s];
@@ -303,11 +310,7 @@ export class Battle {
     a.attacked = true;
     this.events.push({ e: 'attack', side: me, from: f, to: t, to2: t2 });
     const O = this.sides[o];
-    // Nov 2 fix: a quick-start doremon's attacks on the turn it was played can't be stopped by face-down traps
-    // (the first player's turn-1 Guard Wall / Static Web / Doze Spores used to cancel the going-second compensation)
-    const shielded = a.quick && a.quickTurn === this.turnNumber;
-    if (shielded && O.traps.some(Boolean)) this.log(`${a.card.name} has a quick start - traps can't stop it this turn.`);
-    const ti = shielded ? -1 : O.traps.findIndex(Boolean);
+    const ti = O.traps.findIndex(Boolean);
     if (ti >= 0) {
       const trap = O.traps[ti]; O.traps[ti] = null; O.discard.push(trap);
       this.events.push({ e: 'trap', side: o, card: trap }); this.log(`TRAP! ${O.name} reveals ${trap.name}!`);

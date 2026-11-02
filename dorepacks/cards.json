@@ -170,12 +170,11 @@
     "Rock"
    ],
    "hp": 240,
-   "move": "Shard Burst",
+   "move": "Boulder Toss",
    "moveType": "Rock",
-   "dmg": 50,
+   "dmg": 80,
    "legendary": false,
-   "mythical": false,
-   "split": "double"
+   "mythical": false
   },
   {
    "id": "ww_munchwag",
@@ -467,12 +466,11 @@
     "Rock"
    ],
    "hp": 260,
-   "move": "Rock Avalanche",
+   "move": "Granite Crush",
    "moveType": "Rock",
-   "dmg": 60,
+   "dmg": 100,
    "legendary": false,
-   "mythical": false,
-   "split": "spread"
+   "mythical": false
   },
   {
    "id": "ww_sliggy",

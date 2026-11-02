@@ -1,6 +1,6 @@
 import * as E from './engine.js';
 import { Audio, TITLES } from './audio.js';
-const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount } = E;
+const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel } = E;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('en-US');
@@ -319,7 +319,7 @@ const RULES = [
   ['Goal', 'Each player starts with 5 life ❤️. Every time one of your doremon is knocked out you lose 1 life. Get your opponent to 0 life to win.'],
   ['Setup', 'Decks are exactly 20 cards with at least 8 doremon (max 10 spells/traps). Copies: at most 2 of any card, and only 1 of a Legendary or Mythical. Shuffle and draw 5 (your opening hand always has a doremon).'],
   ['Coin toss', 'Before every match you call heads or tails. Call it right and you choose to go first or second; call it wrong and your opponent chooses (the AI always goes first). AI vs AI league matches use a coin toss too.'],
-  ['Going second', 'To make up for not moving first, the first doremon the second player puts down gets a QUICK START: it can attack on the turn it is played, and face-down traps can't stop those attacks that turn. In 20,000 simulated games this brings going first to about 50%.'],
+  ['Going second', 'To make up for not moving first, the first doremon the second player puts down gets a QUICK START: it can attack on the turn it is played. In 20,000 simulated games this brings going first to about 50%.'],
   ['Mulligan', 'After the coin toss you see your opening hand and may mulligan once for free: the whole hand goes back, the deck is shuffled and you draw the same number of cards again (still guaranteed a doremon). The AI mulligans hands with fewer than 2 doremon or no spells/traps.'],
   ['Move effects', 'Some moves have a side effect printed on the card, e.g. "30% chance to poison". It rolls when the move hits and the target survives without a status already.'],
   ['Your turn', 'Draw 1 card. Then in any order: play up to 1 doremon card into an empty DOREMON slot (6 slots), play up to 2 spell/trap cards, and attack. Hand limit is 10. Drawing from an empty deck costs 1 life.'],
@@ -435,7 +435,7 @@ function beginBattle(v, first) {
 function mulliganHTML() {
   const b = UI.battle.b, h = b.sides[0].hand, mons = h.filter(isMon).length;
   return `<div class="pix" style="color:var(--yellow);margin-bottom:8px">YOUR OPENING HAND</div><div class="title" style="font-size:24px;margin-bottom:6px">Keep or mulligan?</div>
-   <div class="small" style="margin-bottom:10px;text-align:center">${mons} doremon · ${h.length - mons} spell/trap · you go ${b.current === 0 ? 'FIRST' : 'SECOND (your first doremon gets a quick start: it can attack right away and traps can\'t stop it that turn)'}</div>
+   <div class="small" style="margin-bottom:10px;text-align:center">${mons} doremon · ${h.length - mons} spell/trap · you go ${b.current === 0 ? 'FIRST' : 'SECOND (your first doremon gets a quick start)'}</div>
    <div class="mhand">${h.map(c => `<div class="mc" data-card="${c.id}">${cardImg(c.id)}</div>`).join('')}</div>
    <div class="small" style="margin:10px 0;text-align:center">A free mulligan shuffles this hand back and draws ${h.length} new cards (still at least one doremon). Once per game.</div>
    <div class="row" style="width:100%;max-width:360px"><button class="btn y grow" data-a="keepHand">Keep hand</button><button class="btn p grow" data-a="mulligan">Mulligan</button></div>`;
@@ -448,7 +448,7 @@ function slotHTML(side, i) {
     cls += ' mon';
     if (me && (sel?.kind === 'mon' || sel?.kind === 'mon2' || sel?.kind === 'fresh') && sel.i === i) cls += ' sel';
     if (my && me && sel?.kind === 'hand') { const c = S.hand[sel.i]; if (isSpell(c) && b.isLegal({ t: 'spell', hand: sel.i, target: i })) cls += ' can'; }
-    if (my && me && !sel && canAttack(m) && !S.stalled) cls += ' can';
+    if (my && me && !sel && b.canPickAttacker(0, i)) cls += ' can';
     if (my && !me && (sel?.kind === 'mon' || sel?.kind === 'mon2')) { const a = b.sides[0].mons[sel.i];
       const first = sel.kind === 'mon2' && sel.t === i, ok = sel.kind === 'mon' ? b.isLegal({ t: 'attack', from: sel.i, to: i }) : first || b.isLegal({ t: 'attack', from: sel.i, to: sel.t, to2: i });
       if (a && ok) { const [dmg, ef] = Battle.damage(a, m); cls += first ? ' tgt t1' : ' tgt'; extra = `<span class="tg" style="color:${ef > 1 ? '#7dfc9f' : ef < 1 ? '#ffb3b3' : '#fff'};background:#000a;border-radius:4px;padding:0 3px">${first ? '① ' : sel.kind === 'mon2' ? '② ' : ''}-${dmg}${isDouble(a.card) ? '×2' : ''}${ef > 1 ? ' ▲' : ef < 1 ? ' ▼' : ''}</span>`; } }
@@ -484,7 +484,7 @@ function battleView() {
   else hint = `Turn ${b.turnNumber} · doremon ${me.monsPlayed}/1 · spell/trap ${me.stPlayed}/2${me.stalled ? ' · STALLED' : ''}`;
   const selC = B.sel?.kind === 'hand' ? me.hand[B.sel.i] : null;
   const castBtn = my && selC && isSpell(selC) && !b.spellNeedsTarget(selC) ? `<button class="btn y sm" data-a="cast">Cast ${esc(selC.name)}</button>` : '';
-  const backBtn = my && (B.sel?.kind === 'fresh' || B.sel?.kind === 'ftrap') ? `<button class="btn p sm" data-a="takeBack">↩ Take back</button>` : '';
+  const backBtn = my && (B.sel?.kind === 'fresh' || B.sel?.kind === 'ftrap' || (B.sel?.kind === 'mon' && b.canUndo(0, 'mon', B.sel.i))) ? `<button class="btn p sm" data-a="takeBack">↩ Take back</button>` : '';
   const selId = B.sel ? (B.sel.kind === 'hand' ? me.hand[B.sel.i]?.id : B.sel.kind === 'ftrap' ? me.traps[B.sel.i]?.id : me.mons[B.sel.i]?.card.id) : null;
   const infoBtn = selId ? `<button class="btn k sm" data-a="inspectB" data-v="${B.sel.kind === 'hand' || B.sel.kind === 'ftrap' ? 'c:' + selId : 'm:0:' + B.sel.i}" aria-label="Card details">ⓘ</button>` : '';
   const oneBtn = my && B.sel?.kind === 'mon2' ? `<button class="btn r sm" data-a="hitOne">Hit one only</button>` : '';
@@ -576,8 +576,10 @@ function tapSlot(side, i) {
       if (isMon(c) && act({ t: 'playMon', hand: sel.i, slot: i })) return;
       if (isSpell(c) && act({ t: 'spell', hand: sel.i, target: i })) return; }
     const m = me.mons[i];
-    if (m && b.canUndo(0, 'mon', i)) { B.sel = sel?.kind === 'fresh' && sel.i === i ? null : { kind: 'fresh', i }; render(); return; }
-    B.sel = m && canAttack(m) && !me.stalled && !((sel?.kind === 'mon' || sel?.kind === 'mon2') && sel.i === i) ? { kind: 'mon', i } : null; render(); return;
+    // a doremon that can attack is picked as the attacker FIRST - even if it was just played (quick start) and could
+    // still be taken back (Take back stays available for it). Before this fix a just-played quick-start doremon could only
+    // be selected for take-back, so going second you never got an attack option on your first turn.
+    B.sel = tapOwnMonSel(b, 0, i, sel); render(); return;
   }
   if (sel?.kind === 'mon2' && b.sides[1].mons[i]) { if (i === sel.t) act({ t: 'attack', from: sel.i, to: i }); else if (!act({ t: 'attack', from: sel.i, to: sel.t, to2: i })) inspectMon(1, i); return; }
   if (sel?.kind === 'mon' && b.sides[1].mons[i]) {
@@ -603,7 +605,7 @@ const A = {
     else if (o.kind === 'inspect' && ev.target === ev.currentTarget) { UI.overlay = null; renderOverlay(); } },
   coinCall: v => coinCall(v),
   coinGo: v => { const o = UI.overlay; beginBattle(o.v, +v); },
-  takeBack: () => { const B = UI.battle, s = B.sel; if (!s) return; if (act({ t: 'undo', kind: s.kind === 'fresh' ? 'mon' : 'trap', slot: s.i })) sfx('undo'); },
+  takeBack: () => { const B = UI.battle, s = B.sel; if (!s) return; if (act({ t: 'undo', kind: s.kind === 'ftrap' ? 'trap' : 'mon', slot: s.i })) sfx('undo'); },
   audio: v => { const c = AU.cfg; sfx('click'); if (v === 'next') { AU.next(); return; } if (v === 'mute') c.mute = !c.mute; AU.saveCfg(); render(); },
   skipPack: () => { UI.overlay.phase = 2; renderOverlay(); },
   closeOv: () => { UI.overlay = null; render(); },
