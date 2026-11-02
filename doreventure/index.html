@@ -92,12 +92,14 @@ function layout(){
  var aw=innerWidth-pl-pr,ah=innerHeight-pt-pb,portrait=ah>=aw,bz=7,sw,sh,bx,by,d,ab,dx,dy,ax,ay,gx,gy,brandSize;
  box(pad,pl,pt,aw,ah);
  if(portrait){ // DoreStation, upright: big screen up top, controls below
-  var m=5;bz=5;sw=aw-2*m-2*bz;sh=Math.round(sw*H/W);bx=m;by=m+4; // 16:9 game is width-bound: edge-to-edge screen, thinnest bezel
+  var m=5;bz=5;sw=aw-2*m-2*bz;bx=m;by=m+4; // edge-to-edge screen, thinnest bezel
   brandSize=Math.max(13,Math.min(19,aw*0.045));
-  var bottomRow=50,top=by+sh+2*bz+16,ch=ah-top-bottomRow;
-  d=Math.min(aw*0.4,ch*0.8,184);ab=Math.min(aw*0.185,ch*0.4,82);
+  var bottomRow=50;
+  d=Math.min(aw*0.4,184);ab=Math.min(aw*0.185,82);
   var mid=ah-bottomRow-18-d/2;dx=Math.max(18,aw*0.06);dy=mid-d/2; // controls sit low, just above MENU/START
   var gap=ab*0.42;ax=aw-dx-ab;ay=mid-ab*0.95;
+  // the screen fills everything above the controls: the game shows more map vertically on a tall screen (never stretched)
+  sh=Math.max(Math.round(sw*H/W),Math.floor(Math.min(dy,ay)-26-by-2*bz));
   box($('bA'),ax,ay,ab,ab);box($('bB'),ax-ab-gap,mid-ab*0.05,ab,ab);
   box(dp,dx,dy,d,d);
   var by2=ah-bottomRow+8;box($('bM'),dx,by2,78,28);box($('bS'),aw-dx-78,by2,78,28);
@@ -140,7 +142,7 @@ dp.addEventListener('pointerdown',function(e){e.preventDefault();dp.setPointerCa
 dp.addEventListener('pointermove',function(e){if(cur>=0||e.buttons)setDir(dirAt(e))});
 ['pointerup','pointercancel','lostpointercapture'].forEach(function(t){dp.addEventListener(t,function(){setDir(-1)})});
 [['bA','A'],['bB','B'],['bM','M'],['bS','S']].forEach(function(b){var el=$(b[0]);
- el.addEventListener('pointerdown',function(e){e.preventDefault();el.classList.add('on');send('VPad',b[1]);if(navigator.vibrate)navigator.vibrate(8)});
+ el.addEventListener('pointerdown',function(e){e.preventDefault();var L=document.getElementById('load');if(L&&L.style.display!='none'&&document.getElementById('tap').style.display=='block'){L.dispatchEvent(new Event('pointerup'));return}el.classList.add('on');send('VPad',b[1]);if(navigator.vibrate)navigator.vibrate(8)});
  ['pointerup','pointercancel','pointerleave'].forEach(function(t){el.addEventListener(t,function(){el.classList.remove('on')})})});
 document.addEventListener('visibilitychange',function(){if(document.hidden){setDir(-1);send('VPadRelease');send('WebFlush')}});
 addEventListener('pagehide',function(){send('WebFlush')});
@@ -213,7 +215,7 @@ fetch('Build/parts.json',{cache:'no-cache'}).then(function(r){return r.json()}).
   return Promise.all(Object.keys(bufs).map(function(k){var st=new Blob(bufs[k]).stream().pipeThrough(new DecompressionStream('gzip'));
    return new Response(st).blob().then(function(b){var ty=k.endsWith('.wasm')?'application/wasm':k.endsWith('.js')?'text/javascript':'application/octet-stream';return [k,URL.createObjectURL(new Blob([b],{type:ty}))]})}))});
 }).then(function(urls){var U={};urls.forEach(function(x){U[x[0]]=x[1]});
- var s=document.createElement('script');s.src='Build/out.loader.js';
+ var s=document.createElement('script');s.src='Build/out.loader.js?v11021610';
  s.onload=function(){createUnityInstance(document.getElementById('unity-canvas'),{
   dataUrl:U['out.data'],frameworkUrl:U['out.framework.js'],codeUrl:U['out.wasm'],
   streamingAssetsUrl:'StreamingAssets',companyName:'DefaultCompany',productName:'Doreventure',productVersion:'1.0',
