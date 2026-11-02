@@ -12,12 +12,14 @@
     "Electric",
     "Dark"
    ],
-   "hp": 200,
-   "move": "Volt Knuckle",
+   "hp": 260,
+   "move": "Spark Web",
    "moveType": "Electric",
    "dmg": 80,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "par",
+   "fxChance": 30
   },
   {
    "id": "ww_giggleti",
@@ -31,10 +33,10 @@
     "Ice",
     "Normal"
    ],
-   "hp": 240,
+   "hp": 230,
    "move": "Boom Blast",
    "moveType": "Normal",
-   "dmg": 120,
+   "dmg": 100,
    "legendary": false,
    "mythical": false
   },
@@ -50,10 +52,10 @@
     "Grass",
     "Bug"
    ],
-   "hp": 190,
+   "hp": 260,
    "move": "Vine Lash",
    "moveType": "Grass",
-   "dmg": 80,
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -69,12 +71,14 @@
     "Fairy",
     "Poison"
    ],
-   "hp": 160,
+   "hp": 260,
    "move": "Toxic Fang",
    "moveType": "Poison",
    "dmg": 80,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "psn",
+   "fxChance": 30
   },
   {
    "id": "ww_hootuft",
@@ -88,10 +92,10 @@
     "Normal",
     "Flying"
    ],
-   "hp": 150,
+   "hp": 260,
    "move": "Gale Talon",
    "moveType": "Flying",
-   "dmg": 80,
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -107,12 +111,14 @@
     "Fire",
     "Electric"
    ],
-   "hp": 140,
+   "hp": 240,
    "move": "Blaze Bite",
    "moveType": "Fire",
    "dmg": 80,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "brn",
+   "fxChance": 30
   },
   {
    "id": "ww_teddimple",
@@ -125,12 +131,14 @@
    "types": [
     "Bug"
    ],
-   "hp": 140,
+   "hp": 260,
    "move": "Stinger Flurry",
    "moveType": "Bug",
    "dmg": 80,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "psn",
+   "fxChance": 30
   },
   {
    "id": "ww_catergar",
@@ -143,10 +151,10 @@
    "types": [
     "Bug"
    ],
-   "hp": 130,
+   "hp": 260,
    "move": "Swarm Buzz",
    "moveType": "Bug",
-   "dmg": 80,
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -161,12 +169,13 @@
    "types": [
     "Rock"
    ],
-   "hp": 150,
-   "move": "Stone Slam",
+   "hp": 240,
+   "move": "Shard Burst",
    "moveType": "Rock",
-   "dmg": 90,
+   "dmg": 50,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "split": "double"
   },
   {
    "id": "ww_munchwag",
@@ -179,10 +188,10 @@
    "types": [
     "Water"
    ],
-   "hp": 150,
+   "hp": 260,
    "move": "Bubble Jet",
    "moveType": "Water",
-   "dmg": 90,
+   "dmg": 100,
    "legendary": false,
    "mythical": false
   },
@@ -197,8 +206,8 @@
    "types": [
     "Water"
    ],
-   "hp": 120,
-   "move": "Bubble Jet",
+   "hp": 260,
+   "move": "Surf Surge",
    "moveType": "Water",
    "dmg": 90,
    "legendary": false,
@@ -215,10 +224,10 @@
    "types": [
     "Water"
    ],
-   "hp": 130,
+   "hp": 260,
    "move": "Tide Crash",
    "moveType": "Water",
-   "dmg": 80,
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -233,10 +242,10 @@
    "types": [
     "Grass"
    ],
-   "hp": 180,
+   "hp": 260,
    "move": "Vine Lash",
    "moveType": "Grass",
-   "dmg": 80,
+   "dmg": 100,
    "legendary": false,
    "mythical": false
   },
@@ -251,12 +260,14 @@
    "types": [
     "Fire"
    ],
-   "hp": 170,
-   "move": "Magma Burst",
+   "hp": 220,
+   "move": "Ember Storm",
    "moveType": "Fire",
-   "dmg": 120,
+   "dmg": 100,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "brn",
+   "fxChance": 30
   },
   {
    "id": "ww_dewdeer",
@@ -269,10 +280,10 @@
    "types": [
     "Water"
    ],
-   "hp": 180,
+   "hp": 260,
    "move": "Bubble Jet",
    "moveType": "Water",
-   "dmg": 90,
+   "dmg": 100,
    "legendary": false,
    "mythical": false
   },
@@ -287,7 +298,7 @@
    "types": [
     "Fairy"
    ],
-   "hp": 190,
+   "hp": 260,
    "move": "Gilded Gust",
    "moveType": "Fairy",
    "dmg": 90,
@@ -305,7 +316,7 @@
    "types": [
     "Normal"
    ],
-   "hp": 130,
+   "hp": 210,
    "move": "Boom Blast",
    "moveType": "Normal",
    "dmg": 120,
@@ -323,12 +334,14 @@
    "types": [
     "Fairy"
    ],
-   "hp": 160,
-   "move": "Gilded Gust",
+   "hp": 260,
+   "move": "Fairy Breeze",
    "moveType": "Fairy",
    "dmg": 90,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "cnf",
+   "fxChance": 25
   },
   {
    "id": "ww_vulran",
@@ -341,12 +354,14 @@
    "types": [
     "Fire"
    ],
-   "hp": 120,
-   "move": "Magma Burst",
+   "hp": 250,
+   "move": "Blaze Bite",
    "moveType": "Fire",
-   "dmg": 120,
+   "dmg": 80,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "brn",
+   "fxChance": 30
   },
   {
    "id": "ww_sheldit",
@@ -359,12 +374,14 @@
    "types": [
     "Ghost"
    ],
-   "hp": 120,
+   "hp": 260,
    "move": "Phantom Wail",
    "moveType": "Ghost",
    "dmg": 80,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "cnf",
+   "fxChance": 25
   },
   {
    "id": "ww_glootios",
@@ -377,10 +394,10 @@
    "types": [
     "Dark"
    ],
-   "hp": 130,
+   "hp": 260,
    "move": "Night Bite",
    "moveType": "Dark",
-   "dmg": 80,
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -395,8 +412,8 @@
    "types": [
     "Psychic"
    ],
-   "hp": 160,
-   "move": "Mind Crush",
+   "hp": 260,
+   "move": "Psy Blade",
    "moveType": "Psychic",
    "dmg": 90,
    "legendary": false,
@@ -413,10 +430,10 @@
    "types": [
     "Fairy"
    ],
-   "hp": 130,
+   "hp": 260,
    "move": "Gilded Gust",
    "moveType": "Fairy",
-   "dmg": 90,
+   "dmg": 100,
    "legendary": false,
    "mythical": false
   },
@@ -431,7 +448,7 @@
    "types": [
     "Rock"
    ],
-   "hp": 210,
+   "hp": 260,
    "move": "Stone Slam",
    "moveType": "Rock",
    "dmg": 90,
@@ -449,12 +466,13 @@
    "types": [
     "Rock"
    ],
-   "hp": 190,
-   "move": "Stone Slam",
+   "hp": 260,
+   "move": "Rock Avalanche",
    "moveType": "Rock",
-   "dmg": 90,
+   "dmg": 60,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "split": "spread"
   },
   {
    "id": "ww_sliggy",
@@ -467,10 +485,10 @@
    "types": [
     "Dragon"
    ],
-   "hp": 230,
+   "hp": 260,
    "move": "Wyrm Pulse",
    "moveType": "Dragon",
-   "dmg": 80,
+   "dmg": 110,
    "legendary": false,
    "mythical": false
   },
@@ -485,10 +503,10 @@
    "types": [
     "Grass"
    ],
-   "hp": 120,
+   "hp": 260,
    "move": "Vine Lash",
    "moveType": "Grass",
-   "dmg": 80,
+   "dmg": 140,
    "legendary": false,
    "mythical": false
   },
@@ -503,12 +521,14 @@
    "types": [
     "Electric"
    ],
-   "hp": 120,
+   "hp": 260,
    "move": "Volt Knuckle",
    "moveType": "Electric",
-   "dmg": 80,
+   "dmg": 130,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "par",
+   "fxChance": 30
   },
   {
    "id": "ww_senkip",
@@ -521,10 +541,10 @@
    "types": [
     "Ground"
    ],
-   "hp": 140,
+   "hp": 260,
    "move": "Quake Stomp",
    "moveType": "Ground",
-   "dmg": 100,
+   "dmg": 140,
    "legendary": false,
    "mythical": false
   },
@@ -539,12 +559,14 @@
    "types": [
     "Fire"
    ],
-   "hp": 120,
+   "hp": 250,
    "move": "Magma Burst",
    "moveType": "Fire",
-   "dmg": 120,
+   "dmg": 130,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "brn",
+   "fxChance": 30
   },
   {
    "id": "fl_candlewraith",
@@ -558,12 +580,14 @@
     "Ghost",
     "Fire"
    ],
-   "hp": 180,
-   "move": "Magma Burst",
-   "moveType": "Fire",
-   "dmg": 120,
+   "hp": 240,
+   "move": "Phantom Wail",
+   "moveType": "Ghost",
+   "dmg": 80,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "cnf",
+   "fxChance": 25
   },
   {
    "id": "fl_lunahowl",
@@ -577,7 +601,7 @@
     "Ghost",
     "Ice"
    ],
-   "hp": 200,
+   "hp": 250,
    "move": "Shade Claw",
    "moveType": "Ghost",
    "dmg": 80,
@@ -596,10 +620,10 @@
     "Water",
     "Dragon"
    ],
-   "hp": 230,
-   "move": "Tidal Crash",
+   "hp": 240,
+   "move": "Tide Crash",
    "moveType": "Water",
-   "dmg": 110,
+   "dmg": 100,
    "legendary": false,
    "mythical": false
   },
@@ -615,10 +639,10 @@
     "Normal",
     "Ice"
    ],
-   "hp": 220,
-   "move": "Boom Blast",
-   "moveType": "Normal",
-   "dmg": 120,
+   "hp": 250,
+   "move": "Blizzard Breath",
+   "moveType": "Ice",
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -634,10 +658,10 @@
     "Fairy",
     "Dark"
    ],
-   "hp": 240,
-   "move": "Gilded Gust",
-   "moveType": "Fairy",
-   "dmg": 90,
+   "hp": 250,
+   "move": "Shadow Puff",
+   "moveType": "Dark",
+   "dmg": 80,
    "legendary": false,
    "mythical": false
   },
@@ -653,10 +677,10 @@
     "Grass",
     "Water"
    ],
-   "hp": 240,
-   "move": "Vine Lash",
-   "moveType": "Grass",
-   "dmg": 80,
+   "hp": 260,
+   "move": "Tide Crash",
+   "moveType": "Water",
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -672,7 +696,7 @@
     "Grass",
     "Dragon"
    ],
-   "hp": 210,
+   "hp": 250,
    "move": "Dragon Rend",
    "moveType": "Dragon",
    "dmg": 90,
@@ -691,12 +715,14 @@
     "Electric",
     "Psychic"
    ],
-   "hp": 200,
+   "hp": 250,
    "move": "Thunder Arc",
    "moveType": "Electric",
    "dmg": 90,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "par",
+   "fxChance": 30
   },
   {
    "id": "fl_draculard",
@@ -710,9 +736,9 @@
     "Psychic",
     "Dark"
    ],
-   "hp": 210,
-   "move": "Psy Blade",
-   "moveType": "Psychic",
+   "hp": 250,
+   "move": "Night Swell",
+   "moveType": "Dark",
    "dmg": 80,
    "legendary": false,
    "mythical": false
@@ -729,7 +755,7 @@
     "Steel",
     "Dragon"
    ],
-   "hp": 200,
+   "hp": 250,
    "move": "Iron Smash",
    "moveType": "Steel",
    "dmg": 90,
@@ -748,10 +774,10 @@
     "Electric",
     "Fighting"
    ],
-   "hp": 200,
-   "move": "Thunder Arc",
-   "moveType": "Electric",
-   "dmg": 90,
+   "hp": 250,
+   "move": "Aura Palm",
+   "moveType": "Fighting",
+   "dmg": 80,
    "legendary": false,
    "mythical": false
   },
@@ -767,7 +793,7 @@
     "Ground",
     "Rock"
    ],
-   "hp": 240,
+   "hp": 220,
    "move": "Quake Stomp",
    "moveType": "Ground",
    "dmg": 100,
@@ -786,12 +812,14 @@
     "Fire",
     "Electric"
    ],
-   "hp": 190,
-   "move": "Magma Burst",
-   "moveType": "Fire",
-   "dmg": 120,
+   "hp": 230,
+   "move": "Thunder Arc",
+   "moveType": "Electric",
+   "dmg": 110,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "par",
+   "fxChance": 30
   },
   {
    "id": "fl_raybuzz",
@@ -805,10 +833,10 @@
     "Electric",
     "Fighting"
    ],
-   "hp": 200,
+   "hp": 220,
    "move": "Rising Uppercut",
    "moveType": "Fighting",
-   "dmg": 80,
+   "dmg": 110,
    "legendary": false,
    "mythical": false
   },
@@ -824,12 +852,14 @@
     "Fire",
     "Poison"
    ],
-   "hp": 190,
-   "move": "Magma Burst",
-   "moveType": "Fire",
+   "hp": 210,
+   "move": "Sludge Bomb",
+   "moveType": "Poison",
    "dmg": 120,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "psn",
+   "fxChance": 50
   },
   {
    "id": "fl_wirltoad",
@@ -842,10 +872,10 @@
    "types": [
     "Water"
    ],
-   "hp": 240,
-   "move": "Bubble Jet",
+   "hp": 220,
+   "move": "Tidal Crash",
    "moveType": "Water",
-   "dmg": 90,
+   "dmg": 120,
    "legendary": false,
    "mythical": false
   },
@@ -862,9 +892,9 @@
     "Fighting"
    ],
    "hp": 220,
-   "move": "Rising Uppercut",
+   "move": "Crush Kick",
    "moveType": "Fighting",
-   "dmg": 80,
+   "dmg": 110,
    "legendary": false,
    "mythical": false
   },
@@ -880,8 +910,8 @@
     "Ground",
     "Rock"
    ],
-   "hp": 230,
-   "move": "Quake Stomp",
+   "hp": 240,
+   "move": "Burrow Strike",
    "moveType": "Ground",
    "dmg": 100,
    "legendary": false,
@@ -899,10 +929,10 @@
     "Bug",
     "Psychic"
    ],
-   "hp": 200,
+   "hp": 220,
    "move": "Mind Crush",
    "moveType": "Psychic",
-   "dmg": 90,
+   "dmg": 110,
    "legendary": false,
    "mythical": false
   },
@@ -917,10 +947,10 @@
    "types": [
     "Rock"
    ],
-   "hp": 240,
+   "hp": 210,
    "move": "Stone Slam",
    "moveType": "Rock",
-   "dmg": 90,
+   "dmg": 110,
    "legendary": false,
    "mythical": false
   },
@@ -935,12 +965,14 @@
    "types": [
     "Ghost"
    ],
-   "hp": 210,
-   "move": "Phantom Wail",
+   "hp": 260,
+   "move": "Haunt Howl",
    "moveType": "Ghost",
-   "dmg": 80,
+   "dmg": 90,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "cnf",
+   "fxChance": 25
   },
   {
    "id": "fl_verdaconda",
@@ -954,10 +986,10 @@
     "Dragon",
     "Fairy"
    ],
-   "hp": 210,
-   "move": "Gilded Gust",
-   "moveType": "Fairy",
-   "dmg": 90,
+   "hp": 260,
+   "move": "Wyrm Pulse",
+   "moveType": "Dragon",
+   "dmg": 100,
    "legendary": false,
    "mythical": false
   },
@@ -973,10 +1005,10 @@
     "Fire",
     "Rock"
    ],
-   "hp": 230,
-   "move": "Magma Burst",
-   "moveType": "Fire",
-   "dmg": 120,
+   "hp": 260,
+   "move": "Rock Avalanche",
+   "moveType": "Rock",
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -992,10 +1024,10 @@
     "Ghost",
     "Dragon"
    ],
-   "hp": 210,
+   "hp": 260,
    "move": "Dragon Rend",
    "moveType": "Dragon",
-   "dmg": 90,
+   "dmg": 100,
    "legendary": false,
    "mythical": false
   },
@@ -1011,10 +1043,10 @@
     "Grass",
     "Dark"
    ],
-   "hp": 200,
-   "move": "Vine Lash",
+   "hp": 260,
+   "move": "Petal Gale",
    "moveType": "Grass",
-   "dmg": 80,
+   "dmg": 120,
    "legendary": false,
    "mythical": false
   },
@@ -1030,10 +1062,10 @@
     "Flying",
     "Fighting"
    ],
-   "hp": 220,
+   "hp": 260,
    "move": "Rising Uppercut",
    "moveType": "Fighting",
-   "dmg": 80,
+   "dmg": 100,
    "legendary": false,
    "mythical": false
   },
@@ -1049,10 +1081,10 @@
     "Dragon",
     "Steel"
    ],
-   "hp": 240,
-   "move": "Dragon Rend",
-   "moveType": "Dragon",
-   "dmg": 90,
+   "hp": 300,
+   "move": "Steel Scatter",
+   "moveType": "Steel",
+   "dmg": 120,
    "legendary": true,
    "mythical": false
   },
@@ -1068,10 +1100,10 @@
     "Ice",
     "Fighting"
    ],
-   "hp": 240,
-   "move": "Rising Uppercut",
-   "moveType": "Fighting",
-   "dmg": 80,
+   "hp": 300,
+   "move": "Frost Fang",
+   "moveType": "Ice",
+   "dmg": 120,
    "legendary": true,
    "mythical": false
   },
@@ -1087,10 +1119,10 @@
     "Flying",
     "Psychic"
    ],
-   "hp": 230,
+   "hp": 300,
    "move": "Feather Storm",
    "moveType": "Flying",
-   "dmg": 90,
+   "dmg": 120,
    "legendary": true,
    "mythical": false
   },
@@ -1106,12 +1138,14 @@
     "Bug",
     "Poison"
    ],
-   "hp": 250,
+   "hp": 300,
    "move": "Sludge Spray",
    "moveType": "Poison",
-   "dmg": 90,
+   "dmg": 120,
    "legendary": false,
-   "mythical": true
+   "mythical": true,
+   "fx": "psn",
+   "fxChance": 30
   },
   {
    "id": "st_potion",
@@ -1678,12 +1712,14 @@
     "Fighting",
     "Poison"
    ],
-   "hp": 230,
-   "move": "Rising Uppercut",
-   "moveType": "Fighting",
+   "hp": 260,
+   "move": "Toxic Fang",
+   "moveType": "Poison",
    "dmg": 80,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "fx": "psn",
+   "fxChance": 30
   },
   {
    "id": "t2_zappimp",
@@ -1697,13 +1733,15 @@
     "Electric",
     "Flying"
    ],
-   "hp": 190,
+   "hp": 250,
    "move": "Thunder Arc",
    "moveType": "Electric",
    "dmg": 50,
    "legendary": false,
    "mythical": false,
-   "split": "double"
+   "split": "double",
+   "fx": "par",
+   "fxChance": 30
   },
   {
    "id": "t2_grinhorn",
@@ -1717,7 +1755,7 @@
     "Poison",
     "Dark"
    ],
-   "hp": 200,
+   "hp": 250,
    "move": "Night Swell",
    "moveType": "Dark",
    "dmg": 50,
@@ -1756,7 +1794,7 @@
     "Dark",
     "Flying"
    ],
-   "hp": 200,
+   "hp": 260,
    "move": "Night Bite",
    "moveType": "Dark",
    "dmg": 40,
@@ -1776,13 +1814,15 @@
     "Electric",
     "Fighting"
    ],
-   "hp": 220,
+   "hp": 230,
    "move": "Thunderclap",
    "moveType": "Electric",
    "dmg": 60,
    "legendary": false,
    "mythical": false,
-   "split": "double"
+   "split": "double",
+   "fx": "par",
+   "fxChance": 30
   },
   {
    "id": "t2_hermitusk",
@@ -1796,7 +1836,7 @@
     "Steel",
     "Ghost"
    ],
-   "hp": 190,
+   "hp": 250,
    "move": "Iron Smash",
    "moveType": "Steel",
    "dmg": 90,
@@ -1815,7 +1855,7 @@
     "Bug",
     "Ice"
    ],
-   "hp": 200,
+   "hp": 250,
    "move": "Blizzard Breath",
    "moveType": "Ice",
    "dmg": 90,
@@ -1834,7 +1874,7 @@
     "Rock",
     "Ground"
    ],
-   "hp": 200,
+   "hp": 220,
    "move": "Quake Stomp",
    "moveType": "Ground",
    "dmg": 60,
@@ -1854,9 +1894,9 @@
     "Grass",
     "Ghost"
    ],
-   "hp": 200,
-   "move": "Vine Lash",
-   "moveType": "Grass",
+   "hp": 250,
+   "move": "Shade Claw",
+   "moveType": "Ghost",
    "dmg": 80,
    "legendary": false,
    "mythical": false
@@ -1873,13 +1913,15 @@
     "Bug",
     "Fairy"
    ],
-   "hp": 200,
+   "hp": 250,
    "move": "Fairy Breeze",
    "moveType": "Fairy",
-   "dmg": 60,
+   "dmg": 50,
    "legendary": false,
    "mythical": false,
-   "split": "spread"
+   "split": "spread",
+   "fx": "cnf",
+   "fxChance": 25
   },
   {
    "id": "t2_pearlgill",
@@ -1893,8 +1935,8 @@
     "Water",
     "Fairy"
    ],
-   "hp": 230,
-   "move": "Bubble Jet",
+   "hp": 260,
+   "move": "Surf Surge",
    "moveType": "Water",
    "dmg": 90,
    "legendary": false,
@@ -1912,13 +1954,15 @@
     "Poison",
     "Ghost"
    ],
-   "hp": 200,
+   "hp": 260,
    "move": "Sludge Spray",
    "moveType": "Poison",
-   "dmg": 60,
+   "dmg": 50,
    "legendary": false,
    "mythical": false,
-   "split": "spread"
+   "split": "spread",
+   "fx": "psn",
+   "fxChance": 30
   },
   {
    "id": "t2_mudbill",
@@ -1932,10 +1976,10 @@
     "Ground",
     "Fire"
    ],
-   "hp": 230,
-   "move": "Magma Burst",
-   "moveType": "Fire",
-   "dmg": 120,
+   "hp": 260,
+   "move": "Mud Burst",
+   "moveType": "Ground",
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -1951,7 +1995,7 @@
     "Water",
     "Flying"
    ],
-   "hp": 210,
+   "hp": 260,
    "move": "Bubble Jet",
    "moveType": "Water",
    "dmg": 50,
@@ -1971,13 +2015,15 @@
     "Poison",
     "Psychic"
    ],
-   "hp": 220,
+   "hp": 260,
    "move": "Sludge Spray",
    "moveType": "Poison",
-   "dmg": 60,
+   "dmg": 50,
    "legendary": false,
    "mythical": false,
-   "split": "spread"
+   "split": "spread",
+   "fx": "psn",
+   "fxChance": 30
   },
   {
    "id": "t2_snorwhirl",
@@ -1990,12 +2036,13 @@
    "types": [
     "Water"
    ],
-   "hp": 200,
-   "move": "Bubble Jet",
+   "hp": 260,
+   "move": "Splash",
    "moveType": "Water",
-   "dmg": 90,
+   "dmg": 60,
    "legendary": false,
-   "mythical": false
+   "mythical": false,
+   "split": "spread"
   },
   {
    "id": "t2_furtomp",
@@ -2009,10 +2056,10 @@
     "Ground",
     "Rock"
    ],
-   "hp": 190,
-   "move": "Quake Stomp",
+   "hp": 260,
+   "move": "Sand Blast",
    "moveType": "Ground",
-   "dmg": 60,
+   "dmg": 50,
    "legendary": false,
    "mythical": false,
    "split": "spread"
@@ -2029,13 +2076,13 @@
     "Bug",
     "Fighting"
    ],
-   "hp": 180,
-   "move": "Rising Uppercut",
+   "hp": 260,
+   "move": "Sweep Kick",
    "moveType": "Fighting",
-   "dmg": 40,
+   "dmg": 50,
    "legendary": false,
    "mythical": false,
-   "split": "double"
+   "split": "spread"
   },
   {
    "id": "t2_metascor",
@@ -2049,13 +2096,15 @@
     "Bug",
     "Psychic"
    ],
-   "hp": 170,
+   "hp": 260,
    "move": "Mind Ripple",
    "moveType": "Psychic",
-   "dmg": 60,
+   "dmg": 50,
    "legendary": false,
    "mythical": false,
-   "split": "spread"
+   "split": "spread",
+   "fx": "cnf",
+   "fxChance": 30
   },
   {
    "id": "t2_bladewing",
@@ -2069,10 +2118,10 @@
     "Steel",
     "Normal"
    ],
-   "hp": 200,
+   "hp": 260,
    "move": "Iron Smash",
    "moveType": "Steel",
-   "dmg": 50,
+   "dmg": 60,
    "legendary": false,
    "mythical": false,
    "split": "double"
@@ -2089,10 +2138,10 @@
     "Normal",
     "Flying"
    ],
-   "hp": 220,
+   "hp": 240,
    "move": "Boom Blast",
    "moveType": "Normal",
-   "dmg": 80,
+   "dmg": 70,
    "legendary": false,
    "mythical": false,
    "split": "spread"
@@ -2109,10 +2158,10 @@
     "Fire",
     "Poison"
    ],
-   "hp": 160,
+   "hp": 240,
    "move": "Magma Burst",
    "moveType": "Fire",
-   "dmg": 70,
+   "dmg": 60,
    "legendary": false,
    "mythical": false,
    "split": "double"
@@ -2129,13 +2178,15 @@
     "Fire",
     "Electric"
    ],
-   "hp": 170,
-   "move": "Magma Burst",
+   "hp": 260,
+   "move": "Ember Storm",
    "moveType": "Fire",
-   "dmg": 80,
+   "dmg": 50,
    "legendary": false,
    "mythical": false,
-   "split": "spread"
+   "split": "spread",
+   "fx": "brn",
+   "fxChance": 20
   },
   {
    "id": "t2_luxbull",
@@ -2149,10 +2200,10 @@
     "Electric",
     "Fighting"
    ],
-   "hp": 160,
-   "move": "Rising Uppercut",
-   "moveType": "Fighting",
-   "dmg": 50,
+   "hp": 260,
+   "move": "Thunderclap",
+   "moveType": "Electric",
+   "dmg": 70,
    "legendary": false,
    "mythical": false,
    "split": "double"
@@ -2169,10 +2220,10 @@
     "Grass",
     "Dark"
    ],
-   "hp": 160,
-   "move": "Vine Lash",
-   "moveType": "Grass",
-   "dmg": 50,
+   "hp": 260,
+   "move": "Night Bite",
+   "moveType": "Dark",
+   "dmg": 60,
    "legendary": false,
    "mythical": false,
    "split": "double"
@@ -2189,13 +2240,15 @@
     "Fire",
     "Fighting"
    ],
-   "hp": 210,
+   "hp": 300,
    "move": "Magma Burst",
    "moveType": "Fire",
-   "dmg": 70,
+   "dmg": 60,
    "legendary": false,
    "mythical": false,
-   "split": "double"
+   "split": "double",
+   "fx": "brn",
+   "fxChance": 30
   },
   {
    "id": "t2_blizzbear",
@@ -2209,13 +2262,15 @@
     "Ice",
     "Electric"
    ],
-   "hp": 240,
+   "hp": 300,
    "move": "Thunderclap",
    "moveType": "Electric",
    "dmg": 70,
    "legendary": false,
    "mythical": false,
-   "split": "spread"
+   "split": "spread",
+   "fx": "par",
+   "fxChance": 30
   },
   {
    "id": "t2_drakaroo",
@@ -2229,10 +2284,10 @@
     "Dragon",
     "Rock"
    ],
-   "hp": 220,
+   "hp": 300,
    "move": "Rock Avalanche",
    "moveType": "Rock",
-   "dmg": 70,
+   "dmg": 60,
    "legendary": false,
    "mythical": false,
    "split": "spread"
@@ -2249,13 +2304,15 @@
     "Psychic",
     "Fairy"
    ],
-   "hp": 200,
+   "hp": 300,
    "move": "Mind Ripple",
    "moveType": "Psychic",
    "dmg": 70,
    "legendary": false,
    "mythical": false,
-   "split": "spread"
+   "split": "spread",
+   "fx": "cnf",
+   "fxChance": 25
   },
   {
    "id": "st_mirror_veil",

@@ -79,7 +79,27 @@ export const TRACKS = {
     padGain: 0.025, leadWave: 'bell', leadGain: 0.13,
     lead: mel(['C6:.5 A5:.5 F5:1 G5:.5 A5:.5 C6:1', 'D6:1 A5:1 F5:2', 'D6:.5 C6:.5 Bb5:1 A5:.5 G5:.5 F5:1', 'G5:2 E5:1 C5:1', 'A5:.5 C6:.5 F6:1 E6:.5 D6:.5 C6:1', 'A5:1 D6:1 F5:2', 'Bb5:.5 D6:.5 F6:1 D6:1 Bb5:1', 'C6:1 E6:1 F6:2']),
   }),
+  // "Meadow Path" — calm, 76 bpm, D major, soft electric piano + bell melody, brushed hats only
+  meadow: () => song({
+    bpm: 76, bars: 8, chords: [['D3', 'F#4', 'A4', 'C#5'], ['B2', 'D4', 'F#4', 'A4'], ['G2', 'B3', 'D4', 'F#4'], ['A2', 'C#4', 'E4', 'G4']],
+    bass: (b, ch) => [[0, ch[0], 2.5], [2.5, ch[0] + 7, 1.5]],
+    drums: b => [[1, 'H'], [3, 'H']],
+    arp: (b, ch) => [0, 1, 2, 3].map((p, i) => [p + 0.5, ch[1 + (i % 3)], 0.9]), arpWave: 'epiano', arpGain: 0.045,
+    padGain: 0.045, leadWave: 'bell', leadGain: 0.11,
+    lead: mel(['F#5:2 E5:1 D5:1', 'A4:3 -:1', 'B4:1 D5:1 G5:1.5 F#5:.5', 'E5:3 -:1', 'F#5:1 A5:1 F#5:1 E5:1', 'D5:2 B4:2', 'G4:1 B4:1 D5:1 E5:1', 'C#5:2 E5:2']),
+  }),
+  // "Lantern Tide" — calm, 66 bpm, Bb lydian, slow pad swells and a sparse bell line, no drums
+  lantern: () => song({
+    bpm: 66, bars: 8, chords: [['Bb2', 'D4', 'F4', 'A4'], ['C3', 'E4', 'G4', 'Bb4'], ['G2', 'Bb3', 'D4', 'F4'], ['Eb3', 'G3', 'Bb3', 'D4']],
+    bass: (b, ch) => [[0, ch[0], 3.8]],
+    arp: (b, ch) => [0, 1.5, 3].map((p, i) => [p, ch[3 - (i % 3)] + 12, 1.4]), arpWave: 'bell', arpGain: 0.035,
+    padGain: 0.07, leadWave: 'epiano', leadGain: 0.1,
+    lead: mel(['F5:3 E5:1', 'D5:2 C5:2', 'Bb4:1.5 D5:.5 F5:2', 'G5:4', 'A5:2 G5:1 E5:1', 'G5:2 F5:2', 'D5:1 F5:1 Bb5:2', 'A5:4']),
+  }),
 };
+/** what plays where: each context rotates through its list, moving to the next song whenever one ends */
+export const PLAYLISTS = { menu: ['menu', 'meadow', 'lantern'], battle: ['battle', 'relax', 'meadow', 'lantern'] };
+export const TITLES = { menu: 'Fresh Packs', battle: 'Clash of the Mat', relax: 'Tea by the Binder', meadow: 'Meadow Path', lantern: 'Lantern Tide' };
 
 // ---------- sound effects ----------
 const fx = (dur, draw) => { const buf = new Float32Array(Math.ceil(dur * SR)); draw(buf); let pk = 0; for (const v of buf) pk = Math.max(pk, Math.abs(v)); if (pk > 0) for (let i = 0; i < buf.length; i++) buf[i] *= 0.7 / pk; return buf; };
@@ -128,7 +148,7 @@ export function wav(buf) {
 export class Audio {
   constructor(store = typeof localStorage !== 'undefined' ? localStorage : null) {
     this.store = store; this.ctx = null; this.cache = {}; this.cur = null; this.want = null; this.alt = 0;
-    const d = { music: 0.6, sfx: 0.8, mute: false, theme: 'alternate' };
+    const d = { music: 0.6, sfx: 0.8, mute: false }; this.pos = { menu: 0, battle: 0 };
     try { this.cfg = Object.assign(d, JSON.parse(store?.getItem('dorepacks_audio') || '{}')); } catch { this.cfg = d; }
   }
   saveCfg() { try { this.store?.setItem('dorepacks_audio', JSON.stringify(this.cfg)); } catch {} this.applyGain(); }
@@ -161,13 +181,19 @@ export class Audio {
     }));
   }
   play(name) { if (!this.ctx || this.cfg.mute || this.cfg.sfx <= 0 || !SFX[name]) return; try { const s = this.ctx.createBufferSource(); s.buffer = this.buffer('s', name); s.connect(this.sg); s.start(); } catch {} }
-  /** 'menu' | 'battle' (resolves to the chosen battle theme) | null */
-  music(which, force = false) {
+  /** 'menu' | 'battle' | null. Each context has a playlist; a new song starts each time you enter it and when a song ends. */
+  get nowPlaying() { return this.cur ? TITLES[this.cur.name] : null; }
+  next() { if (!this.want) return; this.music(this.want, true, true); }
+  music(which, force = false, skip = false) {
     if (!force && this.want === which && (this.cur || !this.ctx)) return; this.want = which;
-    const name = which === 'battle' ? (this.cfg.theme === 'alternate' ? (this.alt++ % 2 ? 'relax' : 'battle') : this.cfg.theme === 'relax' ? 'relax' : 'battle') : which;
-    if (!this.ctx) return;
+    const list = PLAYLISTS[which]; let name = null;
+    if (list) { const k = this.pos[which] || 0; name = list[k % list.length]; this.pos[which] = k + 1; }
+    if (!this.ctx) { if (list) this.pos[which]--; return; }
     if (this.cur) { const c = this.cur; try { c.g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.25); setTimeout(() => { try { c.s.stop(); } catch {} }, 1200); } catch {} this.cur = null; }
     if (!name) return;
-    this.track(name).then(buf => { if (this.want !== which || this.cur) return; const s = this.ctx.createBufferSource(), g = this.ctx.createGain(); s.buffer = buf; s.loop = true; g.gain.value = 0; g.gain.setTargetAtTime(1, this.ctx.currentTime, 0.3); s.connect(g); g.connect(this.mg); s.start(); this.cur = { s, g, name }; this.starting = false; });
+    this.track(name).then(buf => { if (this.want !== which || this.cur) return; const s = this.ctx.createBufferSource(), g = this.ctx.createGain(); s.buffer = buf; s.loop = true; g.gain.value = 0; g.gain.setTargetAtTime(1, this.ctx.currentTime, 0.3); s.connect(g); g.connect(this.mg);
+      // play each song twice through, then rotate to the next one in the playlist
+      s.start(); s.stop(this.ctx.currentTime + buf.duration * 2); const cur = this.cur = { s, g, name };
+      s.onended = () => { if (this.cur === cur) { this.cur = null; this.music(which, true); } }; this.starting = false; if (this.onTrack) this.onTrack(); });
   }
 }

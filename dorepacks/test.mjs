@@ -52,7 +52,7 @@ check(Battle.damage(mk('ww_badbulb', { status: 'brn' }), mk('ww_axerupi'))[0] ==
 check(Battle.damage(mk('ww_electrinx'), mk('ww_senkip'))[0] === 0, 'Electric vs Ground does nothing');
 {
   const rep = (id, n) => Array(n).fill(card(id));
-  const deck = [...rep('ww_snarlpup', 12), ...rep('st_potion', 3), ...rep('st_guard_wall', 3), ...rep('st_power_up', 2)];
+  const deck = [...rep('ww_hootuft', 12), ...rep('st_potion', 3), ...rep('st_guard_wall', 3), ...rep('st_power_up', 2)];
   const b = new Battle(deck, 'A', deck, 'B', 7n);
   const h = b.sides[0].hand.findIndex(E.isMon);
   check(b.apply({ t: 'playMon', hand: h, slot: 0 }), 'can play a doremon');
@@ -82,7 +82,7 @@ check(Battle.damage(mk('ww_electrinx'), mk('ww_senkip'))[0] === 0, 'Electric vs 
   for (const set of Object.keys(s0.packs)) for (let i = 0; i < s0.packs[set]; i++) g0.openPack(set);
   check(tot(s0.owned) === n0 + startPacks * 7, 'fair start: the player ends up with the same card count after opening their packs');
   check(s0.ai.every(p => p.deck.every(id => (p.owned[id] || 0) >= p.deck.filter(x => x === id).length)), 'fair start: AI decks use only cards they own');
-  check(s0.bank.initial === 9 * 1500, 'fair start: bank starts with 9 x $1500');
+  check(s0.bank.initial === 17 * 1500, 'fair start: bank starts with 17 x $1500 (you + 16 trainers)');
 }
 let g = new Game(null, 99n);
 {
@@ -195,7 +195,7 @@ let g = new Game(null, 99n);
 {
   const g0 = new Game(null, 31n); g0.worldStep(null);
   const ok = g0.s.lastDay.every(m => { const b = new Battle(m.deckA.map(card), 'A', m.deckB.map(card), 'B', BigInt(m.seed), m.first); return BattleAI.simulate(b) === m.winner; });
-  check(ok && g0.s.lastDay.length === 4, 'league matches replay move-for-move in Spectate (same winner)');
+  check(ok && g0.s.lastDay.length === 8, 'league matches replay move-for-move in Spectate (same winner)');
 }
 // economy
 g = new Game(null, 5n);
@@ -234,7 +234,7 @@ check(BattleAI.chooseFirst() === true, 'AI that wins the toss chooses to go firs
   for (let i = 0; i < 400; i++) { const k = g1.nextLeagueOpponent(); check.quiet = true; seen[k] = (seen[k] || 0) + 1; if (k === prev) repeats++; if ((g1.s.oppHistory || []).slice(0, 3).includes(k)) recent3++; prev = k; g1.recordResult(i % 2 === 0, true, k); }
   console.log('ranked opponents over 400 games:', JSON.stringify(seen), 'in last-3:', recent3);
   check(repeats === 0, 'ranked never matches you with the same opponent twice in a row');
-  check(Object.keys(seen).length === 8, 'every AI shows up as a ranked opponent');
+  check(Object.keys(seen).length === 16, 'every AI shows up as a ranked opponent');
   check(recent3 < 400 * 0.35, `recent opponents are avoided (${recent3}/400 were among the previous 3)`);
   const g2 = new Game(null, 56n); check(g2.nextLeagueOpponent() === g2.nextLeagueOpponent(), 'the chosen opponent stays put until the match is played');
 }
@@ -242,7 +242,8 @@ check(g.buyPrice('ww_glootios') >= g.sellPrice('ww_glootios') * 2, 'no buy/sell 
 g.s.money = 10000; g.s.bank.initial += 10000 - 1500; check(g.buyPack('FL') && g.s.money === 9200, 'Fallen Legends pack costs $800');
 const sum = () => g.s.ai.reduce((a, p) => a + p.mr, 0); const s0 = sum();
 for (let i = 0; i < 60; i++) g.worldStep(null);
-check(s0 === sum(), `AI-only league MR is zero-sum (${s0} -> ${sum()})`);
+{ const drift = (sum() - s0) / g.s.ai.length; console.log('AI MR drift per trainer over 60 days:', drift.toFixed(1));
+  check(Math.abs(drift) < 200, `AI-only league MR drift stays bounded (${s0} -> ${sum()}, ${drift.toFixed(0)}/trainer over 60 days)`); }
 check(Object.values(g.s.market).every(e => e.factor >= 0.4 && e.factor <= 2.5), 'market factors bounded');
 check(g.s.ai.every(p => DeckRules.problems(p.deck).length === 0), 'every AI deck is legal');
 console.log('AI after 60 days:', g.s.ai.map(p => `${p.name} ${p.mr} $${p.money} packs ${p.packsOpened}`).join(', '));
@@ -256,7 +257,7 @@ if (g.s.offers.length) { const o = g.s.offers[0], before = g.s.owned[o.give] || 
 // save round trip (localStorage stand-in)
 const mem = { t: null, load() { return this.t; }, save(x) { this.t = x; } };
 const g2 = new Game(mem, 1n); g2.s.money = 4242; g2.save();
-const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 8, 'save/load round trip');
+const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 'save/load round trip');
 // ---- real-time league days ----
 { const gc = new Game(null, 9n); gc.save = () => {}; const T = 1_000_000_000_000; const M = E.DAY_MS;
   check(gc.daysDue(T) === 0 && gc.s.clock === T, 'clock anchors on first tick');
@@ -360,5 +361,122 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 8, 'sa
   { let n = 0; for (let k = 0; k < 200; k++) { const pool = t2.concat(E.supplies()); const r = new SplitMix(BigInt(k + 1)); const d = () => { const own = {}; for (let i = 0; i < 60; i++) { const c = pool[r.int(pool.length)]; own[c.id] = (own[c.id] || 0) + 1; } return DeckRules.autoBuild(own, r).map(card); };
       const b = new Battle(d(), 'A', d(), 'B', BigInt(k + 9)); BattleAI.simulate(b); if (b.over) n++; }
     check(n === 200, `200 all-T2 AI games finish (${n})`); }
+}
+
+// ================= Nov 2 features =================
+{
+  // ---- free mulligan ----
+  const deck = E.STARTER_DECK.map(card);
+  const b = new Battle(deck, 'A', deck, 'B', 77n, 0);
+  const n0 = b.sides[0].hand.length, tot0 = b.sides[0].hand.length + b.sides[0].deck.length;
+  check(b.canMulligan(0) && b.canMulligan(1), 'mulligan: both sides may mulligan before anything is played');
+  check(b.redraw(0) && b.sides[0].hand.length === n0 && b.sides[0].hand.length + b.sides[0].deck.length === tot0, 'mulligan: same hand size, no card lost or gained (hand+deck conserved)');
+  check(b.sides[0].hand.some(E.isMon), 'mulligan: the new hand still has a doremon');
+  check(!b.canMulligan(0) && !b.redraw(0), 'mulligan: only once per battle');
+  const b2 = new Battle(deck, 'A', deck, 'B', 78n, 0); b2.apply({ t: 'end' });
+  check(!b2.canMulligan(1), 'mulligan: no mulligan once play has started');
+  const b3 = new Battle(deck, 'A', deck, 'B', 79n, 0);
+  check(b3.sides[1].quickStart && !b3.sides[0].quickStart, 'going second: the second player gets a quick-start doremon');
+}
+{
+  // ---- MR ----
+  check(E.mrDelta(1000, 1400, true) >= 15 && E.mrDelta(1400, 1000, true) === 15, 'MR: a win is worth at least +15 (even vs a much lower foe)');
+  check(E.mrDelta(1000, 1000, true, 4) === E.mrDelta(1000, 1000, true, 1) + 6, 'MR: win streak bonus +2 per extra win (4 in a row = +6)');
+  check(E.mrDelta(1000, 1000, true, 20) - E.mrDelta(1000, 1000, true, 1) === 8, 'MR: streak bonus capped at +8');
+  check(E.rust(1500) === 1490 && E.rust(900) === 900, 'MR: daily rust gives back 2% above 1000');
+  check(E.mrDelta(1200, 1000, false) > E.elo(1200, 1000, false) && E.mrDelta(1200, 1000, false) >= -24, 'MR: losing to a lower-rated foe is softened');
+  check(E.mrDelta(1000, 1000, false) === E.elo(1000, 1000, false), 'MR: an even loss is plain Elo');
+  check(E.TIERS.length === 6 && E.TIERS.every(([n, t]) => E.tier(t) === n), 'MR: tier table matches tier()');
+  const g = new Game(null, 91n); g.save = () => {}; const k = 0, P = g.s.ai[k]; P.mr = 1000; g.s.mr = 1000;
+  g.recordResult(true, true, k); check(g.s.mr === 1016 && P.mr === 984, `MR: player and AI use the same rule (${g.s.mr}/${P.mr})`);
+  for (let i = 0; i < 3; i++) g.recordResult(true, true, 1 + i); check(g.s.streak === 4, 'MR: player streak tracked');
+  const rec = g.aiMatch(2, 3); const before = g.s.ai[2].streak; g.recordAIMatch(rec, 0); check(g.s.ai[2].streak === before + 1 && g.s.ai[3].streak === 0, 'MR: AI streaks tracked');
+  check(g.ledgerBalanced(), 'ledger balanced after MR games');
+}
+{
+  // ---- tournament ----
+  const g = new Game(null, 92n); g.save = () => {};
+  while (!g.isTourDay(g.s.day)) g.s.day++;
+  g.s.mr = 5000;   // make sure the player is in the top 8
+  const T = g.tour;
+  check(T.entrants.length === 8 && T.entrants.includes(E.ME) && new Set(T.entrants).size === 8, 'tournament: top 8 by MR, player included');
+  check(T.rounds[0].length === 4 && T.rounds[0].filter(m => m.winner != null).length === 3, 'tournament: AI-only quarter-finals resolve at once');
+  check(T.rounds[0].every(m => m.winner == null || Math.max(...m.w) === 2), 'tournament: matches are best-of-3');
+  const cash0 = g.s.money, packs0 = g.s.packs[T.set] || 0; let guard = 0;
+  while (g.tourMatch() && guard++ < 20) g.tourGame(true);
+  check(T.done && T.champion === E.ME && T.rounds.length === 3, 'tournament: QF -> SF -> F, the player wins by winning 2 games per round');
+  check(g.s.money === cash0 + E.Game.TOUR_PRIZE && g.s.packs[T.set] === packs0 + 1, `tournament: champion gets $2000 + a ${T.set} pack`);
+  check(g.ledgerBalanced(), 'ledger balanced after the tournament prize');
+  // AI-only tournament (player not in the top 8) resolves completely and pays an AI
+  const h = new Game(null, 93n); h.save = () => {}; while (!h.isTourDay(h.s.day)) h.s.day++; h.s.mr = 0;
+  const U = h.tour; check(U.done && U.champion >= 0 && U.rounds.length === 3 && !U.entrants.includes(E.ME), 'tournament: AI-only bracket resolves fully');
+  check(h.s.ai[U.champion].tourWins === 1 && h.ledgerBalanced(), 'tournament: AI champion paid fairly, ledger balanced');
+  // skipped day forfeits
+  const f = new Game(null, 94n); f.save = () => {}; while (!f.isTourDay(f.s.day)) f.s.day++; f.s.mr = 5000; f.tour; f.worldStep(null);
+  check(f.s.tour.done && f.s.tour.champion !== E.ME, 'tournament: unplayed player match is forfeited at day end');
+  check(['WW', 'FL', 'T2'].every((x, i) => f.tourSet(3 * i + 2) === x), 'tournament: sponsor set rotates WW -> FL -> T2');
+}
+{
+  // ---- daily adventures ----
+  const g = new Game(null, 95n); g.save = () => {};
+  const q = g.quests; check(q.length === 3 && new Set(q.map(x => x.kind)).size === 3, 'quests: 3 different quests per day');
+  const packs = () => Object.values(g.s.packs).reduce((a, b) => a + b, 0); const p0 = packs();
+  for (const x of q) g.quest(x.kind, 99);
+  check(q.every(x => x.done && x.reward) && packs() === p0 + 3, 'quests: each pays one random pack');
+  for (const x of E.Game.QUESTS) g.quest(x[0], 99); check(packs() === p0 + 3, 'quests: max 3 packs per day');
+  g.s.day++; check(g.quests.every(x => !x.done) && g.s.quests.day === g.s.day, 'quests: new set the next day');
+  const k = g.quests.find(x => x.kind === 'open'); if (k) { g.openPack('WW'); check(k.have >= 1, 'quests: opening a pack counts'); }
+}
+{
+  // ---- draft ----
+  const o = E.Game.snakeOrder(7, 3);
+  check(o.slice(0, 7).join() === '0,1,2,3,4,5,6' && o.slice(7, 14).join() === '6,5,4,3,2,1,0' && o.slice(14).join() === '0,1,2,3,4,5,6', 'draft: snake order 0..6, 6..0, 0..6');
+  const g = new Game(null, 96n); g.save = () => {}; const m0 = g.s.money;
+  check(g.startDraft('FL') && g.s.money === m0 - E.Game.DRAFT_FEE, 'draft: costs the entry fee');
+  const D = g.s.draft; check(D.seats.length === 7 && D.seats.includes(E.ME) && new Set(D.seats).size === 7, 'draft: you + 6 different trainers, random seats');
+  let guard = 0; while (g.draftPicking && guard++ < 50) { const seat = D.order[D.pick]; const id = D.pool.find(x => g.draftLegal(seat, x)); g.draftPick(id); }
+  check(D.picks.every(p => p.length === 20 && p.filter(id => E.isMon(card(id))).length >= 8), 'draft: everyone ends with 20 picks and at least 8 doremon');
+  const owned0 = JSON.stringify(g.s.owned); while (g.draftOpponent()) g.draftResult(true);
+  check(D.done && D.reward.cash === 450 && D.reward.pack === 'FL' && JSON.stringify(g.s.owned) === owned0, 'draft: 3-0 pays $450 + a pack; drafted cards are not kept');
+  check(g.ledgerBalanced(), 'ledger balanced after a draft');
+}
+{
+  // ---- spectate rotation ----
+  const g = new Game(null, 97n); g.save = () => {}; let prev = null, fresh = 0;
+  for (let i = 0; i < 30; i++) { const r = g.nextSpectate(); check.quiet = true;
+    if (!prev || (!prev.includes(r.a) && !prev.includes(r.b))) fresh++; prev = [r.a, r.b];
+    const b = new Battle(r.deckA.map(card), 'A', r.deckB.map(card), 'B', BigInt(r.seed), r.first); const w = BattleAI.simulate(b); g.finishSpectate(r, w, b); }
+  check(fresh === 30, `spectate: every next match is a new pairing (${fresh}/30)`);
+  const games = g.s.ai.reduce((a, p) => a + p.games, 0); check(games === 60, 'spectate: watched matches count in the records');
+  check(g.ledgerBalanced(), 'ledger balanced after spectated matches');
+}
+{
+  // ---- 16-trainer migration of an old 8-trainer save ----
+  const mem = { t: null, load() { return this.t; }, save(x) { this.t = x; } };
+  const old = new Game(null, 98n); old.s.ai = old.s.ai.slice(0, 8); old.s.bank.initial = old.totalCash() - old.s.bank.faucet + old.s.bank.sink;
+  for (const P of old.s.ai) { delete P.streak; delete P.games; delete P.played; delete P.tourWins; }
+  old.s.ai[0].mr = 1234; mem.t = JSON.stringify(old.s);
+  const g = new Game(mem); check(g.s.ai.length === 16 && g.s.ai[0].mr === 1234, 'migration: 8 old trainers kept, 8 added');
+  check(g.s.ai.slice(8).every(P => P.mr === 1000 && P.money === 1500 && P.packsOpened === 3 && P.deck.length === 20), 'migration: new trainers get a fair start');
+  check(g.ledgerBalanced(), 'migration: ledger still balanced');
+  check(['Lacey', 'Prof. Winston', 'Bram'].every(n => g.s.ai.some(P => P.name === n)), 'migration: Lacey, Prof. Winston and Bram joined');
+  const st = g.trainerStats(0); check(st.name === 'Kai' && st.binder > 0 && st.games >= 0, 'trainer stats available');
+}
+{
+  // ---- AI decks are no longer clones ----
+  const g = new Game(null, 99n); g.save = () => {}; for (let i = 0; i < 20; i++) g.worldStep(null);
+  const sets = g.s.ai.map(P => new Set(P.deck)); let j = 0, n = 0;
+  for (let a = 0; a < sets.length; a++) for (let b = a + 1; b < sets.length; b++) { const i = [...sets[a]].filter(x => sets[b].has(x)).length; j += i / (sets[a].size + sets[b].size - i); n++; }
+  console.log('AI deck sameness (Jaccard):', (j / n * 100).toFixed(0) + '%');
+  check(j / n < 0.4, 'AI decks differ (personalities)');
+}
+{ // move side effects: Ninequeen's Sludge Bomb poisons ~50% of surviving targets
+  let psn = 0, n = 200; const f = Array(20).fill(card('ww_hootuft'));
+  for (let i = 0; i < n; i++) { const b = new Battle(f, 'A', f, 'B', BigInt(1000 + i), 0);
+    b.sides[0].mons[0] = Object.assign(newMon(card('fl_ninequeen')), { ready: true }); b.sides[1].mons[0] = Object.assign(newMon(card('ww_hootuft')), { ready: true, hp: 900 }); b.sides[1].traps = b.sides[1].traps.map(() => null);
+    b.apply({ t: 'attack', from: 0, to: 0 }); if (b.sides[1].mons[0]?.status === 'psn') psn++; }
+  console.log('Ninequeen poison rate:', psn / n); check(psn / n > 0.35 && psn / n < 0.65, 'move fx rolls at its printed chance (50% poison)');
+  const b = new Battle(f, 'A', f, 'B', 5n, 0); b.sides[0].mons[0] = Object.assign(newMon(card('fl_ninequeen')), { ready: true }); b.sides[1].mons[0] = Object.assign(newMon(card('ww_hootuft')), { ready: true, hp: 10 });
+  b.apply({ t: 'attack', from: 0, to: 0 }); check(!b.sides[1].mons[0], 'no status roll on a knocked-out target');
 }
 console.log(fails === 0 ? 'ALL TESTS PASSED' : `${fails} FAILURES`); process.exit(fails ? 1 : 0);
