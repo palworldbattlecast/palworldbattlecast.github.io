@@ -12,7 +12,7 @@ export const inSet = (s) => DB.cards.filter(c => c.set === s).sort((a, b) => a.n
 export const ofRarity = (s, r) => DB.cards.filter(c => c.set === s && c.rarity === r).sort((a, b) => a.num - b.num);
 export const supplies = () => inSet('ST');
 export const SETS = ['WW', 'FL', 'T2'];
-export const SET_NAMES = { WW: 'Whispering Winds', FL: 'Fallen Legends', T2: 'Troublesome 2', ST: 'Supplies' };
+export const SET_NAMES = { WW: 'First Adventures', FL: 'Fallen Legends', T2: 'Troublesome 2', ST: 'Supplies' };
 /** reprint-safe identity: every printing has its own card id (set_mon), the doremon itself is c.mon */
 export const nameKey = c => c.mon || c.id;
 /** spells/traps a set's packs can contain: the base supplies, plus (T2 only) the set's own new ones at 3x weight */
@@ -55,7 +55,7 @@ export const randomSeed = () => { const a = new Uint32Array(2); (globalThis.cryp
 export const Packs = {
   size: 7,
   // ITEM = a spell/trap card (Supplies). Slot 3: 30% spell/trap, slot 4: always a spell/trap. Slots 5-7 (and every chase rate + pity) unchanged.
-  WW: { set: 'WW', name: 'Whispering Winds', price: 500, pity: 30, tiers: ['C', 'U', 'R', 'SR', 'SSR', 'ITEM'],
+  WW: { set: 'WW', name: 'First Adventures', price: 500, pity: 30, tiers: ['C', 'U', 'R', 'SR', 'SSR', 'ITEM'],
     slots: [[100,0,0,0,0,0],[100,0,0,0,0,0],[70,0,0,0,0,30],[0,0,0,0,0,100],[0,88,10,2,0,0],[0,65,30,5,0,0],[0,0,80,18.5,1.5,0]], chase: ['SSR'], pityOdds: [1] },
   FL: { set: 'FL', name: 'Fallen Legends', price: 800, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT', 'ITEM'],
     slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
@@ -129,6 +129,8 @@ const clamp4 = v => Math.max(-4, Math.min(4, v));
 //          to2: optional 2nd target of a SPREAD move (must differ from to)
 //          {t:'undo',kind:'mon'|'trap',slot}  take back a doremon/trap played this turn (nothing resolved from it yet)
 export class Battle {
+  /** going-second compensation (playtests: first player won 61-64% without it) */
+  static SECOND = { extra: 0, quick: true };
   static startLife = 5; static handStart = 5; static handMax = 10; static turnCap = 80;
   constructor(deckA, nameA, deckB, nameB, seed, first = 0) {
     this.rng = new SplitMix(seed); this.splitKOs = [0, 0]; this.current = 0; this.turnNumber = 1; this.winner = null; this.over = false; this.events = [];
@@ -136,7 +138,9 @@ export class Battle {
     Battle.shuffle(a, this.rng); Battle.shuffle(b, this.rng);
     this.sides = [newSide(nameA, a), newSide(nameB, b)];
     for (let s = 0; s < 2; s++) { Battle.mulligan(this.sides[s]); for (let i = 0; i < Battle.handStart; i++) this.draw(s, true); }
-    this.current = first;
+    this.current = first; this.first = first; this.acted = false; this.mulled = [false, false];
+    // Nov 2: the player going second starts with 1 extra card and its first doremon can attack the turn it is played
+    if (Battle.SECOND.extra) this.draw(1 - first, true); this.sides[1 - first].quickStart = Battle.SECOND.quick;
     this.events.push({ e: 'turn', side: first }); this.log(`${this.sides[first].name} goes first.`);
   }
   static shuffle(d, rng) { if (d.length < 2) return; for (let i = d.length - 1; i > 0; i--) { const j = rng.int(i + 1); [d[i], d[j]] = [d[j], d[i]]; } }
@@ -146,6 +150,18 @@ export class Battle {
     const j = s.deck.findIndex((c, i) => i >= n && isMon(c)); if (j >= 0) [s.deck[0], s.deck[j]] = [s.deck[j], s.deck[0]];
   }
   log(s) { this.events.push({ e: 'log', text: s }); }
+  /** FREE MULLIGAN: once per battle, before anything has been played, a side may shuffle its whole opening hand back
+   *  into its deck, reshuffle, and draw the same number of cards again (the "at least one doremon" rule still applies). */
+  canMulligan(s) { return !this.over && !this.acted && !this.mulled[s]; }
+  redraw(s) {
+    if (!this.canMulligan(s)) return false;
+    const S = this.sides[s], n = S.hand.length;
+    S.deck.push(...S.hand); S.hand = []; Battle.shuffle(S.deck, this.rng);
+    const keep = Battle.handStart; Battle.mulligan(S);
+    for (let i = 0; i < n; i++) this.draw(s, true);
+    this.mulled[s] = true; this.events.push({ e: 'mulligan', side: s }); this.log(`${S.name} shuffles their hand back and redraws ${n} cards.`);
+    return true;
+  }
   get opp() { return 1 - this.current; }
   draw(s, silent = false) {
     const S = this.sides[s];
@@ -206,16 +222,18 @@ export class Battle {
   }
   apply(a) {
     if (!this.isLegal(a)) return false;
+    this.acted = true;
     const me = this.current, S = this.sides[me];
     switch (a.t) {
       case 'end': this.endTurn(); break;
       case 'undo': {
         const c = a.kind === 'mon' ? S.mons[a.slot].card : S.traps[a.slot];
-        if (a.kind === 'mon') { S.mons[a.slot] = null; S.monsPlayed--; } else { S.traps[a.slot] = null; S.stPlayed--; S.freshTraps = S.freshTraps.filter(x => x !== a.slot); }
+        if (a.kind === 'mon') { if (S.mons[a.slot].quick) S.quickStart = true; S.mons[a.slot] = null; S.monsPlayed--; } else { S.traps[a.slot] = null; S.stPlayed--; S.freshTraps = S.freshTraps.filter(x => x !== a.slot); }
         S.hand.push(c); this.events.push({ e: 'undo', side: me, card: c, kind: a.kind, slot: a.slot });
         this.log(a.kind === 'mon' ? `${S.name} takes back ${c.name}.` : `${S.name} picks a set trap back up.`); break;
       }
-      case 'playMon': { const c = S.hand.splice(a.hand, 1)[0]; S.mons[a.slot] = newMon(c); S.mons[a.slot].fresh = true; S.monsPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`); break; }
+      case 'playMon': { const c = S.hand.splice(a.hand, 1)[0]; S.mons[a.slot] = newMon(c); S.mons[a.slot].fresh = true; S.monsPlayed++;
+        if (S.quickStart) { S.quickStart = false; S.mons[a.slot].ready = true; S.mons[a.slot].quick = true; this.log(`${c.name} gets a quick start and can attack right away!`); } this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`); break; }
       case 'setTrap': { const c = S.hand.splice(a.hand, 1)[0]; S.traps[a.slot] = c; S.freshTraps.push(a.slot); S.stPlayed++; this.events.push({ e: 'set', side: me, slot: a.slot }); this.log(`${S.name} sets a trap face-down.`); break; }
       case 'spell': { const c = S.hand.splice(a.hand, 1)[0]; S.stPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.castSpell(c, me, a.target); S.discard.push(c); break; }
       case 'attack': this.attack(a.from, a.to, a.to2); break;
@@ -303,7 +321,13 @@ export class Battle {
       const [dmg, ef] = Battle.damage(a, d);
       const note = ef === 0 ? ' It has no effect...' : ef > 1 ? " It's super effective!" : ef < 1 ? " It's not very effective." : '';
       this.log(`${a.card.name} uses ${a.card.move}${tag} on ${d.card.name} for ${dmg}.${note}`);
-      this.hurt(o, slot, dmg, ef, null); return true;
+      this.hurt(o, slot, dmg, ef, null);
+      // move side effect (Nov 2 balance): e.g. Sludge Bomb may poison. One roll per hit that lands on a survivor with no status.
+      const t2 = O.mons[slot];
+      if (a.card.fx && dmg > 0 && t2 && t2.status === 'none' && STATUS[a.card.fx] && this.rng.chance((a.card.fxChance || 0) / 100)) {
+        t2.status = a.card.fx; t2.statusTurns = 0; this.events.push({ e: 'status', side: o, slot, status: a.card.fx }); this.log(`${t2.card.name} is ${STATUS[a.card.fx][1].toLowerCase()}!`);
+      }
+      return true;
     };
     const ko0 = this.sides[me].koCount;
     const done = () => { if (this.sides[me].koCount - ko0 >= 2) { this.splitKOs[me]++; this.events.push({ e: 'splitKO', side: me }); } };
@@ -365,7 +389,12 @@ export const swiftRound = x => x < 0 ? -Math.round(-x) : Math.round(x);
 
 // ---------- AI ----------
 export const BattleAI = {
-  monValue: c => c.hp + c.dmg * 1.6 + Rarity.rank(c.rarity) * 8,
+  /** printed damage per attack, counting both hits of a split move */
+  effDmg: c => c.split === 'double' ? c.dmg * 1.7 : c.split === 'spread' ? c.dmg * 1.6 : c.dmg,
+  monValue: c => c.hp + BattleAI.effDmg(c) * 1.6 + Rarity.rank(c.rarity) * 8 + (c.fx ? 10 : 0),
+  /** AI mulligan rule: redraw a hand with fewer than 2 doremon, or one with no spell/trap at all */
+  openingMulligans(b, sides = [0, 1]) { for (const s of sides) if (b.canMulligan(s) && BattleAI.wantsMulligan(b, s)) b.redraw(s); },
+  wantsMulligan(b, s) { const h = b.sides[s].hand, m = h.filter(isMon).length; return m < 2 || m === h.length; },
   next(b) {
     const me = b.current, o = 1 - me, s = b.sides[me], os = b.sides[o];
     const MV = BattleAI.monValue;
@@ -436,6 +465,7 @@ export const BattleAI = {
   chooseFirst() { return true; },
   simulate(b, maxActions = 4000) {
     let n = 0;
+    BattleAI.openingMulligans(b);
     while (!b.over && n < maxActions) { const a = BattleAI.next(b); if (!b.apply(a)) b.apply({ t: 'end' }); n++; }
     if (!b.over) b.finish(null);
     return b.winner;
@@ -457,24 +487,53 @@ export const DeckRules = {
     return p;
   },
   pref: { st_super_potion: 60, st_guard_wall: 58, st_static_web: 57, st_power_up: 56, st_doze_spores: 55, st_menace: 50, st_cheer_on: 48, st_iron_guard: 47, st_potion: 46, st_bramble_shield: 45, st_full_heal: 44, st_shield_pal: 42, st_wisp_scorch: 40, st_soothing_song: 38, st_metal_screech: 36, st_venom_dust: 34, st_bewilder_beam: 33, st_brace_up: 30, st_mirror_veil: 50, st_duo_bloom: 54, st_twin_remedy: 43, st_twin_war_cry: 46, st_twin_growl: 47, st_double_glare: 39, st_toxic_spray: 49, st_cute_growl: 28, st_glare_down: 26, st_paralyze_heal: 22, st_awakening: 20, st_antidote: 18, st_burn_heal: 18 },
-  autoBuild(owned, rng) {
+  /** Deck building for every AI (and the "auto-build" button). pers = a trainer personality {fav:[types], style}:
+   *  favourite types score higher, and each extra doremon attacking with the SAME type as ones already picked scores lower,
+   *  so decks spread over several types instead of every trainer running the same top-8 cards. */
+  STYLE: {
+    aggro: { st_power_up: 25, st_cheer_on: 25, st_twin_war_cry: 25, st_menace: -10, st_super_potion: -15, st_metal_screech: 15, st_double_glare: 15 },
+    control: { st_guard_wall: 10, st_static_web: 10, st_doze_spores: 15, st_bramble_shield: 20, st_venom_dust: 20, st_wisp_scorch: 20, st_bewilder_beam: 20, st_twin_growl: 20, st_toxic_spray: 15, st_power_up: -15, st_super_potion: -10 },
+    sustain: { st_super_potion: 5, st_soothing_song: 30, st_twin_remedy: 30, st_duo_bloom: 20, st_iron_guard: 20, st_shield_pal: 25, st_mirror_veil: 15, st_brace_up: 15, st_power_up: -15 },
+    balanced: {},
+  },
+  autoBuild(owned, rng, pers = null) {
+    const fav = (pers && pers.fav) || [], style = DeckRules.STYLE[(pers && pers.style) || 'balanced'] || {};
     const mons = [];
-    for (const id of Object.keys(owned).sort()) { const n = owned[id]; if (!(n > 0)) continue; const c = card(id); if (c && isMon(c)) for (let k = 0; k < Math.min(n, Rarity.copyLimit(c)); k++) mons.push([c, BattleAI.monValue(c) - k * 6 + rng.unit() * 4]); }
+    for (const id of Object.keys(owned).sort()) { const n = owned[id]; if (!(n > 0)) continue; const c = card(id); if (c && isMon(c)) for (let k = 0; k < Math.min(n, Rarity.copyLimit(c)); k++) {
+      let v = BattleAI.monValue(c) - k * 6 + rng.unit() * (pers ? 14 : 4);
+      if (fav.length && (fav.includes(c.moveType) || c.types.some(t => fav.includes(t)))) v += 40;
+      mons.push([c, v]); } }
     mons.sort((a, b) => b[1] - a[1]);
     const sup = [];
-    for (const id of Object.keys(owned).sort()) { const n = owned[id]; if (!(n > 0)) continue; const c = card(id); if (c && !isMon(c)) for (let k = 0; k < Math.min(n, Rarity.copyLimit(c)); k++) sup.push([c, (DeckRules.pref[id] ?? 20) - k * 12 + rng.unit() * 3]); }
+    for (const id of Object.keys(owned).sort()) { const n = owned[id]; if (!(n > 0)) continue; const c = card(id); if (c && !isMon(c)) for (let k = 0; k < Math.min(n, Rarity.copyLimit(c)); k++) sup.push([c, (DeckRules.pref[id] ?? 20) + (style[id] || 0) - k * 12 + rng.unit() * (pers ? 10 : 3)]); }
     sup.sort((a, b) => b[1] - a[1]);
     const nSup = Math.min(7, sup.length);
     let deck = sup.slice(0, nSup).map(x => x[0].id);
-    const used = {}, lim = {};   // name-based limit across printings
-    for (const [c] of mons) { if (deck.length >= 20) break; const k = nameKey(c); const L = Math.min(lim[k] ?? 9, Rarity.copyLimit(c)); if ((used[k] || 0) >= L) continue; used[k] = (used[k] || 0) + 1; lim[k] = L; deck.push(c.id); }
+    const used = {}, lim = {}, byType = {};   // name-based limit across printings
+    const pool = mons.slice();
+    while (deck.length < 20 && pool.length) {
+      // greedy with a variety penalty: -14 per doremon already picked that attacks with the same type (only when a personality is set)
+      let bi = -1, bv = -Infinity;
+      for (let i = 0; i < pool.length; i++) { const [c, v] = pool[i]; const k = nameKey(c); const L = Math.min(lim[k] ?? 9, Rarity.copyLimit(c)); if ((used[k] || 0) >= L) continue;
+        const sc = v - (pers ? 14 * (byType[c.moveType] || 0) : 0); if (sc > bv) { bv = sc; bi = i; } }
+      if (bi < 0) break;
+      const [c] = pool.splice(bi, 1)[0]; const k = nameKey(c); used[k] = (used[k] || 0) + 1; lim[k] = Math.min(lim[k] ?? 9, Rarity.copyLimit(c)); byType[c.moveType] = (byType[c.moveType] || 0) + 1; deck.push(c.id);
+    }
     if (deck.length < 20) deck = deck.concat(sup.slice(nSup, nSup + Math.min(20 - deck.length, 10 - nSup)).map(x => x[0].id));
     return deck;
   },
 };
 
 // ---------- game: save, economy, market, league, trades, achievements ----------
-export const AI_NAMES = [['Kai', 'zebrolt'], ['Mira', 'pinkit'], ['Rook', 'rokbru'], ['Juno', 'pearlgill'], ['Ezra', 'wispeacock'], ['Lumi', 'solpuff'], ['Dax', 'magmaberry'], ['Nova', 'verdaconda']];
+/** 16 league trainers: [name, avatar, favourite types, deck style]. The first 8 are the originals (save order kept). */
+export const AI_NAMES = [['Kai', 'zebrolt', ['Electric', 'Psychic'], 'aggro'], ['Mira', 'pinkit', ['Fairy', 'Normal'], 'sustain'], ['Rook', 'rokbru', ['Rock', 'Ground'], 'control'],
+  ['Juno', 'pearlgill', ['Water', 'Fairy'], 'sustain'], ['Ezra', 'wispeacock', ['Ghost', 'Dark'], 'control'], ['Lumi', 'solpuff', ['Fairy', 'Psychic'], 'balanced'],
+  ['Dax', 'magmaberry', ['Fire', 'Rock'], 'aggro'], ['Nova', 'verdaconda', ['Dragon', 'Grass'], 'balanced'],
+  ['Lacey', 'limantis', ['Fairy', 'Bug'], 'sustain'], ['Prof. Winston', 'egmil', ['Psychic', 'Steel'], 'control'], ['Bram', 'boulderbear', ['Ground', 'Fighting'], 'aggro'],
+  ['Sable', 'nightpurr', ['Dark', 'Flying'], 'aggro'], ['Pip', 'teddimple', ['Bug', 'Grass'], 'balanced'], ['Coral', 'octoflit', ['Water', 'Flying'], 'balanced'],
+  ['Rex', 'galefang', ['Dragon', 'Ice'], 'aggro'], ['Ivy', 'acornix', ['Grass', 'Poison'], 'control']];
+export const persOf = k => ({ fav: AI_NAMES[k][2], style: AI_NAMES[k][3] });
+export const N_AI = AI_NAMES.length;
 export const STARTER = ['ww_snarlpup', 'ww_acornix', 'ww_zapwing', 'ww_spydo', 'ww_gruugy', 'ww_hootuft'];
 // Phase 3 starter buff: 1 Zapwing -> Giggleti, 1 Hootuft -> Embertail, Potion -> Super Potion, Cute Growl -> Menace
 const STARTER_MONS = ['ww_snarlpup', 'ww_snarlpup', 'ww_acornix', 'ww_acornix', 'ww_giggleti', 'ww_zapwing', 'ww_spydo', 'ww_spydo', 'ww_gruugy', 'ww_gruugy', 'ww_embertail', 'ww_hootuft'];
@@ -487,8 +546,8 @@ export const ACHIEVEMENTS = [
   ['first_pack', 'Rip It!', 'Open your first Dorepack', { WW: 1 }, 0], ['packs_10', 'Pack Rat', 'Open 10 packs', { WW: 1 }, 0],
   ['packs_50', 'Pack Hoarder', 'Open 50 packs', { FL: 2 }, 0], ['first_sr', 'Shiny!', 'Pull a Super Rare', {}, 300],
   ['first_ssr', 'Starter Chase', 'Pull an SSR starter', { FL: 1 }, 0], ['first_lgd', 'Fallen No More', 'Pull a Legendary', { FL: 1 }, 0],
-  ['mythic', 'Myth Made Real', 'Pull the Mythical', { FL: 2 }, 0], ['ww_half', 'Half a Breeze', 'Collect 15 Whispering Winds cards', { WW: 1 }, 0],
-  ['ww_all', 'Whirlwind Master', 'Complete Whispering Winds (30/30)', { FL: 2 }, 0], ['fl_half', 'Legend Hunter', 'Collect 15 Fallen Legends cards', { FL: 1 }, 0],
+  ['mythic', 'Myth Made Real', 'Pull the Mythical', { FL: 2 }, 0], ['ww_half', 'Half a Breeze', 'Collect 15 First Adventures cards', { WW: 1 }, 0],
+  ['ww_all', 'Whirlwind Master', 'Complete First Adventures (30/30)', { FL: 2 }, 0], ['fl_half', 'Legend Hunter', 'Collect 15 Fallen Legends cards', { FL: 1 }, 0],
   ['fl_all', 'Keeper of Legends', 'Complete Fallen Legends (30/30)', { FL: 3 }, 0], ['first_deck', 'Deck Builder', 'Build your own legal 20-card deck', { WW: 1 }, 0],
   ['first_win', 'First Victory', 'Win a mat battle', { WW: 1 }, 0], ['wins_10', 'Mat Veteran', 'Win 10 battles', { FL: 1 }, 0],
   ['streak_5', 'On Fire', 'Win 5 battles in a row', { FL: 1 }, 0], ['silver', 'Silver League', 'Reach 1050 MR', { WW: 1 }, 0],
@@ -499,8 +558,21 @@ export const ACHIEVEMENTS = [
   ['sell_10', 'Card Shark', 'Sell 10 cards', {}, 200], ['buy_single', 'Window Shopper', 'Buy a single card', { WW: 1 }, 0],
 ].map(([id, title, desc, packs, money]) => ({ id, title, desc, packs, money }));
 
+export const TIERS = [['Bronze', 0], ['Silver', 1050], ['Gold', 1150], ['Platinum', 1250], ['Diamond', 1400], ['Master', 1550]];
 export const tier = mr => mr < 1050 ? 'Bronze' : mr < 1150 ? 'Silver' : mr < 1250 ? 'Gold' : mr < 1400 ? 'Platinum' : mr < 1550 ? 'Diamond' : 'Master';
 export const elo = (a, b, aWon) => swiftRound(32 * ((aWon ? 1 : 0) - 1 / (1 + Math.pow(10, (b - a) / 400))));
+/** Nov 2 MR rules, the same for the player and every AI (each side is computed on its own, so it is not zero-sum):
+ *  win  = Elo K=32 but at least +15, plus a streak bonus of +2 per win in a row after the first (max +8);
+ *  loss = Elo K=32, softened to 60% when the winner was rated BELOW you (an upset costs less), never more than -24.
+ *  streakAfter = the winner's streak INCLUDING this win.
+ *  Because wins have a floor and upsets are softened, MR would inflate forever; so at the end of every league day
+ *  everyone (player and AI alike) gives back 2% of whatever they hold above 1000 ("rust"). */
+export const MR = { minWin: 15, streakStep: 2, streakMax: 8, upsetSoft: 0.6, maxLoss: 24, rust: 0.02 };
+export const rust = mr => mr > 1000 ? mr - swiftRound((mr - 1000) * MR.rust) : mr;
+export function mrDelta(me, opp, won, streakAfter = 0) {
+  if (won) return Math.max(MR.minWin, elo(me, opp, true)) + Math.min(MR.streakMax, Math.max(0, streakAfter - 1) * MR.streakStep);
+  let d = elo(me, opp, false); if (opp < me) d = swiftRound(d * MR.upsetSoft); return Math.max(-MR.maxLoss, d);
+}
 
 const freshStats = () => ({ pulls: {}, bestPull: null, packsBought: {}, battles: { ranked: { w: 0, l: 0, d: 0 }, friendly: { w: 0, l: 0, d: 0 } }, earned: {}, spent: {}, auctionsWon: 0, auctionsSold: 0, listings: 0, bids: 0, cardsBought: 0, cardsPulled: 0 });
 const freshSave = () => ({ version: 2, oppHistory: [], nextOpp: null, money: 1500, owned: {}, packs: { WW: 2, FL: 1 }, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
@@ -515,13 +587,14 @@ export class Game {
     this.storage = storage; this.newAchievements = []; this.onChange = null;
     let loaded = null;
     try { const t = storage && storage.load(); if (t) loaded = JSON.parse(t); } catch (e) { loaded = null; }
-    if (loaded && loaded.ai && loaded.ai.length === 8) {
+    if (loaded && loaded.ai && loaded.ai.length >= 8 && loaded.ai.length <= N_AI) {
       this.s = Object.assign(freshSave(), loaded);
       this.s.stats = Object.assign(freshStats(), this.s.stats || {});
       for (const P of this.s.ai) { P.earned ??= 0; P.spent ??= 0; P.auctionsWon ??= 0; P.auctionsSold ??= 0; }
       for (const c of DB.cards) if (isMon(c) && !this.s.market[c.id]) this.s.market[c.id] = { factor: 1, history: [Rarity.baseValue(c.rarity)] };   // new sets (T2) in old saves
       if (!loaded.bank) this.s.bank = { initial: this.totalCash(), faucet: 0, sink: 0 };   // migrate v1 saves: start the ledger now
       this.rng = new SplitMix(BigInt.asUintN(64, BigInt(this.s.seed || '1') + BigInt(Math.floor(Date.now() / 1000))));
+      this.migrateTrainers();
     } else { this.s = freshSave(); this.rng = new SplitMix(seed ?? randomSeed()); this.newGame(); }
   }
   newGame() {
@@ -531,16 +604,28 @@ export class Game {
     for (const c of DB.cards) if (isMon(c)) s.market[c.id] = { factor: 1, history: [Rarity.baseValue(c.rarity)] };
     // Fair start: every AI begins exactly like the player — same starter deck, MR, Dorebucks and starting packs,
     // opened with the same pack function. After that they build/rebuild only from their own collections.
-    AI_NAMES.forEach(([n, av], k) => {
-      const p = { id: `ai${k}`, name: n, avatar: av, mr: s.mr, money: s.money, owned: {}, deck: [], pity: {}, wins: 0, losses: 0, packsOpened: 0, wants: [], earned: 0, spent: 0, auctionsWon: 0, auctionsSold: 0 };
-      for (const id of STARTER_DECK) inc(p.owned, id);
-      s.ai.push(p);
-      for (const set of SETS) for (let i = 0; i < (s.packs[set] || 0); i++) this.aiOpenPack(k, set, true);
-      s.ai[k].deck = DeckRules.autoBuild(s.ai[k].owned, this.rng);
-    });
+    AI_NAMES.forEach((_, k) => this.addTrainer(k));
     s.seed = this.rng.next().toString();
     s.bank = { initial: this.totalCash(), faucet: 0, sink: 0 };
     this.save();
+  }
+  /** a brand-new trainer with exactly the player's starting kit: starter deck, 1000 MR, $1500, the starting packs (opened free) */
+  addTrainer(k) {
+    const s = this.s, [n, av] = AI_NAMES[k], f = freshSave();
+    const p = { id: `ai${k}`, name: n, avatar: av, mr: f.mr, money: f.money, owned: {}, deck: [], pity: {}, wins: 0, losses: 0, packsOpened: 0, wants: [], earned: 0, spent: 0, auctionsWon: 0, auctionsSold: 0, streak: 0, games: 0, played: {}, tourWins: 0 };
+    for (const id of STARTER_DECK) inc(p.owned, id);
+    s.ai[k] = p;
+    for (const set of SETS) for (let i = 0; i < (f.packs[set] || 0); i++) this.aiOpenPack(k, set, true);
+    p.deck = DeckRules.autoBuild(p.owned, this.rng, persOf(k));
+    return p;
+  }
+  /** saves from the 8-trainer league get the 8 new trainers (fair start). Their starting cash is added to the
+   *  ledger's initial balance, so conservation still holds. Existing trainers keep everything. */
+  migrateTrainers() {
+    const s = this.s;
+    for (const P of s.ai) { P.streak ??= 0; P.games ??= (P.wins || 0) + (P.losses || 0); P.played ??= {}; P.tourWins ??= 0; }
+    s.stats.played ??= {}; s.stats.tourWins ??= 0; s.stats.drafts ??= 0;
+    for (let k = s.ai.length; k < N_AI; k++) { const P = this.addTrainer(k); s.bank.initial += P.money; }
   }
   save() { if (this.storage) this.storage.save(JSON.stringify(this.s)); if (this.onChange) this.onChange(); }
 
@@ -584,7 +669,7 @@ export class Game {
     const fresh = new Set();
     for (const c of cards) { if (!(s.owned[c.id] > 0)) fresh.add(c.id); inc(s.owned, c.id); this.supply(c.id, 0.996); inc(s.stats.pulls, c.rarity); s.stats.cardsPulled++;
       const bp = s.stats.bestPull; if (!bp || this.value(c.id) > this.value(bp)) s.stats.bestPull = c.id; }
-    inc(s.packsOpened, set);
+    inc(s.packsOpened, set); this.quest('open');
     for (const c of cards) if (Rarity.rank(c.rarity) >= Rarity.rank('SR') && c.rarity !== 'ITEM') s.pulledRarities.push(c.rarity);
     this.checkAchievements(); this.save();
     return { cards, fresh };
@@ -624,12 +709,12 @@ export class Game {
   change(id, n = 5) { const h = this.s.market[id]?.history; if (!h || h.length < 2) return 0; const old = h[Math.max(0, h.length - 1 - n)]; return old === 0 ? 0 : (h[h.length - 1] - old) / old; }
   get topCard() { let best = null; for (const id in this.s.market) if (best == null || this.value(id) > this.value(best)) best = id; return best; }
   // shop
-  buySingle(id) { const p = this.buyPrice(id); if (!this.spend(ME, p, 'shop')) return false; inc(this.s.owned, id); this.s.singlesBought++; this.s.stats.cardsBought++; if (isMon(card(id))) this.demand(id, 1.04); this.checkAchievements(); this.save(); return true; }
+  buySingle(id) { const p = this.buyPrice(id); if (!this.spend(ME, p, 'shop')) return false; inc(this.s.owned, id); this.s.singlesBought++; this.quest('buy'); this.s.stats.cardsBought++; if (isMon(card(id))) this.demand(id, 1.04); this.checkAchievements(); this.save(); return true; }
   inDecks(id) { return Math.max(0, ...this.s.decks.map(d => d.filter(x => x === id).length)); }
   sell(id) {
     const n = this.s.owned[id] || 0; const c = card(id); if (!c) return false;
     if (!(n > Math.max(Rarity.keepCopies, this.inDecks(id)))) return false;
-    this.s.owned[id] = n - 1; this.earn(ME, this.sellPrice(id), 'shop sales'); this.s.cardsSold++;
+    this.s.owned[id] = n - 1; this.earn(ME, this.sellPrice(id), 'shop sales'); this.s.cardsSold++; this.quest('sell');
     if (isMon(c)) this.supply(id, 0.985);
     this.checkAchievements(); this.save(); return true;
   }
@@ -640,7 +725,7 @@ export class Game {
   ownsDeck(d) { const c = {}; for (const id of d) inc(c, id); return Object.entries(c).every(([k, v]) => (this.s.owned[k] || 0) >= v); }
   get activeDeckValid() { const d = this.s.decks[this.s.activeDeck]; return DeckRules.problems(d).length === 0 && this.ownsDeck(d); }
   // league
-  aiDeck(k) { if (DeckRules.problems(this.s.ai[k].deck).length || !this.aiOwnsDeck(k)) this.s.ai[k].deck = DeckRules.autoBuild(this.s.ai[k].owned, this.rng); return this.s.ai[k].deck.map(card); }
+  aiDeck(k) { if (DeckRules.problems(this.s.ai[k].deck).length || !this.aiOwnsDeck(k)) this.s.ai[k].deck = DeckRules.autoBuild(this.s.ai[k].owned, this.rng, persOf(k)); return this.s.ai[k].deck.map(card); }
   aiOwnsDeck(k) { const c = {}, o = this.s.ai[k].owned; for (const id of this.s.ai[k].deck) inc(c, id); return Object.entries(c).every(([id, v]) => (o[id] || 0) >= v); }
   /** Ranked matchmaking: a random AI, weighted toward similar MR, never the previous opponent, recent ones (last 3) much less likely.
    *  The pick is stored so the League screen shows the same opponent until that match is played. */
@@ -657,12 +742,17 @@ export class Game {
     s.nextOpp = k; return k;
   }
   /** won: true/false/null(draw). The AI opponent is paid exactly what the player would be paid in its place. */
-  recordResult(won, league, k, splitKOs = 0) {
-    const s = this.s; s.splitKOs = (s.splitKOs || 0) + splitKOs; const st = s.stats.battles[league ? 'ranked' : 'friendly']; let bucks = 0, d = 0;
+  recordResult(won, league, k, splitKOs = 0, played = []) {
+    const s = this.s; s.stats.played ??= {}; for (const id of played) inc(s.stats.played, id);
+    if (league && k != null && s.ai[k]) { const P = s.ai[k]; P.games = (P.games || 0) + 1; }
+    if (league) this.quest('play'); if (won && league) this.quest('win'); if (won && !league) this.quest('friendly'); if (splitKOs) this.quest('splitko', splitKOs); s.splitKOs = (s.splitKOs || 0) + splitKOs; const st = s.stats.battles[league ? 'ranked' : 'friendly']; let bucks = 0, d = 0;
     if (won != null) {
       if (won) { s.wins++; s.streak++; s.bestStreak = Math.max(s.bestStreak, s.streak); st.w++; } else { s.losses++; s.streak = 0; st.l++; }
       if (league) {
-        d = elo(s.mr, s.ai[k].mr, won); s.mr = Math.max(0, s.mr + d); s.bestMr = Math.max(s.bestMr, s.mr); s.ai[k].mr -= d;
+        const P = s.ai[k], before = [s.mr, P.mr];
+        if (won) { P.streak = 0; } else { P.streak = (P.streak || 0) + 1; }
+        d = mrDelta(before[0], before[1], won, s.streak); s.mr = Math.max(0, s.mr + d); s.bestMr = Math.max(s.bestMr, s.mr);
+        P.mr = Math.max(0, P.mr + mrDelta(before[1], before[0], !won, P.streak));
         if (won) { s.ai[k].losses++; s.leagueWins++; this.earn(k, 60, 'league'); } else { s.ai[k].wins++; this.earn(k, 300, 'league'); }
         bucks = won ? 300 + Math.max(0, s.streak - 1) * 25 : 60;
         s.oppHistory = [k].concat((s.oppHistory || []).filter(x => x !== k)).slice(0, 4); s.nextOpp = null;
@@ -676,23 +766,18 @@ export class Game {
   /** one league day: AI matches (stored so they can be replayed in Spectate), AI shopping, auctions, trades, market */
   worldStep(skip) {
     const s = this.s;
+    if (s.tour && !s.tour.done) this.finishTour(true);      // the day is over: unplayed player matches are forfeited
     const pool = s.ai.map((_, i) => i).filter(i => i !== skip);
     for (let i = pool.length - 1; i > 0; i--) { const j = this.rng.int(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     s.lastDay = [];
     while (pool.length >= 2) {
       const a = pool.pop(), b = pool.pop();
       // coin flip: the winner of the toss chooses, and (like the AI vs you) chooses to go first
-      const da = this.aiDeck(a), db = this.aiDeck(b), seed = this.rng.next(), toss = this.rng.int(2), first = BattleAI.chooseFirst() ? toss : 1 - toss;
-      const bt = new Battle(da, s.ai[a].name, db, s.ai[b].name, seed, first);
+      const rec = this.aiMatch(a, b);
+      const bt = new Battle(rec.deckA.map(card), s.ai[a].name, rec.deckB.map(card), s.ai[b].name, BigInt(rec.seed), rec.first);
       const w = BattleAI.simulate(bt);
-      s.lastDay.push({ a, b, deckA: da.map(c => c.id), deckB: db.map(c => c.id), seed: seed.toString(), first, winner: w, day: s.day + 1 });
-      if (w != null) {
-        const [win, lose] = w === 0 ? [a, b] : [b, a];
-        const dd = elo(s.ai[win].mr, s.ai[lose].mr, true);
-        s.ai[win].mr += dd; s.ai[lose].mr -= dd; s.ai[win].wins++; s.ai[lose].losses++;
-        this.earn(win, 300, 'league'); this.earn(lose, 60, 'league');      // same purse as the player's ranked games
-        s.recent.unshift({ id: uuid(), a: s.ai[a].name, b: s.ai[b].name, winner: s.ai[win].name, mrChange: dd });
-      }
+      rec.winner = w; rec.day = s.day + 1; s.lastDay.push(rec);
+      this.recordAIMatch(rec, w, bt);
     }
     if (s.recent.length > 30) s.recent.length = 30;
     s.ai.forEach((P, k) => {
@@ -703,8 +788,9 @@ export class Game {
       if (w && P.money > this.value(w) * 2 + 600 && this.rng.chance(0.3)) { if (this.spend(k, this.value(w), 'shop')) { inc(P.owned, w); this.demand(w, 1.05); P.wants = this.aiWants(k); } }
     });
     this.auctionDay();
-    s.ai.forEach((P, k) => { P.deck = DeckRules.autoBuild(this.availableOwned(k), this.rng); });
+    s.ai.forEach((P, k) => { P.deck = DeckRules.autoBuild(this.availableOwned(k), this.rng, persOf(k)); });
     this.generateOffers();
+    s.mr = rust(s.mr); for (const P of s.ai) P.mr = rust(P.mr);
     this.marketTick();
     this.settleAuctions();
   }
@@ -727,6 +813,188 @@ export class Game {
   /** advance a league day without the player battling (auctions tick, AIs play each other) */
   skipDay() { this.worldStep(null); this.checkAchievements(); this.save(); }
   availableOwned(k) { return this.s.ai[k].owned; }
+  /** a ready-to-play AI-vs-AI pairing (decks, seed, coin toss) */
+  aiMatch(a, b) {
+    const da = this.aiDeck(a), db = this.aiDeck(b), seed = this.rng.next(), toss = this.rng.int(2), first = BattleAI.chooseFirst() ? toss : 1 - toss;
+    return { a, b, deckA: da.map(c => c.id), deckB: db.map(c => c.id), seed: seed.toString(), first };
+  }
+  /** counts the cards each side played, for trainer stats */
+  static playedIds(bt, side) { return bt.events.filter(e => e.e === 'played' && e.side === side).map(e => e.card.id); }
+  /** applies an AI-vs-AI ranked result: MR (same rules as the player), W/L, streaks, purse, card-play stats */
+  recordAIMatch(rec, w, bt = null) {
+    const s = this.s, A = s.ai[rec.a], B = s.ai[rec.b];
+    A.games = (A.games || 0) + 1; B.games = (B.games || 0) + 1;
+    if (bt) { A.played ??= {}; B.played ??= {}; for (const id of Game.playedIds(bt, 0)) inc(A.played, id); for (const id of Game.playedIds(bt, 1)) inc(B.played, id); }
+    if (w == null) return 0;
+    const [win, lose] = w === 0 ? [rec.a, rec.b] : [rec.b, rec.a], W = s.ai[win], L = s.ai[lose];
+    W.streak = (W.streak || 0) + 1; L.streak = 0;
+    const dw = mrDelta(W.mr, L.mr, true, W.streak), dl = mrDelta(L.mr, W.mr, false, 0);
+    W.mr += dw; L.mr = Math.max(0, L.mr + dl); W.wins++; L.losses++;
+    this.earn(win, 300, 'league'); this.earn(lose, 60, 'league');      // same purse as the player's ranked games
+    s.recent.unshift({ id: uuid(), a: A.name, b: B.name, winner: W.name, mrChange: dw, mrLoss: dl });
+    if (s.recent.length > 30) s.recent.length = 30;
+    return dw;
+  }
+
+  // ---------- Spectate: every "next match" is a fresh random pairing that really counts ----------
+  nextSpectate() {
+    const s = this.s, n = s.ai.length, last = s.specLast || [];
+    let a, b, tries = 0;
+    do { a = this.rng.int(n); b = this.rng.int(n - 1); if (b >= a) b++; tries++; }
+    while (tries < 50 && last.length === 2 && (last.includes(a) && last.includes(b) || last.includes(a) || last.includes(b)));
+    s.specLast = [a, b];
+    const rec = this.aiMatch(a, b); rec.day = s.day; rec.live = true;
+    return rec;
+  }
+  /** call when a spectated live match ends; records it like a league match */
+  finishSpectate(rec, w, bt = null) {
+    if (rec.counted) return 0; rec.counted = true;
+    const d = this.recordAIMatch(rec, w, bt); this.quest('watch'); this.save(); return d;
+  }
+
+  // ---------- trainer stats ("Verified" card) ----------
+  trainerStats(who) {
+    const s = this.s, P = who === ME ? null : s.ai[who];
+    const owned = who === ME ? s.owned : P.owned, played = (who === ME ? s.stats.played : P.played) || {};
+    let most = null; for (const id of Object.keys(played).sort()) if (card(id) && (most == null || played[id] > played[most])) most = id;
+    const w = who === ME ? s.wins : P.wins, l = who === ME ? s.losses : P.losses;
+    return { name: who === ME ? 'You' : P.name, avatar: who === ME ? 'axerupi' : P.avatar, money: this.cash(who), mr: who === ME ? s.mr : P.mr, tier: tier(who === ME ? s.mr : P.mr),
+      binder: DB.cards.filter(c => owned[c.id] > 0).length, binderTotal: DB.cards.length, copies: Object.values(owned).reduce((a, b) => a + b, 0),
+      mostPlayed: most, mostPlayedN: most ? played[most] : 0, games: who === ME ? (s.stats.battles.ranked.w + s.stats.battles.ranked.l + s.stats.battles.ranked.d) : (P.games || w + l), wins: w, losses: l,
+      tourWins: who === ME ? (s.stats.tourWins || 0) : (P.tourWins || 0), streak: who === ME ? s.streak : (P.streak || 0) };
+  }
+
+  // ---------- Daily Adventures: 3 quests per league day, each pays a random pack ----------
+  static QUESTS = [['play', 3, 'Play 3 ranked battles'], ['win', 2, 'Win 2 ranked battles'], ['open', 2, 'Open 2 packs'], ['sell', 3, 'Sell 3 cards to the shop'],
+    ['buy', 1, 'Buy a single card from the shop'], ['watch', 1, 'Watch a live match in Spectate'], ['bid', 1, 'Place a bid in the auction house'],
+    ['splitko', 1, 'Knock out a doremon with a split move'], ['friendly', 1, 'Win a friendly battle'], ['tourgame', 1, 'Win a tournament game'], ['draft', 1, 'Finish a draft']];
+  static QUESTS_PER_DAY = 3;
+  get quests() {
+    const s = this.s;
+    if (!s.quests || s.quests.day !== s.day) {
+      const pool = Game.QUESTS.filter(q => q[0] !== 'tourgame' || this.isTourDay(s.day)).slice(), list = [];
+      while (list.length < Game.QUESTS_PER_DAY && pool.length) { const q = pool.splice(this.rng.int(pool.length), 1)[0]; list.push({ kind: q[0], need: q[1], text: q[2], have: 0, done: false, reward: null }); }
+      s.quests = { day: s.day, list, claimed: 0 };
+    }
+    return s.quests.list;
+  }
+  quest(kind, n = 1) {
+    const s = this.s; const list = this.quests; let paid = null;
+    for (const q of list) {
+      if (q.kind !== kind || q.done) continue;
+      q.have = Math.min(q.need, q.have + n);
+      if (q.have >= q.need && s.quests.claimed < Game.QUESTS_PER_DAY) { q.done = true; s.quests.claimed++; q.reward = SETS[this.rng.int(SETS.length)]; inc(s.packs, q.reward); paid = q; this.newQuestDone = q; }
+    }
+    return paid;
+  }
+
+  // ---------- one-day tournament: top 8 by MR, best-of-3, sponsored by a rotating set ----------
+  static TOUR_PRIZE = 2000;
+  isTourDay(day) { return day % 3 === 2; }
+  tourSet(day) { return SETS[Math.floor(day / 3) % SETS.length]; }
+  /** the current day's tournament (created on first look), or null on a non-tournament day */
+  get tour() {
+    const s = this.s; if (!this.isTourDay(s.day)) return null;
+    if (!s.tour || s.tour.day !== s.day) {
+      const top = this.leaderboard.slice(0, 8).map(r => r.k);
+      const seeds = [[0, 7], [3, 4], [1, 6], [2, 5]];
+      s.tour = { day: s.day, set: this.tourSet(s.day), entrants: top, rounds: [seeds.map(([x, y]) => ({ p: [top[x], top[y]], w: [0, 0], winner: null }))], champion: null, done: false };
+      this.resolveTourAI(); this.save();
+    }
+    return s.tour;
+  }
+  /** simulated best-of-3 between two AIs (fresh seed and coin toss each game) */
+  aiSeries(a, b) {
+    const w = [0, 0]; let g = 0;
+    while (w[0] < 2 && w[1] < 2 && g < 7) { g++; const rec = this.aiMatch(a, b); const bt = new Battle(rec.deckA.map(card), this.s.ai[a].name, rec.deckB.map(card), this.s.ai[b].name, BigInt(rec.seed), rec.first);
+      const r = BattleAI.simulate(bt); if (r != null) w[r]++; }
+    if (w[0] === w[1]) w[this.rng.int(2)]++;      // pathological draws: coin flip
+    return w;
+  }
+  resolveTourAI() {
+    const T = this.s.tour; if (!T || T.done) return;
+    for (;;) {
+      const R = T.rounds[T.rounds.length - 1];
+      for (const m of R) if (m.winner == null && !m.p.includes(ME)) { m.w = this.aiSeries(m.p[0], m.p[1]); m.winner = m.p[m.w[0] > m.w[1] ? 0 : 1]; }
+      if (R.some(m => m.winner == null)) return;
+      if (R.length === 1) { this.awardTour(R[0].winner); return; }
+      const next = []; for (let i = 0; i < R.length; i += 2) next.push({ p: [R[i].winner, R[i + 1].winner], w: [0, 0], winner: null });
+      T.rounds.push(next);
+    }
+  }
+  awardTour(who) {
+    const T = this.s.tour; T.champion = who; T.done = true;
+    if (who === ME) { inc(this.s.packs, T.set); this.s.stats.tourWins = (this.s.stats.tourWins || 0) + 1; }
+    else { this.aiOpenPack(who, T.set, true); this.s.ai[who].tourWins = (this.s.ai[who].tourWins || 0) + 1; }
+    this.earn(who, Game.TOUR_PRIZE, 'tournament');
+    this.s.recent.unshift({ id: uuid(), a: 'Tournament', b: SET_NAMES[T.set], winner: this.nameOf(who), mrChange: 0 });
+  }
+  /** the player's pending match, if any: {m, opp, round} */
+  tourMatch() {
+    const T = this.tour; if (!T || T.done) return null;
+    const ri = T.rounds.length - 1, m = T.rounds[ri].find(x => x.winner == null && x.p.includes(ME));
+    return m ? { m, opp: m.p[0] === ME ? m.p[1] : m.p[0], round: ['Quarter-final', 'Semi-final', 'Final'][ri] || 'Round ' + (ri + 1) } : null;
+  }
+  /** record one game of the player's best-of-3 (won null = draw, replay) */
+  tourGame(won) {
+    const tm = this.tourMatch(); if (!tm || won == null) return null; const m = tm.m, me = m.p[0] === ME ? 0 : 1;
+    m.w[won ? me : 1 - me]++; if (won) this.quest('tourgame');
+    if (m.w[0] >= 2 || m.w[1] >= 2) { m.winner = m.p[m.w[0] >= 2 ? 0 : 1]; this.resolveTourAI(); }
+    this.save(); return m;
+  }
+  finishTour(forfeit) {
+    const T = this.s.tour; if (!T || T.done) return;
+    for (;;) { const tm = this.tourMatch(); if (!tm) break; const me = tm.m.p[0] === ME ? 0 : 1; tm.m.w[1 - me] = 2; tm.m.winner = tm.opp; tm.m.forfeit = forfeit; this.resolveTourAI(); }
+    this.resolveTourAI();
+  }
+
+  // ---------- Draft: you + 6 trainers, a shared pool, snake picks ----------
+  static DRAFT_FEE = 300; static DRAFT_SEATS = 7; static DRAFT_PICKS = 20; static DRAFT_GAMES = 3;
+  /** seat order of every pick: round 1 seats 0..n-1, round 2 back n-1..0, ... */
+  static snakeOrder(n, rounds) { const o = []; for (let r = 0; r < rounds; r++) for (let i = 0; i < n; i++) o.push(r % 2 === 0 ? i : n - 1 - i); return o; }
+  startDraft(set) {
+    const s = this.s; if (s.draft && !s.draft.done) return false;
+    if (!this.spend(ME, Game.DRAFT_FEE, 'draft')) return false;
+    const others = s.ai.map((_, i) => i); for (let i = others.length - 1; i > 0; i--) { const j = this.rng.int(i + 1); [others[i], others[j]] = [others[j], others[i]]; }
+    const seats = [ME].concat(others.slice(0, Game.DRAFT_SEATS - 1)); for (let i = seats.length - 1; i > 0; i--) { const j = this.rng.int(i + 1); [seats[i], seats[j]] = [seats[j], seats[i]]; }
+    const pool = []; const nPacks = Math.ceil(Game.DRAFT_SEATS * Game.DRAFT_PICKS / 7);
+    for (let i = 0; i < nPacks; i++) for (const c of Packs.open(set, { v: 0 }, {}, this.rng)) pool.push(c.id);   // draft packs belong to nobody
+    s.draft = { set, seats, pool, order: Game.snakeOrder(seats.length, Game.DRAFT_PICKS), pick: 0, picks: seats.map(() => []), games: [], done: false, reward: null };
+    this.draftRun(); this.save(); return true;
+  }
+  draftSeat() { const D = this.s.draft; return D.seats.indexOf(ME); }
+  /** must this seat take a doremon now to reach 8? */
+  draftNeedsMon(seat) { const D = this.s.draft, have = D.picks[seat].filter(id => isMon(card(id))).length, left = Game.DRAFT_PICKS - D.picks[seat].length; return have + left <= 8 && have < 8; }
+  draftLegal(seat, id) { const D = this.s.draft; return D.pool.includes(id) && (!this.draftNeedsMon(seat) || isMon(card(id)) || !D.pool.some(x => isMon(card(x)))); }
+  draftRun() {
+    const D = this.s.draft;
+    while (D.pick < D.order.length) {
+      const seat = D.order[D.pick], who = D.seats[seat]; if (who === ME) return;
+      const pers = persOf(who); let best = null;
+      for (const id of new Set(D.pool)) { if (!this.draftLegal(seat, id)) continue; const c = card(id); const mine = D.picks[seat];
+        let v = isMon(c) ? BattleAI.monValue(c) + (pers.fav.includes(c.moveType) || c.types.some(t => pers.fav.includes(t)) ? 40 : 0) - 14 * mine.filter(x => card(x).moveType === c.moveType && isMon(card(x))).length
+                         : 200 + (DeckRules.pref[id] ?? 20) * 2 - 60 * mine.filter(x => !isMon(card(x))).length;
+        v += this.rng.unit() * 10; if (!best || v > best[1]) best = [id, v]; }
+      this.draftTake(seat, best[0]);
+    }
+  }
+  draftTake(seat, id) { const D = this.s.draft; D.pool.splice(D.pool.indexOf(id), 1); D.picks[seat].push(id); D.pick++; }
+  draftPick(id) {
+    const D = this.s.draft; if (!D || D.pick >= D.order.length) return false; const seat = D.order[D.pick];
+    if (D.seats[seat] !== ME || !this.draftLegal(seat, id)) return false;
+    this.draftTake(seat, id); this.draftRun(); this.save(); return true;
+  }
+  get draftPicking() { const D = this.s.draft; return !!D && !D.done && D.pick < D.order.length; }
+  /** the next draft opponent: the drafters sitting after you, in seat order */
+  draftOpponent() { const D = this.s.draft; if (!D || D.done || this.draftPicking) return null; const me = this.draftSeat(), g = D.games.length; if (g >= Game.DRAFT_GAMES) return null; const seat = (me + 1 + g) % D.seats.length; return { seat, who: D.seats[seat], deck: D.picks[seat] }; }
+  draftResult(won) {
+    const D = this.s.draft; if (!this.draftOpponent() || won == null) return null; D.games.push(!!won);
+    if (D.games.length >= Game.DRAFT_GAMES) {
+      const w = D.games.filter(Boolean).length; D.done = true; D.reward = { cash: w * 150, pack: w === Game.DRAFT_GAMES ? D.set : null };
+      this.earn(ME, D.reward.cash, 'draft'); if (D.reward.pack) inc(this.s.packs, D.reward.pack); this.s.stats.drafts = (this.s.stats.drafts || 0) + 1; this.quest('draft');
+    }
+    this.save(); return D;
+  }
   aiMissing(k, set) { return inSet(set).filter(c => !(this.s.ai[k].owned[c.id] > 0)).length; }
   aiWants(k) {
     const sc = c => BattleAI.monValue(c) + Rarity.rank(c.rarity) * 20;
@@ -763,7 +1031,7 @@ export class Game {
     if (prev && prev.who !== who) this.move('escrow', prev.who, prev.amt, null);      // refund the outbid player
     this.move(who, 'escrow', need, null);
     l.high = { who, amt }; l.bids++;
-    if (who === ME) this.s.stats.bids++;
+    if (who === ME) { this.s.stats.bids++; this.quest('bid'); }
     this.save(); return true;
   }
   buyNow(who, lid) {
