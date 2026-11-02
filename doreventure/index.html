@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Doreventure"><meta name="theme-color" content="#1b1f2a">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="data:image/png;base64,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"><link rel="icon" href="data:image/png;base64,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">
+<title>Doremon Adventure</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{margin:0;height:100%;background:#1b1f2a;overflow:hidden;touch-action:none;font-family:-apple-system,Helvetica,Arial,sans-serif;color:#eee;overscroll-behavior:none}
+#app{position:fixed;inset:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#screen{position:absolute;background:#000;image-rendering:pixelated}
+#unity-canvas{width:100%;height:100%;display:block;background:#000;image-rendering:pixelated;outline:none}
+#pad{position:absolute;pointer-events:none}
+.btn{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;
+ background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.35);touch-action:none}
+.btn.on{background:rgba(255,255,255,.42)}
+#dpad{position:absolute;pointer-events:auto;touch-action:none}
+#dpad .btn{pointer-events:none;border-radius:10px;font-size:22px}
+.ab{border-radius:50%;font-size:22px}
+#bA{background:rgba(220,60,70,.45)} #bB{background:rgba(60,110,220,.45)}
+#bM{border-radius:14px;font-size:14px;letter-spacing:1px}
+#load{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#1b1f2a;z-index:5;text-align:center;padding:20px}
+#load img{width:96px;height:96px;image-rendering:pixelated;border-radius:20px}
+#bar{width:220px;height:10px;border:2px solid #fff;border-radius:6px;margin:16px 0 8px;overflow:hidden}#fill{height:100%;width:0;background:#ffd23c}
+#tap{display:none;margin-top:14px;padding:14px 26px;border-radius:12px;background:#ffd23c;color:#222;font-weight:800;font-size:18px}
+#err{color:#f88;font-size:14px;max-width:320px}
+</style></head><body>
+<div id="app">
+ <div id="screen"><canvas id="unity-canvas" tabindex="-1"></canvas></div>
+ <div id="pad">
+  <div id="dpad"><div class="btn" id="d1">▲</div><div class="btn" id="d0">▼</div><div class="btn" id="d2">◀</div><div class="btn" id="d3">▶</div></div>
+  <div class="btn ab" id="bB">B</div><div class="btn ab" id="bA">A</div><div class="btn" id="bM">MENU</div>
+ </div>
+ <div id="load"><img src="data:image/png;base64,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" alt=""><div style="margin-top:12px;font-weight:800;font-size:20px">Doremon Adventure</div>
+  <div id="bar"><div id="fill"></div></div><div id="pct">Loading…</div><div id="tap">Tap to play</div><div id="err"></div></div>
+</div>
+<script>
+(function(){
+var W=1280,H=720,app=document.getElementById('app'),scr=document.getElementById('screen'),pad=document.getElementById('pad'),dp=document.getElementById('dpad');
+var inst=null;function send(m,a){if(inst)try{inst.SendMessage('DoreVPad',m,a||'')}catch(e){}}
+function box(el,x,y,w,h){el.style.left=x+'px';el.style.top=y+'px';el.style.width=w+'px';el.style.height=h+'px'}
+function layout(){
+ var cs=getComputedStyle(app),pl=parseFloat(cs.paddingLeft),pr=parseFloat(cs.paddingRight),pt=parseFloat(cs.paddingTop),pb=parseFloat(cs.paddingBottom);
+ var aw=innerWidth-pl-pr,ah=innerHeight-pt-pb,portrait=ah>aw,sw,sh,sx,sy,d,ab;
+ box(pad,pl,pt,aw,ah);
+ if(portrait){ // Game Boy style: picture on top, controls underneath
+  sw=aw;sh=Math.round(sw*H/W);sx=pl;sy=pt;
+  var cy=sh+10,ch=ah-sh-10;d=Math.min(aw*0.46,ch*0.78,190);ab=Math.min(d*0.42,80);
+  var mid=cy+Math.max(ch*0.48,d/2+50);
+  box(dp,14,mid-d/2,d,d);
+  box(document.getElementById('bA'),aw-14-ab,mid-ab*1.05,ab,ab);
+  box(document.getElementById('bB'),aw-14-ab*2.15,mid-ab*0.05,ab,ab);
+  box(document.getElementById('bM'),aw/2-45,cy+8,90,40);
+ }else{ // landscape: picture as big as fits, buttons over the side margins
+  sh=ah;sw=Math.round(sh*W/H);if(sw>aw){sw=aw;sh=Math.round(sw*H/W)}sx=pl+(aw-sw)/2;sy=pt+(ah-sh)/2;
+  d=Math.min(ah*0.46,170);ab=Math.min(d*0.42,72);
+  box(dp,8,ah-d-10,d,d);
+  box(document.getElementById('bA'),aw-8-ab,ah-ab*2.1-10,ab,ab);
+  box(document.getElementById('bB'),aw-8-ab*2.1,ah-ab*1.05-10,ab,ab);
+  box(document.getElementById('bM'),aw-8-84,8,84,36);
+ }
+ box(scr,sx,sy,sw,sh);
+ var c=d/3;[['d1',c,0],['d0',c,2*c],['d2',0,c],['d3',2*c,c]].forEach(function(a){box(document.getElementById(a[0]),a[1],a[2],c,c)});
+}
+addEventListener('resize',layout);addEventListener('orientationchange',function(){setTimeout(layout,250)});layout();
+// D-pad: one touch area, direction picked from the touch angle so the thumb can slide between arrows
+var cur=-1;function setDir(n){if(n===cur)return;if(cur>=0){send('VPad','d'+cur+':0');document.getElementById('d'+cur).classList.remove('on')}cur=n;if(n>=0){send('VPad','d'+n+':1');document.getElementById('d'+n).classList.add('on');if(navigator.vibrate)navigator.vibrate(8)}}
+function dirAt(e){var r=dp.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;if(x*x+y*y<(r.width*0.1)*(r.width*0.1))return cur;return Math.abs(x)>Math.abs(y)?(x<0?2:3):(y<0?1:0)}
+dp.addEventListener('pointerdown',function(e){e.preventDefault();dp.setPointerCapture(e.pointerId);setDir(dirAt(e))});
+dp.addEventListener('pointermove',function(e){if(cur>=0||e.buttons)setDir(dirAt(e))});
+['pointerup','pointercancel','lostpointercapture'].forEach(function(t){dp.addEventListener(t,function(){setDir(-1)})});
+[['bA','A'],['bB','B'],['bM','M']].forEach(function(b){var el=document.getElementById(b[0]);
+ el.addEventListener('pointerdown',function(e){e.preventDefault();el.classList.add('on');send('VPad',b[1]);if(navigator.vibrate)navigator.vibrate(8)});
+ ['pointerup','pointercancel','pointerleave'].forEach(function(t){el.addEventListener(t,function(){el.classList.remove('on')})})});
+document.addEventListener('visibilitychange',function(){if(document.hidden){setDir(-1);send('VPadRelease');send('WebFlush')}});
+addEventListener('pagehide',function(){send('WebFlush')});
+document.addEventListener('gesturestart',function(e){e.preventDefault()});
+// audio unlock: Unity resumes its AudioContext on the first gesture; we make that first gesture an explicit "Tap to play"
+var ld=document.getElementById('load'),pct=document.getElementById('pct'),fill=document.getElementById('fill'),tap=document.getElementById('tap'),err=document.getElementById('err');
+function webglOK(){try{var c=document.createElement('canvas');return !!(c.getContext('webgl2')||c.getContext('webgl'))}catch(e){return false}}
+if(!webglOK()){err.textContent='This browser has no WebGL, so the game cannot run here.';return}
+var dpr=Math.min(window.devicePixelRatio||1,2);
+var t0=performance.now();window.__t0=t0;
+// The build ships as gzip+base64 text parts (Build/parts.json); fetch them, unzip natively, hand Unity plain blobs.
+if(typeof DecompressionStream==='undefined'){err.textContent='Please update iOS / your browser (needs Safari 16.4 or newer).';return}
+function b64(t){var s=atob(t),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u}
+fetch('Build/parts.json',{cache:'no-cache'}).then(function(r){return r.json()}).then(function(man){
+ var all=[],total=0,got=0;Object.keys(man.files).forEach(function(k){man.files[k].parts.forEach(function(n,i){all.push({k:k,i:i,n:n});});total+=man.files[k].gz});
+ var bufs={};Object.keys(man.files).forEach(function(k){bufs[k]=[]});
+ var q=all.slice(),running=0;
+ return new Promise(function(res,rej){
+  function next(){if(!q.length){if(!running)res();return}var it=q.shift();running++;
+   fetch('Build/'+it.n).then(function(r){if(!r.ok)throw r.status;return r.text()}).then(function(t){var u=b64(t);bufs[it.k][it.i]=u;got+=u.length;
+     var f=got/total*0.9;fill.style.width=Math.round(f*100)+'%';pct.textContent='Downloading… '+Math.round(got/1048576)+' / '+Math.round(total/1048576)+' MB';running--;next()}).catch(rej)}
+  for(var j=0;j<4;j++)next();
+ }).then(function(){pct.textContent='Unpacking…';
+  return Promise.all(Object.keys(bufs).map(function(k){var st=new Blob(bufs[k]).stream().pipeThrough(new DecompressionStream('gzip'));
+   return new Response(st).blob().then(function(b){var ty=k.endsWith('.wasm')?'application/wasm':k.endsWith('.js')?'text/javascript':'application/octet-stream';return [k,URL.createObjectURL(new Blob([b],{type:ty}))]})}))});
+}).then(function(urls){var U={};urls.forEach(function(x){U[x[0]]=x[1]});
+ var s=document.createElement('script');s.src='Build/out.loader.js';
+ s.onload=function(){createUnityInstance(document.getElementById('unity-canvas'),{
+  dataUrl:U['out.data'],frameworkUrl:U['out.framework.js'],codeUrl:U['out.wasm'],
+  streamingAssetsUrl:'StreamingAssets',companyName:'DefaultCompany',productName:'Doreventure',productVersion:'1.0',
+  devicePixelRatio:dpr,matchWebGLToCanvasSize:true,autoSyncPersistentDataPath:true,cacheControl:function(){return 'no-store'}},function(p){fill.style.width=Math.round(90+p*10)+'%';pct.textContent='Starting… '}) 
+ .then(function(u){inst=window.unityInstance=u;window.__loadMs=Math.round(performance.now()-t0);pct.textContent='Ready';document.getElementById('bar').style.display='none';tap.style.display='block';
+   ld.addEventListener('pointerup',function(){ld.style.display='none';try{var A=window.AudioContext||window.webkitAudioContext;if(A){var a=new A();a.resume();a.close()}}catch(e){}},{once:true})})
+ .catch(function(m){err.textContent='Could not start: '+m})};
+ document.body.appendChild(s);
+}).catch(function(e){err.textContent='Could not download the game ('+e+'). Check your connection and reload.'});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+})();
+</script></body></html>
