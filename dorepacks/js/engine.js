@@ -121,6 +121,9 @@ export const tapOwnMonSel = (b, s, i, sel) => { const m = b.sides[s].mons[i]; if
   if (b.canPickAttacker(s, i)) return (sel?.kind === 'mon' || sel?.kind === 'mon2') && sel.i === i ? null : { kind: 'mon', i };
   if (b.canUndo(s, 'mon', i)) return sel?.kind === 'fresh' && sel.i === i ? null : { kind: 'fresh', i };
   return null; };
+/** type guide built straight from the chart in cards.json, so it can never drift */
+export const typeGuide = () => { const ch = DB.chart, T = Object.keys(DB.typeColors);
+  return T.map(t => { const r = ch[t] || {}; const by = v => T.filter(d => (r[d] ?? 1) === v); return { t, strong: by(2), weak: by(0.5), none: by(0) }; }); };
 export const isDouble = c => c && c.split === 'double', isSpread = c => c && c.split === 'spread';
 /** an enemy doremon an attack may target (Mirror Veil = protected until its owner's next turn) */
 export const targetable = m => !!m && !m.protected;

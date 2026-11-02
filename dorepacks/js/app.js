@@ -344,7 +344,13 @@ const RULES = [
   ['Auction House', 'List spare cards at a fixed price or as an auction lasting 1–5 league days. Bids are held in escrow and refunded the moment someone outbids you; when the timer ends the seller gets the winning bid and the winner gets the card. AIs list and bid too, using only their own cash.'],
   ['Fair play', 'The AI players open packs with the exact same function, odds and pity as you, shuffle the same way, build decks only from cards they own, and play by the same rules. They never see your hand, your deck order or which traps you set. Each AI has its own wallet: it earns the same battle rewards you do and pays for packs and bids out of it, and it never bids more than a card is worth to it or more than it can afford.'],
 ];
-function rulesView() { return `<h1>How to Play</h1><div class="sub">Doremonsters mat battles</div>` + RULES.map(([a, b]) => `<div class="panel"><div class="title" style="font-size:20px;color:var(--yellow)">${a}</div><div style="font-weight:500;margin-top:4px">${esc(b)}</div></div>`).join(''); }
+const tchip = t => { const [r, g, b] = E.DB.typeColors[t] || [120, 120, 120]; return `<span style="display:inline-block;background:rgb(${r},${g},${b});color:#fff;text-shadow:0 1px 1px #0008;border-radius:4px;padding:0 4px;margin:1px;font-size:12px;font-weight:700;line-height:17px">${t}</span>`; };
+function typeGuideView() { const g = E.typeGuide(), chips = a => a.length ? a.map(tchip).join('') : '<span class="small">—</span>';
+  return `<div class="panel" id="typeguide"><div class="title" style="font-size:20px;color:var(--yellow)">Type guide</div>
+  <div style="font-weight:600;margin:4px 0 6px">The <b>move's</b> type is what counts (shown on the card), vs the defender's type(s). No same-type bonus. Dual types multiply.</div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="text-align:left;color:var(--yellow)"><th style="padding:2px">Move</th><th>Strong vs (2×)</th><th>Weak vs (½×)</th></tr>
+  ${g.map(r => `<tr style="border-top:1px solid #fff2;vertical-align:top"><td style="padding:3px 2px">${tchip(r.t)}</td><td>${chips(r.strong)}</td><td>${chips(r.weak)}${r.none.length ? `<div class="small" style="color:#ffb3b3">No effect: ${r.none.join(', ')}</div>` : ''}</td></tr>`).join('')}</table></div>`; }
+function rulesView() { return `<h1>How to Play</h1><div class="sub">Doremonsters mat battles</div>` + RULES.map(([a, b]) => `<div class="panel"><div class="title" style="font-size:20px;color:var(--yellow)">${a}</div><div style="font-weight:500;margin-top:4px">${esc(b)}</div></div>`).join('') + typeGuideView(); }
 
 // ---------- overlays: pack opening, inspector, result ----------
 function renderOverlay() {
