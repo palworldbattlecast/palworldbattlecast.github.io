@@ -1,7 +1,7 @@
 // Node port of the Mac app's headless tests: pack odds (player vs AI), pity, battle rules, AI sims, economy, save.
 import fs from 'fs';
 import * as E from './js/engine.js';
-const { Battle, BattleAI, Packs, DeckRules, Game, SplitMix, card, newMon, effectiveness } = E;
+const { Battle, BattleAI, Packs, DeckRules, Game, SplitMix, card, newMon, effectiveness, isMon, canAttack } = E;
 E.initDB(JSON.parse(fs.readFileSync(new URL('./cards.json', import.meta.url))));
 let fails = 0;
 const check = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
@@ -478,5 +478,39 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 's
   console.log('Ninequeen poison rate:', psn / n); check(psn / n > 0.35 && psn / n < 0.65, 'move fx rolls at its printed chance (50% poison)');
   const b = new Battle(f, 'A', f, 'B', 5n, 0); b.sides[0].mons[0] = Object.assign(newMon(card('fl_ninequeen')), { ready: true }); b.sides[1].mons[0] = Object.assign(newMon(card('ww_hootuft')), { ready: true, hp: 10 });
   b.apply({ t: 'attack', from: 0, to: 0 }); check(!b.sides[1].mons[0], 'no status roll on a knocked-out target');
+}
+// ---- regression: the going-second quick start is guaranteed (Nov 2 bug fix) ----
+{
+  const start = E.STARTER_DECK.map(card);
+  const qs = (first, how, trap) => {
+    const b = new Battle(start, 'A', start, 'B', 4242n + BigInt(first), first); const sec = 1 - first;
+    if (how === 'mulligan') check(b.redraw(sec), 'second player can mulligan');
+    BattleAI.openingMulligans(b, [first]);
+    // first player: sets a trap (or plays a doremon) and ends
+    const F = b.sides[first]; if (trap) { F.hand.push(card(trap)); b.apply({ t: 'setTrap', hand: F.hand.length - 1, slot: 0 }); }
+    const fm = F.hand.findIndex(isMon); if (fm >= 0) b.apply({ t: 'playMon', hand: fm, slot: 0 });
+    b.apply({ t: 'end' });
+    const S = b.sides[sec]; if (b.current !== sec) return false;
+    if (how === 'spell') { S.hand.push(card('st_super_potion')); b.apply({ t: 'spell', hand: S.hand.length - 1, target: null }); }
+    let hi = S.hand.findIndex(isMon); b.apply({ t: 'playMon', hand: hi, slot: 2 });
+    if (how === 'undo') { b.apply({ t: 'undo', kind: 'mon', slot: 2 }); hi = S.hand.findIndex(isMon); b.apply({ t: 'playMon', hand: hi, slot: 3 }); }
+    const slot = S.mons.findIndex(Boolean), m = S.mons[slot];
+    if (!(m && canAttack(m) && !S.stalled)) return false;
+    const o = b.sides[first], to = o.mons.findIndex(Boolean), hp = to >= 0 ? o.mons[to].hp : null, life = o.life;
+    if (!b.apply({ t: 'attack', from: slot, to: to >= 0 ? to : null })) return false;
+    const trapStill = !trap || !!o.traps[0];
+    const landed = to >= 0 ? (!o.mons[to] || o.mons[to].hp < hp) : o.life < life;
+    return !S.stalled && trapStill && landed;
+  };
+  for (const first of [0, 1]) for (const how of ['plain', 'undo', 'mulligan', 'spell']) for (const trap of [null, 'st_guard_wall', 'st_static_web', 'st_doze_spores', 'st_bramble_shield'])
+    check(qs(first, how, trap), `quick start: ${first === 0 ? 'AI/side B' : 'player/side A'} goes second, ${how}${trap ? ', vs turn-1 ' + trap : ''} -> attacks on its first turn`);
+  // every match type uses Battle with a coin-toss "first"; simulate both seats through the AI and check every second-player first turn
+  let bad = 0, tot = 0;
+  for (let k = 0; k < 400; k++) { const r = new SplitMix(BigInt(k + 1)); const all = E.DB.cards; const deck = () => { const o = {}; for (let i = 0; i < 80; i++) { const c = all[r.int(all.length)]; o[c.id] = (o[c.id] || 0) + 1; } return DeckRules.autoBuild(o, r).map(card); };
+    const b = new Battle(deck(), 'A', deck(), 'B', BigInt(k + 3), k % 2); BattleAI.openingMulligans(b); const sec = 1 - b.first; let g = 0;
+    while (b.current !== sec && !b.over && g++ < 200) { const a = BattleAI.next(b); if (!b.apply(a)) b.apply({ t: 'end' }); }
+    if (b.over) continue; tot++; const S = b.sides[sec]; const hi = S.hand.findIndex(isMon); b.apply({ t: 'playMon', hand: hi, slot: S.mons.findIndex(x => !x) });
+    const slot = S.mons.findIndex(m => m && m.quick); if (slot < 0 || !canAttack(S.mons[slot])) bad++; }
+  check(bad === 0 && tot > 350, `AI-vs-AI: second player's first doremon can always attack (${tot - bad}/${tot})`);
 }
 console.log(fails === 0 ? 'ALL TESTS PASSED' : `${fails} FAILURES`); process.exit(fails ? 1 : 0);

@@ -233,7 +233,7 @@ export class Battle {
         this.log(a.kind === 'mon' ? `${S.name} takes back ${c.name}.` : `${S.name} picks a set trap back up.`); break;
       }
       case 'playMon': { const c = S.hand.splice(a.hand, 1)[0]; S.mons[a.slot] = newMon(c); S.mons[a.slot].fresh = true; S.monsPlayed++;
-        if (S.quickStart) { S.quickStart = false; S.mons[a.slot].ready = true; S.mons[a.slot].quick = true; this.log(`${c.name} gets a quick start and can attack right away!`); } this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`); break; }
+        if (S.quickStart) { S.quickStart = false; S.mons[a.slot].ready = true; S.mons[a.slot].quick = true; S.mons[a.slot].quickTurn = this.turnNumber; this.log(`${c.name} gets a quick start and can attack right away!`); } this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`); break; }
       case 'setTrap': { const c = S.hand.splice(a.hand, 1)[0]; S.traps[a.slot] = c; S.freshTraps.push(a.slot); S.stPlayed++; this.events.push({ e: 'set', side: me, slot: a.slot }); this.log(`${S.name} sets a trap face-down.`); break; }
       case 'spell': { const c = S.hand.splice(a.hand, 1)[0]; S.stPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.castSpell(c, me, a.target); S.discard.push(c); break; }
       case 'attack': this.attack(a.from, a.to, a.to2); break;
@@ -303,7 +303,11 @@ export class Battle {
     a.attacked = true;
     this.events.push({ e: 'attack', side: me, from: f, to: t, to2: t2 });
     const O = this.sides[o];
-    const ti = O.traps.findIndex(Boolean);
+    // Nov 2 fix: a quick-start doremon's attacks on the turn it was played can't be stopped by face-down traps
+    // (the first player's turn-1 Guard Wall / Static Web / Doze Spores used to cancel the going-second compensation)
+    const shielded = a.quick && a.quickTurn === this.turnNumber;
+    if (shielded && O.traps.some(Boolean)) this.log(`${a.card.name} has a quick start - traps can't stop it this turn.`);
+    const ti = shielded ? -1 : O.traps.findIndex(Boolean);
     if (ti >= 0) {
       const trap = O.traps[ti]; O.traps[ti] = null; O.discard.push(trap);
       this.events.push({ e: 'trap', side: o, card: trap }); this.log(`TRAP! ${O.name} reveals ${trap.name}!`);

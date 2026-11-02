@@ -319,7 +319,7 @@ const RULES = [
   ['Goal', 'Each player starts with 5 life ❤️. Every time one of your doremon is knocked out you lose 1 life. Get your opponent to 0 life to win.'],
   ['Setup', 'Decks are exactly 20 cards with at least 8 doremon (max 10 spells/traps). Copies: at most 2 of any card, and only 1 of a Legendary or Mythical. Shuffle and draw 5 (your opening hand always has a doremon).'],
   ['Coin toss', 'Before every match you call heads or tails. Call it right and you choose to go first or second; call it wrong and your opponent chooses (the AI always goes first). AI vs AI league matches use a coin toss too.'],
-  ['Going second', 'To make up for not moving first, the first doremon the second player puts down gets a QUICK START: it can attack on the turn it is played. In 20,000 simulated games this brings going first to about 50%.'],
+  ['Going second', 'To make up for not moving first, the first doremon the second player puts down gets a QUICK START: it can attack on the turn it is played, and face-down traps can't stop those attacks that turn. In 20,000 simulated games this brings going first to about 50%.'],
   ['Mulligan', 'After the coin toss you see your opening hand and may mulligan once for free: the whole hand goes back, the deck is shuffled and you draw the same number of cards again (still guaranteed a doremon). The AI mulligans hands with fewer than 2 doremon or no spells/traps.'],
   ['Move effects', 'Some moves have a side effect printed on the card, e.g. "30% chance to poison". It rolls when the move hits and the target survives without a status already.'],
   ['Your turn', 'Draw 1 card. Then in any order: play up to 1 doremon card into an empty DOREMON slot (6 slots), play up to 2 spell/trap cards, and attack. Hand limit is 10. Drawing from an empty deck costs 1 life.'],
@@ -435,7 +435,7 @@ function beginBattle(v, first) {
 function mulliganHTML() {
   const b = UI.battle.b, h = b.sides[0].hand, mons = h.filter(isMon).length;
   return `<div class="pix" style="color:var(--yellow);margin-bottom:8px">YOUR OPENING HAND</div><div class="title" style="font-size:24px;margin-bottom:6px">Keep or mulligan?</div>
-   <div class="small" style="margin-bottom:10px;text-align:center">${mons} doremon · ${h.length - mons} spell/trap · you go ${b.current === 0 ? 'FIRST' : 'SECOND (your first doremon gets a quick start)'}</div>
+   <div class="small" style="margin-bottom:10px;text-align:center">${mons} doremon · ${h.length - mons} spell/trap · you go ${b.current === 0 ? 'FIRST' : 'SECOND (your first doremon gets a quick start: it can attack right away and traps can\'t stop it that turn)'}</div>
    <div class="mhand">${h.map(c => `<div class="mc" data-card="${c.id}">${cardImg(c.id)}</div>`).join('')}</div>
    <div class="small" style="margin:10px 0;text-align:center">A free mulligan shuffles this hand back and draws ${h.length} new cards (still at least one doremon). Once per game.</div>
    <div class="row" style="width:100%;max-width:360px"><button class="btn y grow" data-a="keepHand">Keep hand</button><button class="btn p grow" data-a="mulligan">Mulligan</button></div>`;
