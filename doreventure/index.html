@@ -85,6 +85,13 @@ if(window.visualViewport)visualViewport.addEventListener('resize',unzoom);
 
 var W=1280,H=720,app=document.getElementById('app'),scr=document.getElementById('screen'),pad=document.getElementById('pad'),dp=document.getElementById('dpad');
 var $=function(i){return document.getElementById(i)};
+var wantStart=false;
+// A / START (or Enter/Space) on the loading screen: dismiss "Tap to play" now, or as soon as the game is ready
+function startPress(){var L=document.getElementById('load');if(!L||L.style.display=='none')return false;
+ if(document.getElementById('tap').style.display=='block'){L.dispatchEvent(new Event('pointerup'))}
+ else{wantStart=true;var p=document.getElementById('pct');if(p&&p.textContent.indexOf('Starting')<0)p.textContent='Starting\u2026 (game opens when ready)'}
+ return true}
+document.addEventListener('keydown',function(e){if((e.key=='Enter'||e.key==' '||e.key=='z'||e.key=='x')&&startPress())e.preventDefault()});
 var inst=null;function send(m,a){if(inst)try{inst.SendMessage('DoreVPad',m,a||'')}catch(e){}}
 function box(el,x,y,w,h){el.style.left=Math.round(x)+'px';el.style.top=Math.round(y)+'px';el.style.width=Math.round(w)+'px';el.style.height=Math.round(h)+'px'}
 function layout(){
@@ -142,7 +149,7 @@ dp.addEventListener('pointerdown',function(e){e.preventDefault();dp.setPointerCa
 dp.addEventListener('pointermove',function(e){if(cur>=0||e.buttons)setDir(dirAt(e))});
 ['pointerup','pointercancel','lostpointercapture'].forEach(function(t){dp.addEventListener(t,function(){setDir(-1)})});
 [['bA','A'],['bB','B'],['bM','M'],['bS','S']].forEach(function(b){var el=$(b[0]);
- el.addEventListener('pointerdown',function(e){e.preventDefault();var L=document.getElementById('load');if(L&&L.style.display!='none'&&document.getElementById('tap').style.display=='block'){L.dispatchEvent(new Event('pointerup'));return}el.classList.add('on');send('VPad',b[1]);if(navigator.vibrate)navigator.vibrate(8)});
+ el.addEventListener('pointerdown',function(e){e.preventDefault();if((b[1]=='A'||b[1]=='S')&&startPress())return;el.classList.add('on');send('VPad',b[1]);if(navigator.vibrate)navigator.vibrate(8)});
  ['pointerup','pointercancel','pointerleave'].forEach(function(t){el.addEventListener(t,function(){el.classList.remove('on')})})});
 document.addEventListener('visibilitychange',function(){if(document.hidden){setDir(-1);send('VPadRelease');send('WebFlush')}});
 addEventListener('pagehide',function(){send('WebFlush')});
@@ -189,7 +196,7 @@ function frame(now){
  requestAnimationFrame(frame);
 }
 function endIntro(){if(introDone)return;introDone=true;intro.style.display='none';window.__introDone=true}
-intro.addEventListener('pointerup',function(e){e.preventDefault();endIntro()});
+intro.addEventListener('pointerup',function(e){e.preventDefault();endIntro();['bA','bS'].forEach(function(id){var q=document.getElementById(id);if(!q)return;var r=q.getBoundingClientRect();if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom)startPress()})});
 window.__introFrame=function(ms){iT0=performance.now()-ms};
 requestAnimationFrame(frame);
 
@@ -215,13 +222,13 @@ fetch('Build/parts.json',{cache:'no-cache'}).then(function(r){return r.json()}).
   return Promise.all(Object.keys(bufs).map(function(k){var st=new Blob(bufs[k]).stream().pipeThrough(new DecompressionStream('gzip'));
    return new Response(st).blob().then(function(b){var ty=k.endsWith('.wasm')?'application/wasm':k.endsWith('.js')?'text/javascript':'application/octet-stream';return [k,URL.createObjectURL(new Blob([b],{type:ty}))]})}))});
 }).then(function(urls){var U={};urls.forEach(function(x){U[x[0]]=x[1]});
- var s=document.createElement('script');s.src='Build/out.loader.js?v11021610';
+ var s=document.createElement('script');s.src='Build/out.loader.js?v11021700';
  s.onload=function(){createUnityInstance(document.getElementById('unity-canvas'),{
   dataUrl:U['out.data'],frameworkUrl:U['out.framework.js'],codeUrl:U['out.wasm'],
   streamingAssetsUrl:'StreamingAssets',companyName:'DefaultCompany',productName:'Doreventure',productVersion:'1.0',
   devicePixelRatio:dpr,matchWebGLToCanvasSize:true,autoSyncPersistentDataPath:true,cacheControl:function(){return 'no-store'}},function(p){fill.style.width=Math.round(90+p*10)+'%';pct.textContent='Starting… '}) 
  .then(function(u){inst=window.unityInstance=u;window.__loadMs=Math.round(performance.now()-t0);pct.textContent='Ready';document.getElementById('bar').style.display='none';tap.style.display='block';
-   ld.addEventListener('pointerup',function(){ld.style.display='none';try{var A=window.AudioContext||window.webkitAudioContext;if(A){var a=new A();a.resume();a.close()}}catch(e){}},{once:true})})
+   ld.addEventListener('pointerup',function(){ld.style.display='none';try{var A=window.AudioContext||window.webkitAudioContext;if(A){var a=new A();a.resume();a.close()}}catch(e){}},{once:true});if(wantStart)ld.dispatchEvent(new Event('pointerup'))})
  .catch(function(m){err.textContent='Could not start: '+m})};
  document.body.appendChild(s);
 }).catch(function(e){err.textContent='Could not download the game ('+e+'). Check your connection and reload.'});
