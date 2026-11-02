@@ -92,16 +92,16 @@ function layout(){
  var aw=innerWidth-pl-pr,ah=innerHeight-pt-pb,portrait=ah>=aw,bz=7,sw,sh,bx,by,d,ab,dx,dy,ax,ay,gx,gy,brandSize;
  box(pad,pl,pt,aw,ah);
  if(portrait){ // DoreStation, upright: big screen up top, controls below
-  var m=10;sw=aw-2*m-2*bz;sh=Math.round(sw*H/W);bx=m;by=m+4;
-  brandSize=Math.max(13,Math.min(20,aw*0.05));
-  var bottomRow=46,top=by+sh+2*bz+brandSize+26,ch=ah-top-bottomRow;
-  d=Math.min(aw*0.38,ch*0.86,176);ab=Math.min(aw*0.175,ch*0.4,78);
-  var mid=top+ch/2;dx=Math.max(18,aw*0.06);dy=mid-d/2;
+  var m=5;bz=5;sw=aw-2*m-2*bz;sh=Math.round(sw*H/W);bx=m;by=m+4; // 16:9 game is width-bound: edge-to-edge screen, thinnest bezel
+  brandSize=Math.max(13,Math.min(19,aw*0.045));
+  var bottomRow=50,top=by+sh+2*bz+16,ch=ah-top-bottomRow;
+  d=Math.min(aw*0.4,ch*0.8,184);ab=Math.min(aw*0.185,ch*0.4,82);
+  var mid=ah-bottomRow-18-d/2;dx=Math.max(18,aw*0.06);dy=mid-d/2; // controls sit low, just above MENU/START
   var gap=ab*0.42;ax=aw-dx-ab;ay=mid-ab*0.95;
   box($('bA'),ax,ay,ab,ab);box($('bB'),ax-ab-gap,mid-ab*0.05,ab,ab);
   box(dp,dx,dy,d,d);
-  box($('bM'),dx,ah-bottomRow+4,78,28);box($('bS'),aw-dx-78,ah-bottomRow+4,78,28);
-  box($('brand'),bx+6,by+sh+2*bz+8,300,brandSize+4);$('brand').style.fontSize=brandSize+'px';
+  var by2=ah-bottomRow+8;box($('bM'),dx,by2,78,28);box($('bS'),aw-dx-78,by2,78,28);
+  box($('brand'),aw/2-90,by2+14-(brandSize+4)/2,180,brandSize+4);$('brand').style.fontSize=brandSize+'px';$('brand').style.textAlign='center';
   box($('grill'),aw-dx-40,by+sh+2*bz+10,40,15);
  }else{ // DoreStation, sideways: screen in the middle, thumbs either side
   var side=Math.max(120,Math.min(aw*0.2,190));
@@ -115,7 +115,7 @@ function layout(){
   box($('bA'),cx+ab+g,ah*0.47-ab*0.95,ab,ab);box($('bB'),cx,ah*0.47-ab*0.05+4,ab,ab);
   box(dp,dx,dy,d,d);
   box($('bM'),Math.max(8,(sL-72)/2),ah-38,72,26);box($('bS'),aw-Math.max(8,(sR-72)/2)-72,ah-38,72,26);
-  brandSize=13;box($('brand'),bx+8,by+sh+2*bz+2,300,18);$('brand').style.fontSize=brandSize+'px';
+  brandSize=13;$('brand').style.textAlign='left';box($('brand'),bx+8,by+sh+2*bz+2,300,18);$('brand').style.fontSize=brandSize+'px';
   box($('grill'),aw-sR/2-20,12,40,15);
  }
  box($('bezel'),pl+bx,pt+by,sw+2*bz,sh+2*bz);box(scr,pl+bx+bz,pt+by+bz,sw,sh);
