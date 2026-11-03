@@ -222,7 +222,7 @@ fetch('Build/parts.json',{cache:'no-cache'}).then(function(r){return r.json()}).
   return Promise.all(Object.keys(bufs).map(function(k){var st=new Blob(bufs[k]).stream().pipeThrough(new DecompressionStream('gzip'));
    return new Response(st).blob().then(function(b){var ty=k.endsWith('.wasm')?'application/wasm':k.endsWith('.js')?'text/javascript':'application/octet-stream';return [k,URL.createObjectURL(new Blob([b],{type:ty}))]})}))});
 }).then(function(urls){var U={};urls.forEach(function(x){U[x[0]]=x[1]});
- var s=document.createElement('script');s.src='Build/out.loader.js?v11021745z';
+ var s=document.createElement('script');s.src='Build/out.loader.js?v11030615n';
  s.onload=function(){createUnityInstance(document.getElementById('unity-canvas'),{
   dataUrl:U['out.data'],frameworkUrl:U['out.framework.js'],codeUrl:U['out.wasm'],
   streamingAssetsUrl:'StreamingAssets',companyName:'DefaultCompany',productName:'Doreventure',productVersion:'1.0',
