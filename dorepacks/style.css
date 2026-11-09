@@ -77,7 +77,7 @@ h1{font-family:Lilita;font-weight:400;color:var(--yellow);font-size:30px;margin:
 .mat.me{background:linear-gradient(160deg,var(--mat1,#1d3f8a),var(--mat2,#16306b));border:2px solid color-mix(in srgb,var(--mat1,#3f7cf0) 70%,#fff)}
 .mat.op{background:linear-gradient(160deg,var(--mat2,#6b5a14),var(--mat1,#8a7418));border:2px solid color-mix(in srgb,var(--mat2,#e6c13a) 70%,#fff)}
 .mat .lbl{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-family:Lilita;font-size:40px;opacity:.12;pointer-events:none}
-.slot{position:relative;min-height:0;border-radius:10px;background:rgba(0,0,0,.22);border:1px dashed rgba(255,255,255,.18);display:grid;grid-template-rows:15px minmax(0,1fr) 14px;padding:2px 3px 3px;gap:1px;overflow:visible}
+.slot{position:relative;min-height:0;border-radius:10px;background:rgba(0,0,0,.10);border:1px dashed rgba(255,255,255,.22);display:grid;grid-template-rows:15px minmax(0,1fr) 14px;padding:2px 3px 3px;gap:1px;overflow:visible}
 .slot.mon{border:1px solid rgba(255,255,255,.3);background:radial-gradient(ellipse at 50% 85%,rgba(255,255,255,.12),rgba(0,0,0,.25) 70%);box-shadow:inset 0 2px 0 var(--tc)}
 .slot .sh{grid-row:1;grid-column:1;z-index:2;display:flex;align-items:center;gap:3px;min-width:0}
 .slot .nm{flex:1;min-width:0;font-size:10px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:1px 1px 0 #000;color:var(--tc)}
@@ -191,10 +191,10 @@ input.vol{accent-color:var(--yellow);height:28px}
 .gravepit:active { transform: scale(0.96); }
 
 
-/* v21 doremat mini-cards — art + footer (name / move / HP) with no overlap */
-.slot.mini-card{display:flex;flex-direction:column;padding:0;border:none;background:transparent;overflow:visible;position:relative;gap:2px}
+/* v23 doremat mini-cards — sit on mat, no dark slot fill / black footer panel */
+.slot.mini-card,.slot.mon.mini-card{display:flex;flex-direction:column;padding:0;border:none;background:transparent;box-shadow:none;overflow:visible;position:relative;gap:1px}
 .slot.mini-card .mcwrap{position:relative;flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center}
-.slot.mini-card .mcart{width:100%;height:auto;max-height:100%;aspect-ratio:600/840;object-fit:contain;border-radius:6px;image-rendering:auto;display:block;pointer-events:none;box-shadow:0 2px 6px #0008;background:#111}
+.slot.mini-card .mcart{width:100%;height:auto;max-height:100%;aspect-ratio:600/840;object-fit:contain;border-radius:6px;image-rendering:auto;display:block;pointer-events:none;box-shadow:0 3px 8px #0009;background:transparent}
 .slot.mini-card .badges{position:absolute;left:2px;top:2px;z-index:3;display:flex;flex-wrap:wrap;gap:1px;max-width:90%}
 .slot.mini-card .badge{font-size:8px;font-weight:900;line-height:1.1;padding:1px 3px;border-radius:3px;background:#000c;color:#fff;text-shadow:none}
 .slot.mini-card .badge.atk{background:#c45a00cc;color:#ffe7a0}
@@ -204,10 +204,10 @@ input.vol{accent-color:var(--yellow);height:28px}
 .slot.mini-card .badge.prot{background:#1a7a9acc}
 .slot.mini-card .badge.bolt{background:#000a;color:var(--yellow)}
 .slot.mini-card .badge.undo{background:#8a5cff}
-.slot.mini-card .mcfoot{flex:none;padding:2px 3px 3px;background:#000a;border-radius:0 0 7px 7px;z-index:2}
-.slot.mini-card .mcfoot .nm{font-size:9px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000;line-height:1.15}
-.slot.mini-card .mv{position:static;font-size:7px;font-weight:800;line-height:1.15;color:#ffe7a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;margin:1px 0}
-.slot.mini-card .hp{position:relative;height:11px;line-height:11px;font-size:8px;border-radius:5px;margin:0;overflow:hidden}
+.slot.mini-card .mcfoot{flex:none;padding:1px 2px 2px;background:transparent;border-radius:0;z-index:2}
+.slot.mini-card .mcfoot .nm{font-size:9px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000,0 0 5px #000c;line-height:1.15}
+.slot.mini-card .mv{position:static;font-size:7px;font-weight:800;line-height:1.15;color:#ffe7a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;margin:1px 0;text-shadow:0 1px 2px #000,0 0 4px #000a}
+.slot.mini-card .hp{position:relative;height:11px;line-height:11px;font-size:8px;border-radius:5px;margin:0;overflow:hidden;background:#0006;box-shadow:0 1px 2px #0006}
 .slot.mini-card .tg.dmg{position:absolute;right:2px;top:28%;z-index:4;font-size:10px;font-weight:900;background:#000c;border-radius:4px;padding:1px 4px}
 .slot.mini-card.sel .mcart{outline:3px solid var(--yellow);outline-offset:-1px}
 .slot.mini-card.tgt .mcart{outline:3px solid #ff5d5d;outline-offset:-1px}

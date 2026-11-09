@@ -969,7 +969,7 @@ function demo() {
     if (G.s._v20Welcome) { delete G.s._v20Welcome; G.toast = 'Update gift: 3 free packs of every set are in Packs!'; G.save(); }
     if (G.s._raWelcome) { delete G.s._raWelcome; G.toast = 'Rivals & Allies — 3 free packs ready in Packs!'; G.save(); }
   if (!SNAP && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=22').then(reg => {
+      navigator.serviceWorker.register('sw.js?v=23').then(reg => {
         // When a new SW is waiting, activate it and reload so HT / balance updates aren't stuck behind an old PWA cache.
         const kick = () => { try { reg.waiting && reg.waiting.postMessage('skipWaiting'); } catch (_) {} };
         if (reg.waiting) kick();
