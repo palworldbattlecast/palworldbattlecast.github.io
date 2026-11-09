@@ -1,7 +1,7 @@
 // Node port of the Mac app's headless tests: pack odds (player vs AI), pity, battle rules, AI sims, economy, save.
 import fs from 'fs';
 import * as E from './js/engine.js';
-const { Battle, BattleAI, Packs, DeckRules, Game, SplitMix, card, newMon, effectiveness, isMon, canAttack, tapOwnMonSel } = E;
+const { Battle, BattleAI, Packs, DeckRules, Game, SplitMix, card, newMon, effectiveness, isMon, canAttack, tapOwnMonSel, Rarity } = E;
 E.initDB(JSON.parse(fs.readFileSync(new URL('./cards.json', import.meta.url))));
 let fails = 0;
 const check = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
@@ -11,7 +11,7 @@ check(E.ofRarity('FL', 'LGD').length === 3 && E.ofRarity('FL', 'MYT').length ===
 check(E.supplies().filter(E.isSpell).length >= 10 && E.supplies().filter(E.isTrap).length >= 8, 'spells and traps present');
 
 const tally = packs => { const t = {}; for (const p of packs) for (const c of p) t[c.rarity] = (t[c.rarity] || 0) + 1; return t; };
-for (const set of ['WW', 'FL', 'T2']) {
+for (const set of ['WW', 'FL', 'T2', 'HT']) {
   const N = 60000; const g = new Game(null, 42n); g.s.packs[set] = N; g.save = () => {}; g.checkAchievements = () => {};
   const rule = Packs.rule(set);
   const player = [], gaps = []; let since = 0;
@@ -33,11 +33,12 @@ for (const set of ['WW', 'FL', 'T2']) {
     const worst = Math.max(...Packs.itemOdds().map(([c, p]) => Math.abs((cnt[c.id] || 0) / tot - p)));
     check(worst < 0.006 && Packs.itemOdds().every(([c]) => cnt[c.id] > 0), `every spell/trap can drop, per-card rate within ${worst.toFixed(4)} of its listed odds`);
     console.log('spell/trap odds:', Packs.itemOdds().map(([c, p]) => `${c.name} ${(p * 100).toFixed(1)}%`).join(', ')); }
-  if (set === 'T2') { const myt = (tp.MYT || 0) / N; check(myt > 0.003 && myt < 0.01, 'T2 mythical rate sane');
-    let t2i = 0, it = 0; for (const p of player) for (const c of p) if (!E.isMon(c)) { it++; if (c.pack === 'T2') t2i++; }
-    const exp = Packs.itemOdds('T2').filter(x => x[0].pack === 'T2').reduce((a, x) => a + x[1], 0);
-    check(Math.abs(t2i / it - exp) < 0.01, `T2 packs: new spells/traps ${(t2i / it * 100).toFixed(1)}% of item pulls (listed ${(exp * 100).toFixed(1)}%)`); }
-  if (set !== 'T2') check(player.every(p => p.every(c => !c.pack)), `${set}: never drops Troublesome 2-only spells/traps`);
+  if (set === 'T2' || set === 'HT') { const myt = (tp.MYT || 0) / N; check(myt > 0.003 && myt < 0.01, `${set} mythical rate sane`);
+    let seti = 0, it = 0; for (const p of player) for (const c of p) if (!E.isMon(c)) { it++; if (c.pack === set) seti++; }
+    const exp = Packs.itemOdds(set).filter(x => x[0].pack === set).reduce((a, x) => a + x[1], 0);
+    check(Math.abs(seti / it - exp) < 0.01, `${set} packs: set spells/traps ${(seti / it * 100).toFixed(1)}% of item pulls (listed ${(exp * 100).toFixed(1)}%)`);
+    check(player.every(p => p.every(c => !c.pack || c.pack === set)), `${set}: never drops other-set-only spells/traps`); }
+  else check(player.every(p => p.every(c => !c.pack)), `${set}: never drops set-only spells/traps`);
   if (set === 'FL') { const myt = (tp.MYT || 0) / N, lgd = (tp.LGD || 0) / N; console.log(`FL observed: legendary ${f4(lgd)} mythical ${f4(myt)} per pack`); check(myt > 0.003 && myt < 0.01, 'FL mythical rate sane'); }
 }
 // RNG parity with Swift SplitMix (seed 42 first output, from the reference algorithm)
@@ -199,7 +200,7 @@ let g = new Game(null, 99n);
 }
 // economy
 g = new Game(null, 5n);
-const sells = { C: 'ww_snarlpup', U: 'ww_sprigchimp', R: 'ww_glootios', SR: 'ww_rokbru', SSR: 'ww_axerupi' }, expect = { C: 10, U: 25, R: 60, SR: 150, SSR: 1000 };
+const sells = { C: 'ww_snarlpup', U: 'ww_sprigchimp', R: 'ww_glootios', SR: 'ww_rokbru', LGD: 'ww_senkip', MYT: 'ww_axerupi' }, expect = { C: 10, U: 25, R: 60, SR: 150, LGD: 1500, MYT: 3000 };
 for (const r in sells) { g.s.market[sells[r]].factor = 1; check(g.sellPrice(sells[r]) === expect[r], `sell ${r} = $${expect[r]} at neutral market (got ${g.sellPrice(sells[r])})`); }
 g.s.owned.ww_axerupi = 3; check(!g.sell('ww_axerupi') && g.sellableCount('ww_axerupi') === 0, "3 copies are kept (2 for a deck + 1 to trade): not dupes");
 g.s.owned.ww_axerupi = 5; const m0 = g.s.money; check(g.sellableCount('ww_axerupi') === 2 && g.sell('ww_axerupi') && g.s.money > m0 && g.s.owned.ww_axerupi === 4, 'copies beyond 3 are dupes and sell');
@@ -581,4 +582,31 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 's
   check(stab === 0, `no STAB and no off-type drop-off: damage = full move power x effectiveness in all ${mons.length * mons.length} matchups`); }
 { const g = E.typeGuide(); let ok = g.length === 18; for (const r of g) for (const d of Object.keys(E.DB.typeColors)) { const v = effectiveness(r.t, [d]); if ((v === 2) !== r.strong.includes(d) || (v === 0.5) !== r.weak.includes(d) || (v === 0) !== r.none.includes(d)) ok = false; }
   const w = g.find(r => r.t === 'Water'); check(ok && w.strong.includes('Fire') && g.find(r => r.t === 'Ghost').none.includes('Normal'), 'How to Play type guide matches the chart (e.g. Water beats Fire, Ghost has no effect on Normal)'); }
+
+// ---- Hidden Transcendence + WW chase + seasons (Nov 9) ----
+{ const ht = E.DB.cards.filter(c => c.set === 'HT'); const st = E.DB.cards.filter(c => c.pack === 'HT');
+  check(ht.filter(isMon).length === 22 && st.length === 8, `HT has 22 doremon + 8 spells/traps (${ht.filter(isMon).length}+${st.length})`);
+  const rc = Object.fromEntries(['C','U','R','SR','LGD','MYT'].map(r => [r, ht.filter(c => c.rarity === r).length]));
+  check(rc.C === 8 && rc.U === 6 && rc.R === 3 && rc.SR === 1 && rc.LGD === 3 && rc.MYT === 1, `HT mon rarities 8/6/3/1/3/1 got ${JSON.stringify(rc)}`);
+  check(card('ht_rampagoone').legendary && card('ht_emodoom').mythical && card('st_revive').legendary && card('st_sandstorm').legendary, 'HT chase flags + legendary Revive/Sandstorm');
+  check(Rarity.copyLimit(card('st_revive')) === 1 && Rarity.copyLimit(card('ww_axerupi')) === 1, 'legendary items and WW mythical are 1-copy');
+  check(card('ww_axerupi').rarity === 'MYT' && card('ww_senkip').rarity === 'LGD' && !E.DB.cards.some(c => c.set === 'WW' && c.rarity === 'SSR'), 'WW SSR starters became 3 LGD + Axerupi MYT');
+  check(card('t2_blazemule').legendary && card('t2_peaflora').mythical, 'T2 chase flags set');
+  check(Packs.rule('WW').chase.join() === 'LGD,MYT' && Packs.rule('HT').pityOdds[0] === 3.5, 'WW and HT use FL/T2 chase odds 3.5/0.5');
+  check(E.DAY_MS === 2 * 60 * 60 * 1000, 'league day is 2 real hours');
+  check(E.seasonFeatured(1) === 'egmil' && E.seasonOfDay(1) === 1 && E.seasonOfDay(62) === 1 && E.seasonOfDay(63) === 2 && E.daysLeftInSeason(62) === 1, 'seasons: 62 days, S1=Egmil');
+  // revive spell
+  { const b = new Battle(E.STARTER_DECK.map(card), 'A', E.STARTER_DECK.map(card), 'B', 3n, 0);
+    b.sides[0].mons[0] = Object.assign(newMon(card('ww_snarlpup')), { ready: true });
+    b.sides[0].discard.push(card('ww_gruugy')); b.sides[0].hand = [card('st_revive')];
+    check(b.isLegal({ t: 'spell', hand: 0, target: null }) && b.apply({ t: 'spell', hand: 0, target: null }) && b.sides[0].mons.some(m => m && m.card.id === 'ww_gruugy'), 'Revive returns a knocked-out doremon with 100 HP'); }
+  // season end: top 8 rewarded, MR reset
+  { const g = new Game(null, 42n); g.save = () => {}; g.s.day = 62; g.s.lastSeasonEnded = 0; g.s.mr = 1800; g.s.ai[0].mr = 2000; g.s.ai[1].mr = 1500;
+    for (let i = 2; i < g.s.ai.length; i++) g.s.ai[i].mr = 1000 + i;
+    g.endSeasonIfNeeded();
+    check(g.s.lastSeasonEnded === 1 && g.s.seasonHistory.length === 1 && g.s.seasonHistory[0].featured === 'egmil', 'season 1 resolves with Egmil featured');
+    check(g.s.mr === 1000 && g.s.ai.every(p => p.mr === 1000), 'all MR reset to 1000 after season');
+    check(g.s.seasonPics.includes(1) || g.s.ai.some(p => p.seasonPics.includes(1)), 'top 8 earned season pic');
+    check(g.s.ai.some(p => p.coin === 'season:1') || g.s.coin === 'season:1', 'top 8 equipped gold season coin'); }
+}
 console.log(fails === 0 ? 'ALL TESTS PASSED' : `${fails} FAILURES`); process.exit(fails ? 1 : 0);

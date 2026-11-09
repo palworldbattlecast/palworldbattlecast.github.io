@@ -761,7 +761,7 @@ function demo() {
       break; }
     case 'decks': UI.tab = 'decks'; UI.deck = 1; break;
     case 'battle_setup': UI.tab = 'battle'; break;
-    case 'league': UI.tab = 'more'; UI.more = 'league'; break;
+    case 'league': UI.tab = 'league'; break;
     case 'market': UI.tab = 'more'; UI.more = 'market'; break;
     case 'shop': UI.tab = 'more'; UI.more = 'shop'; UI.shopTab = 'singles'; break;
     case 'trades': UI.tab = 'more'; UI.more = 'trades'; if (!g.s.offers.length) { const k = 0, P = g.s.ai[k]; const give = Object.keys(P.owned).find(id => isMon(card(id)) && P.owned[id] > 1 && !(g.s.owned[id] > 0)) || 'ww_giggleti'; g.s.offers.push({ id: 'demo', aiId: P.id, give, want: 'ww_badbulb', countered: false, note: `${P.name} is building around Badbulb.` }); } break;
@@ -781,7 +781,7 @@ function demo() {
       g.endSeasonIfNeeded(); UI.tab = 'more'; UI.more = 'league'; break; }
     case 'profile': {
       g.s.seasonPics = [1]; g.s.seasonCoins = [1]; g.s.profilePic = 'season:1'; g.s.coin = 'season:1';
-      UI.tab = 'more'; UI.more = 'profile'; break; }
+      UI.tab = 'profile'; break; }
     case 'goldcoin': {
       g.s.coin = 'season:1'; UI.overlay = { kind: 'coin', v: 'L0', phase: 'call', result: 'heads' }; break; }
     case 'speccoin': {
