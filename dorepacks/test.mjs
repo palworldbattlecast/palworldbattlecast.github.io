@@ -1,7 +1,7 @@
 // Node port of the Mac app's headless tests: pack odds (player vs AI), pity, battle rules, AI sims, economy, save.
 import fs from 'fs';
 import * as E from './js/engine.js';
-const { Battle, BattleAI, Packs, DeckRules, Game, SplitMix, card, newMon, effectiveness, isMon, canAttack } = E;
+const { Battle, BattleAI, Packs, DeckRules, Game, SplitMix, card, newMon, effectiveness, isMon, canAttack, tapOwnMonSel } = E;
 E.initDB(JSON.parse(fs.readFileSync(new URL('./cards.json', import.meta.url))));
 let fails = 0;
 const check = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
@@ -498,12 +498,12 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 's
     if (!(m && canAttack(m) && !S.stalled)) return false;
     const o = b.sides[first], to = o.mons.findIndex(Boolean), hp = to >= 0 ? o.mons[to].hp : null, life = o.life;
     if (!b.apply({ t: 'attack', from: slot, to: to >= 0 ? to : null })) return false;
-    const trapStill = !trap || !!o.traps[0];
+    const trapStill = !trap || !o.traps[0];   // the trap springs normally
     const landed = to >= 0 ? (!o.mons[to] || o.mons[to].hp < hp) : o.life < life;
-    return !S.stalled && trapStill && landed;
+    return trapStill && (trap ? true : landed);
   };
   for (const first of [0, 1]) for (const how of ['plain', 'undo', 'mulligan', 'spell']) for (const trap of [null, 'st_guard_wall', 'st_static_web', 'st_doze_spores', 'st_bramble_shield'])
-    check(qs(first, how, trap), `quick start: ${first === 0 ? 'AI/side B' : 'player/side A'} goes second, ${how}${trap ? ', vs turn-1 ' + trap : ''} -> attacks on its first turn`);
+    check(qs(first, how, trap), `quick start: ${first === 0 ? 'AI/side B' : 'player/side A'} goes second, ${how}${trap ? ', vs turn-1 ' + trap : ''} -> can attack on its first turn (trap springs normally)`);
   // every match type uses Battle with a coin-toss "first"; simulate both seats through the AI and check every second-player first turn
   let bad = 0, tot = 0;
   for (let k = 0; k < 400; k++) { const r = new SplitMix(BigInt(k + 1)); const all = E.DB.cards; const deck = () => { const o = {}; for (let i = 0; i < 80; i++) { const c = all[r.int(all.length)]; o[c.id] = (o[c.id] || 0) + 1; } return DeckRules.autoBuild(o, r).map(card); };
@@ -513,4 +513,72 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 's
     const slot = S.mons.findIndex(m => m && m.quick); if (slot < 0 || !canAttack(S.mons[slot])) bad++; }
   check(bad === 0 && tot > 350, `AI-vs-AI: second player's first doremon can always attack (${tot - bad}/${tot})`);
 }
+// ---- regression: going second, the UI ALWAYS offers Attack on the first turn (the real Nov 2 bug) ----
+// Root cause: tapping a doremon you played this turn selected it for Take back, never as an attacker. The quick-start
+// doremon is always "played this turn", so the Attack option never appeared. Brute-force the exact UI tap decision.
+{
+  const all = E.DB.cards, traps = all.filter(c => c.kind === 'trap').map(c => c.id);
+  let scen = 0, disagree = 0, noAttack = 0, conflict = 0, sprung = 0, trapScen = 0;
+  for (let k = 0; k < 600; k++) { const r = new SplitMix(BigInt(k + 77)); const deck = () => { const o = {}; for (let i = 0; i < 80; i++) { const c = all[r.int(all.length)]; o[c.id] = (o[c.id] || 0) + 1; } return DeckRules.autoBuild(o, r).map(card); };
+    const first = k % 2, sec = 1 - first, b = new Battle(deck(), 'A', deck(), 'B', BigInt(k + 9), first); BattleAI.openingMulligans(b);
+    const F = b.sides[first], nt = k % 4;   // first player sets 0-2 traps (+ maybe a doremon)
+    for (let t = 0; t < Math.min(nt, 2); t++) { F.hand.push(card(traps[r.int(traps.length)])); b.apply({ t: 'setTrap', hand: F.hand.length - 1, slot: t }); }
+    if (k % 3) { const fm = F.hand.findIndex(isMon); if (fm >= 0) b.apply({ t: 'playMon', hand: fm, slot: r.int(5) }); }
+    b.apply({ t: 'end' }); if (b.current !== sec || b.over) continue;
+    const S = b.sides[sec]; const hi = S.hand.findIndex(isMon); if (hi < 0) continue;
+    if (k % 5 === 0) { S.hand.push(card('st_super_potion')); b.apply({ t: 'spell', hand: S.hand.length - 1, target: null }); }
+    b.apply({ t: 'playMon', hand: S.hand.findIndex(isMon), slot: r.int(5) }); scen++;
+    const slot = S.mons.findIndex(Boolean), m = S.mons[slot];
+    for (let i = 0; i < 5; i++) { const ui = tapOwnMonSel(b, sec, i, null)?.kind === 'mon', eng = !!S.mons[i] && canAttack(S.mons[i]) && !S.stalled; if (ui !== eng) disagree++; }
+    if (b.canUndo(sec, 'mon', slot)) conflict++;
+    const sel = tapOwnMonSel(b, sec, slot, null); if (sel?.kind !== 'mon') { noAttack++; continue; }
+    const o = b.sides[first], to = o.mons.findIndex(Boolean), had = o.traps.filter(Boolean).length;
+    if (!b.isLegal({ t: 'attack', from: slot, to: to >= 0 ? to : null })) { noAttack++; continue; }
+    b.apply({ t: 'attack', from: slot, to: to >= 0 ? to : null }); if (had) { trapScen++; if (o.traps.filter(Boolean).length === had - 1) sprung++; } }
+  check(scen > 400 && disagree === 0, `UI tap decision == engine canAttack in every second-player first-turn scenario (${scen} scenarios, ${disagree} disagreements)`);
+  check(noAttack === 0, `UI always offers Attack to the quick-start doremon (${scen - noAttack}/${scen})`);
+  check(conflict > 0, `scenarios covered the old bug: quick doremon both attackable and take-back-able (${conflict})`);
+  check(trapScen > 100 && sprung === trapScen, `traps trigger normally on the quick-start attack (${sprung}/${trapScen})`);
+  // take back is still available for it (the Take back button) and works
+  { const b = new Battle(E.STARTER_DECK.map(card), 'A', E.STARTER_DECK.map(card), 'B', 5n, 1); b.apply({ t: 'end' });
+    const S = b.sides[0], hi = S.hand.findIndex(isMon); b.apply({ t: 'playMon', hand: hi, slot: 0 });
+    check(tapOwnMonSel(b, 0, 0, null)?.kind === 'mon' && b.canUndo(0, 'mon', 0) && b.apply({ t: 'undo', kind: 'mon', slot: 0 }) && S.quickStart, 'quick doremon: selected as attacker, and Take back still works'); }
+}
+// ---- split / double moves are a Troublesome 2 (T2) mechanic only ----
+{ const bad = E.DB.cards.filter(c => c.split && c.set !== 'T2'); check(bad.length === 0, `no non-T2 card has a split/double move (${bad.map(c => c.id).join(',') || 'none'})`);
+  const t2 = E.DB.cards.filter(c => c.split); check(t2.length > 0 && t2.every(c => c.set === 'T2'), `T2 still has its split moves (${t2.length})`);
+  check(card('ww_gruugy').move === 'Boulder Toss' && card('ww_rokbru').move === 'Granite Crush', 'Gruugy/Rokbru got single-target moves'); }
+// ---- 200+ game balance sim: going first vs second ----
+{ let fw = 0, n = 0; const all = E.DB.cards;
+  for (let k = 0; k < 300; k++) { const r = new SplitMix(BigInt(k + 1000)); const deck = () => { const o = {}; for (let i = 0; i < 80; i++) { const c = all[r.int(all.length)]; o[c.id] = (o[c.id] || 0) + 1; } return DeckRules.autoBuild(o, r).map(card); };
+    const b = new Battle(deck(), 'A', deck(), 'B', BigInt(k + 5), k % 2); BattleAI.openingMulligans(b); let g = 0;
+    while (!b.over && g++ < 3000) { const a = BattleAI.next(b); if (!b.apply(a)) b.apply({ t: 'end' }); }
+    if (b.over) { n++; if (b.winner === b.first) fw++; } }
+  console.log(`SIM ${n} games: first player wins ${fw} (${(100 * fw / n).toFixed(1)}%), second wins ${n - fw} (${(100 * (n - fw) / n).toFixed(1)}%)`);
+  check(n >= 200 && fw / n > 0.38 && fw / n < 0.62, 'first/second win rate roughly balanced'); }
+// ---- types: standard chart, move type decides damage, no STAB (Nov 2) ----
+{ const STD = {"Normal":{"Rock":.5,"Ghost":0,"Steel":.5},"Fire":{"Fire":.5,"Water":.5,"Grass":2,"Ice":2,"Bug":2,"Rock":.5,"Dragon":.5,"Steel":2},
+"Water":{"Fire":2,"Water":.5,"Grass":.5,"Ground":2,"Rock":2,"Dragon":.5},"Electric":{"Water":2,"Electric":.5,"Grass":.5,"Ground":0,"Flying":2,"Dragon":.5},
+"Grass":{"Fire":.5,"Water":2,"Grass":.5,"Poison":.5,"Ground":2,"Flying":.5,"Bug":.5,"Rock":2,"Dragon":.5,"Steel":.5},
+"Ice":{"Fire":.5,"Water":.5,"Grass":2,"Ice":.5,"Ground":2,"Flying":2,"Dragon":2,"Steel":.5},
+"Fighting":{"Normal":2,"Ice":2,"Poison":.5,"Flying":.5,"Psychic":.5,"Bug":.5,"Rock":2,"Ghost":0,"Dark":2,"Steel":2,"Fairy":.5},
+"Poison":{"Grass":2,"Poison":.5,"Ground":.5,"Rock":.5,"Ghost":.5,"Steel":0,"Fairy":2},"Ground":{"Fire":2,"Electric":2,"Grass":.5,"Poison":2,"Flying":0,"Bug":.5,"Rock":2,"Steel":2},
+"Flying":{"Electric":.5,"Grass":2,"Fighting":2,"Bug":2,"Rock":.5,"Steel":.5},"Psychic":{"Fighting":2,"Poison":2,"Psychic":.5,"Dark":0,"Steel":.5},
+"Bug":{"Fire":.5,"Grass":2,"Fighting":.5,"Poison":.5,"Flying":.5,"Psychic":2,"Ghost":.5,"Dark":2,"Steel":.5,"Fairy":2},
+"Rock":{"Fire":2,"Ice":2,"Fighting":.5,"Ground":.5,"Flying":2,"Bug":2,"Steel":.5},"Ghost":{"Normal":0,"Psychic":2,"Ghost":2,"Dark":.5},
+"Dragon":{"Dragon":2,"Steel":.5,"Fairy":0},"Dark":{"Fighting":.5,"Psychic":2,"Ghost":2,"Dark":.5,"Fairy":.5},
+"Steel":{"Fire":.5,"Water":.5,"Electric":.5,"Ice":2,"Rock":2,"Steel":.5,"Fairy":2},"Fairy":{"Fire":.5,"Fighting":2,"Poison":.5,"Dragon":2,"Dark":2,"Steel":.5}};
+  const T = Object.keys(STD); let bad = 0; for (const x of T) for (const y of T) if ((E.DB.chart[x]?.[y] ?? 1) !== (STD[x][y] ?? 1)) bad++;
+  check(bad === 0 && Object.keys(E.DB.chart).every(k => T.includes(k)), 'type chart == standard 18-type chart');
+  const mons = E.DB.cards.filter(isMon); check(mons.every(c => T.includes(c.moveType) && c.types.every(t => T.includes(t)) && c.types.length && new Set(c.types).size === c.types.length), 'every doremon type and move type is a real chart type');
+  const dragons = mons.filter(c => c.types.includes('Dragon')); const fairyAtk = mons.filter(c => c.moveType === 'Fairy');
+  let ok = true; for (const f of fairyAtk) for (const d of dragons) { const want = d.types.reduce((m, t) => m * (STD.Fairy[t] ?? 1), 1); const [, ef] = Battle.damage(mk(f.id), mk(d.id)); if (ef !== want) ok = false; if (!d.types.some(t => STD.Fairy[t] < 1) && ef !== 2) ok = false; }
+  check(ok && dragons.length && fairyAtk.length, `Fairy moves hit every Dragon at 2x (Steel/Dragon at 1x, as the chart says): ${dragons.map(d => d.name + ' ' + effectiveness('Fairy', d.types) + 'x').join(', ')}`);
+  // no STAB / no off-type penalty: damage never depends on the attacker's own types
+  let stab = 0; for (const a of mons) for (const d of mons) { const base = Battle.damage(mk(a.id), mk(d.id))[0];
+    for (const ts of [['Normal'], [a.moveType], ['Dragon', 'Steel']]) { const fake = mk(a.id); fake.card = { ...a, types: ts }; if (Battle.damage(fake, mk(d.id))[0] !== base) stab++; }
+    const ef = effectiveness(a.moveType, d.types); if (ef && base !== Math.max(10, Math.round(a.dmg * ef / 10) * 10)) stab++; }
+  check(stab === 0, `no STAB and no off-type drop-off: damage = full move power x effectiveness in all ${mons.length * mons.length} matchups`); }
+{ const g = E.typeGuide(); let ok = g.length === 18; for (const r of g) for (const d of Object.keys(E.DB.typeColors)) { const v = effectiveness(r.t, [d]); if ((v === 2) !== r.strong.includes(d) || (v === 0.5) !== r.weak.includes(d) || (v === 0) !== r.none.includes(d)) ok = false; }
+  const w = g.find(r => r.t === 'Water'); check(ok && w.strong.includes('Fire') && g.find(r => r.t === 'Ghost').none.includes('Normal'), 'How to Play type guide matches the chart (e.g. Water beats Fire, Ghost has no effect on Normal)'); }
 console.log(fails === 0 ? 'ALL TESTS PASSED' : `${fails} FAILURES`); process.exit(fails ? 1 : 0);

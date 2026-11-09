@@ -2592,7 +2592,7 @@
    "Flying": 0.5,
    "Ghost": 0.5,
    "Steel": 0.5,
-   "Fairy": 0.5
+   "Fairy": 2.0
   },
   "Rock": {
    "Fire": 2.0,
