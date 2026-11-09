@@ -745,6 +745,7 @@ function demo() {
   switch (SNAP) {
     case 'binder': UI.tab = 'binder'; UI.binderSet = 'FL'; break;
     case 'binder_t2': UI.tab = 'binder'; UI.binderSet = 'T2'; break;
+    case 'binder_ht': UI.tab = 'binder'; UI.binderSet = 'HT'; break;
     case 'packs': UI.tab = 'packs'; break;
     case 'packs_back': UI.tab = 'packs'; UI.packBack = 'T2'; setTimeout(() => { const el = document.querySelector('[data-a="packFlip"]'); if (el) el.scrollIntoView(); }, 50); break;
     case 't2_open': { UI.tab = 'packs'; UI.overlay = { kind: 'pack', set: 'T2', cards: [], fresh: new Set(), phase: 0 }; break; }
@@ -788,6 +789,8 @@ function demo() {
       const w = 9; g.s.ai[w].coin = 'season:1'; g.s.ai[w].profilePic = 'season:1'; g.s.ai[w].seasonPics = [1]; g.s.ai[w].seasonCoins = [1];
       UI.overlay = { kind: 'speccoin', a: w, b: 0, ca: g.coinOf(w), cb: g.coinOf(0), na: g.s.ai[w].name, nb: g.s.ai[0].name, first: 0 }; break; }
     case 'ht_packs': UI.tab = 'packs'; break;
+    case 'ht_open': { const ch = inSet('HT').filter(c => Rarity.isChase(c.rarity)); const rest = inSet('HT').filter(c => !Rarity.isChase(c.rarity)).slice(0,4); UI.overlay = { kind: 'pack', set: 'HT', cards: [...rest, ...ch].slice(0,7), fresh: new Set(ch.map(c => c.id)), phase: 2 }; break; }
+    case 'ht_tear': UI.overlay = { kind: 'pack', set: 'HT', cards: inSet('HT').slice(0,7), fresh: new Set(), phase: 0 }; break;
     case 'rules': UI.tab = 'more'; UI.more = 'rules'; break;
     case 'opening': { UI.tab = 'packs'; g.s.packs.FL++; const r = g.openPack('FL'); const fl = inSet('FL'); UI.overlay = { kind: 'pack', set: 'FL', cards: r.cards, fresh: r.fresh, phase: 0 }; break; }
     case 'reveal': { const fl = inSet('FL').filter(c => c.rarity === 'LGD'); UI.overlay = { kind: 'pack', set: 'FL', cards: inSet('FL').slice(-7), fresh: new Set([fl[0].id]), phase: 1, i: 6, flipped: true }; UI.overlay.cards[6] = fl[0]; break; }
