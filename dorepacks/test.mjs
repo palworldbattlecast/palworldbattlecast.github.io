@@ -729,4 +729,25 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 's
   console.log('PASS old save without gift keys gets HT+1, v20 +3/set, RA +3');
 }
 
+
+// v22: every spell/trap must have card art in the asset bundles (web) — catches RA/HT omissions
+{
+  const keys = new Set();
+  for (let i = 0; i < 10; i++) {
+    const p = `assets/b${i}.json`;
+    if (!fs.existsSync(p)) continue;
+    Object.keys(JSON.parse(fs.readFileSync(p, 'utf8'))).forEach(k => keys.add(k));
+  }
+  const st = E.DB.cards.filter(c => c.kind === 'spell' || c.kind === 'trap');
+  const miss = st.filter(c => !keys.has('cards/' + c.id)).map(c => c.id);
+  check(miss.length === 0, `every spell/trap has art in assets (missing ${miss.join(',') || 'none'})`);
+  // legendary HT supplies keep legendary flag + clean text (no LEGENDARY X: prefix)
+  for (const id of ['st_sandstorm', 'st_revive']) {
+    const c = card(id);
+    check(c.legendary === true, `${id} legendary flag`);
+    check(!/^LEGENDARY\s+(SPELL|TRAP)\s*:/i.test(c.text || ''), `${id} text has no LEGENDARY prefix`);
+  }
+  console.log('PASS every spell/trap has bundled art + legendary ST text clean');
+}
+
 console.log(fails === 0 ? 'ALL TESTS PASSED' : `${fails} FAILURES`); process.exit(fails ? 1 : 0);
