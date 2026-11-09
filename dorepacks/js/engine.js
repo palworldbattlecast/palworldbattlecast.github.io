@@ -11,8 +11,8 @@ export const card = (id) => DB.byId[id];
 export const inSet = (s) => DB.cards.filter(c => c.set === s).sort((a, b) => a.num - b.num);
 export const ofRarity = (s, r) => DB.cards.filter(c => c.set === s && c.rarity === r).sort((a, b) => a.num - b.num);
 export const supplies = () => DB.cards.filter(c => c.kind === 'spell' || c.kind === 'trap').sort((a,b)=>a.num-b.num);
-export const SETS = ['WW', 'FL', 'T2', 'HT'];
-export const SET_NAMES = { WW: 'First Adventures', FL: 'Fallen Legends', T2: 'Troublesome 2', HT: 'Hidden Transcendence', ST: 'Supplies', CV: 'Canopy Veil' };
+export const SETS = ['WW', 'FL', 'T2', 'HT', 'RA'];
+export const SET_NAMES = { WW: 'First Adventures', FL: 'Fallen Legends', T2: 'Troublesome 2', HT: 'Hidden Transcendence', RA: 'Rivals & Allies', ST: 'Supplies', PR: 'Promo', CV: 'Canopy Veil' };
 /** cards shown in a set's Collection binder: that set's doremon + spells/traps whose homeSet/pack matches */
 export const setCards = (s) => DB.cards.filter(c => (c.kind === 'mon' && c.set === s) || ((c.kind === 'spell' || c.kind === 'trap') && (c.homeSet === s || c.pack === s || (!c.pack && !c.homeSet && s === 'WW')))).sort((a, b) => (a.kind === 'mon' ? 0 : 1) - (b.kind === 'mon' ? 0 : 1) || a.num - b.num);
 /** reprint-safe identity: every printing has its own card id (set_mon), the doremon itself is c.mon */
@@ -69,6 +69,8 @@ export const Packs = {
     slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
   HT: { set: 'HT', name: 'Hidden Transcendence', price: 900, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT', 'ITEM'],
     slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
+  RA: { set: 'RA', name: 'Rivals & Allies', price: 850, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT', 'ITEM'],
+    slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
   rule: s => Packs[s] || Packs.WW,
   rollRarity(rule, slot, forceChase, rng) {
     if (forceChase && slot === Packs.size - 1) {
@@ -112,6 +114,7 @@ export const Packs = {
     rows.push(['Spells/traps', `1.3 per pack on average. Which one is weighted by shop price: Potion ${(ex('st_potion') * 100).toFixed(1)}%, Super Potion ${(ex('st_super_potion') * 100).toFixed(1)}%, Guard Wall ${(ex('st_guard_wall') * 100).toFixed(1)}% of spell/trap pulls`]);
     if (set === 'T2') { const t2 = io.filter(x => x[0].pack === 'T2').reduce((a, x) => a + x[1], 0); rows.push(['New in T2', `The set's 7 new spells/traps are ${(t2 * 100).toFixed(1)}% of its spell/trap pulls (3x weight)`]); }
     if (set === 'HT') { const ht = io.filter(x => x[0].pack === 'HT').reduce((a, x) => a + x[1], 0); rows.push(['New in HT', `The set's 8 spells/traps (incl. legendary Revive & Sandstorm, 1-copy) are ${(ht * 100).toFixed(1)}% of its spell/trap pulls (3x weight). Chase LGD/MYT slots stay doremon-only.`]); }
+    if (set === 'RA') { const ra = io.filter(x => x[0].pack === 'RA').reduce((a, x) => a + x[1], 0); rows.push(['New in RA', `The set's 11 spells/traps are ${(ra * 100).toFixed(1)}% of its spell/trap pulls (3x weight). Chase LGD/MYT stay doremon-only.`]); }
     rows.push(['Fairness', 'Every AI opens packs with this exact function and its own pity counter']);
     return rows;
   },
@@ -138,6 +141,93 @@ export const monCount = s => s.mons.filter(Boolean).length;
 const hasAnyMonLeft = s => monCount(s) > 0 || s.hand.some(isMon) || s.deck.some(isMon);
 const clamp4 = v => Math.max(-4, Math.min(4, v));
 
+/** RA passives: each aura hits ONE chosen other doremon (never self). Not field-wide. */
+const AURA_KEYS = ['allyAtk', 'allyDef', 'foeAtk', 'foeDef'];
+export function passiveInfo(card) {
+  if (!card || !card.passive) return null;
+  for (const key of AURA_KEYS) {
+    const d = card.passive[key] | 0; if (!d) continue;
+    return { key, delta: d, foe: key.startsWith('foe'), stage: key.endsWith('Atk') ? 'atk' : 'def' };
+  }
+  return null;
+}
+export function auraCandidates(battle, srcSide, info) {
+  if (!info) return [];
+  const tgtSide = info.foe ? 1 - srcSide : srcSide;
+  const src = null; // filtered by uid in caller
+  return battle.sides[tgtSide].mons.map((m, i) => [i, m]).filter(([, m]) => m);
+}
+/** Apply aura from src mon at (side,slot) onto target at (tgtSide,tgtSlot). Never self. */
+export function applyAuraToTarget(battle, side, slot, tgtSide, tgtSlot) {
+  const src = battle.sides[side].mons[slot]; if (!src) return false;
+  const info = passiveInfo(src.card); if (!info) return false;
+  if (tgtSide === side && tgtSlot === slot) return false;
+  const tgt = battle.sides[tgtSide].mons[tgtSlot]; if (!tgt) return false;
+  if (tgt.uid === src.uid) return false;
+  if (src.auraLink) clearPassive(battle, side, src);
+  tgt[info.stage] = clamp4(tgt[info.stage] + info.delta);
+  src.auraLink = { side: tgtSide, slot: tgtSlot, uid: tgt.uid, key: info.key, delta: info.delta, stage: info.stage };
+  const sign = info.delta > 0 ? '+' : '';
+  battle.events.push({ e: 'stat', side: tgtSide, slot: tgtSlot, text: `${info.stage.toUpperCase()} ${sign}${info.delta}` });
+  battle.log(`${src.card.name}'s aura: ${tgt.card.name} gets ${info.stage.toUpperCase()} ${sign}${info.delta}.`);
+  return true;
+}
+/** AI / auto pick: buff weakest ally by HP%, debuff strongest foe by printed power. */
+export function autoAuraTarget(battle, side, slot) {
+  const src = battle.sides[side].mons[slot]; if (!src) return null;
+  const info = passiveInfo(src.card); if (!info) return null;
+  const tgtSide = info.foe ? 1 - side : side;
+  const cands = battle.sides[tgtSide].mons.map((m, i) => [i, m]).filter(([, m]) => m && m.uid !== src.uid);
+  if (!cands.length) return null;
+  if (info.foe) {
+    const pw = c => c.dmg * (c.split ? 2 : 1);
+    cands.sort((a, b) => pw(b[1].card) - pw(a[1].card) || b[1].hp - a[1].hp || a[0] - b[0]);
+  } else {
+    cands.sort((a, b) => (a[1].hp / a[1].card.hp) - (b[1].hp / b[1].card.hp) || a[0] - b[0]);
+  }
+  return { tgtSide, tgtSlot: cands[0][0] };
+}
+/** After a mon with passive enters: human picks one target, AI auto-picks. No other ally/foe → aura does nothing. */
+export function beginPassive(battle, side, slot) {
+  const src = battle.sides[side].mons[slot]; if (!src) return;
+  const info = passiveInfo(src.card); if (!info) return;
+  const tgtSide = info.foe ? 1 - side : side;
+  const cands = battle.sides[tgtSide].mons.map((m, i) => [i, m]).filter(([, m]) => m && m.uid !== src.uid);
+  if (!cands.length) {
+    battle.log(`${src.card.name}'s aura has no valid target.`);
+    return;
+  }
+  if (battle.humanSide === side) {
+    battle.pendingAura = { side, slot, tgtSide, key: info.key, delta: info.delta, stage: info.stage };
+    battle.events.push({ e: 'aura_pick', side, slot, tgtSide, key: info.key, delta: info.delta });
+    battle.log(`${src.card.name}'s aura — choose one ${info.foe ? 'opposing' : 'allied'} doremon.`);
+    return;
+  }
+  const pick = autoAuraTarget(battle, side, slot);
+  if (pick) applyAuraToTarget(battle, side, slot, pick.tgtSide, pick.tgtSlot);
+}
+export function resolveAura(battle, tgtSlot) {
+  const p = battle.pendingAura; if (!p) return false;
+  const ok = applyAuraToTarget(battle, p.side, p.slot, p.tgtSide, tgtSlot);
+  battle.pendingAura = null;
+  return ok;
+}
+export function clearPassive(battle, side, mon) {
+  if (!mon || !mon.auraLink) return;
+  const L = mon.auraLink;
+  const tgt = battle.sides[L.side].mons[L.slot];
+  if (tgt && tgt.uid === L.uid) {
+    tgt[L.stage] = clamp4(tgt[L.stage] - L.delta);
+    const rev = -L.delta;
+    battle.events.push({ e: 'stat', side: L.side, slot: L.slot, text: `${L.stage.toUpperCase()} ${rev > 0 ? '+' : ''}${rev}` });
+  }
+  mon.auraLink = null;
+}
+/** @deprecated field-wide auras removed; kept as no-op for old call sites */
+export function applyPassive(battle, side, slot) { beginPassive(battle, side, slot); }
+export function refreshAuraOnEnter(battle, side, slot) { /* single-target auras do not auto-apply to newcomers */ }
+
+
 // actions: {t:'playMon',hand,slot} {t:'spell',hand,target} {t:'setTrap',hand,slot} {t:'attack',from,to,to2} {t:'end'}
 //          to2: optional 2nd target of a SPREAD move (must differ from to)
 //          {t:'undo',kind:'mon'|'trap',slot}  take back a doremon/trap played this turn (nothing resolved from it yet)
@@ -154,6 +244,7 @@ export class Battle {
     this.current = first; this.first = first; this.acted = false; this.mulled = [false, false];
     // Nov 2: the player going second starts with 1 extra card and its first doremon can attack the turn it is played
     if (Battle.SECOND.extra) this.draw(1 - first, true); this.sides[1 - first].quickStart = Battle.SECOND.quick;
+    this.humanSide = null; this.pendingAura = null; this.pendingDuel = null;
     this.events.push({ e: 'turn', side: first }); this.log(`${this.sides[first].name} goes first.`);
   }
   static shuffle(d, rng) { if (d.length < 2) return; for (let i = d.length - 1; i > 0; i--) { const j = rng.int(i + 1); [d[i], d[j]] = [d[j], d[i]]; } }
@@ -243,14 +334,15 @@ export class Battle {
       case 'end': this.endTurn(); break;
       case 'undo': {
         const c = a.kind === 'mon' ? S.mons[a.slot].card : S.traps[a.slot];
-        if (a.kind === 'mon') { if (S.mons[a.slot].quick) S.quickStart = true; S.mons[a.slot] = null; S.monsPlayed--; } else { S.traps[a.slot] = null; S.stPlayed--; S.freshTraps = S.freshTraps.filter(x => x !== a.slot); }
+        if (a.kind === 'mon') { if (S.mons[a.slot].quick) S.quickStart = true; clearPassive(this, me, S.mons[a.slot]); S.mons[a.slot] = null; S.monsPlayed--; } else { S.traps[a.slot] = null; S.stPlayed--; S.freshTraps = S.freshTraps.filter(x => x !== a.slot); }
         S.hand.push(c); this.events.push({ e: 'undo', side: me, card: c, kind: a.kind, slot: a.slot });
         this.log(a.kind === 'mon' ? `${S.name} takes back ${c.name}.` : `${S.name} picks a set trap back up.`); break;
       }
       case 'playMon': { const c = S.hand.splice(a.hand, 1)[0]; S.mons[a.slot] = newMon(c); S.mons[a.slot].fresh = true; S.monsPlayed++;
-        if (S.quickStart) { S.quickStart = false; S.mons[a.slot].ready = true; S.mons[a.slot].quick = true; this.log(`${c.name} gets a quick start and can attack right away!`); } this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`); break; }
+        if (S.quickStart) { S.quickStart = false; S.mons[a.slot].ready = true; S.mons[a.slot].quick = true; this.log(`${c.name} gets a quick start and can attack right away!`); } this.events.push({ e: 'played', side: me, card: c }); this.log(`${S.name} plays ${c.name} (HP ${c.hp}).`);
+        beginPassive(this, me, a.slot); break; }
       case 'setTrap': { const c = S.hand.splice(a.hand, 1)[0]; S.traps[a.slot] = c; S.freshTraps.push(a.slot); S.stPlayed++; this.events.push({ e: 'set', side: me, slot: a.slot }); this.log(`${S.name} sets a trap face-down.`); break; }
-      case 'spell': { const c = S.hand.splice(a.hand, 1)[0]; S.stPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.castSpell(c, me, a.target); S.discard.push(c); break; }
+      case 'spell': { const c = S.hand.splice(a.hand, 1)[0]; S.stPlayed++; this.events.push({ e: 'played', side: me, card: c }); this.castSpell(c, me, a.target, a.target2); S.discard.push(c); break; }
       case 'attack': this.attack(a.from, a.to, a.to2); break;
     }
     this.checkBoardLoss();
@@ -266,11 +358,21 @@ export class Battle {
     if (kind === 'trap') return !!S.traps[slot] && S.freshTraps.includes(slot) && S.hand.length < Battle.handMax;
     return false;
   }
-  castSpell(c, s, t) {
+  castSpell(c, s, t, t2 = null) {
     const S = this.sides[s], who = S.name;
     if (t != null && S.mons[t]) S.mons[t].fresh = false;                                 // a spell resolved onto it: locked in
     if (eff(c, 'healAll') > 0 || eff(c, 'atkAll') !== 0 || eff(c, 'defAll') !== 0 || eff(c, 'heal2') > 0 || eff(c, 'atk2') !== 0) for (const m of S.mons) if (m) m.fresh = false;
-    if (eff(c, 'protect') > 0 && t != null && S.mons[t]) { const m = S.mons[t]; m.protected = true; this.events.push({ e: 'stat', side: s, slot: t, text: 'PROTECTED' }); this.log(`${who} uses ${c.name}: ${m.card.name} can't be targeted until ${who}'s next turn.`); }
+    if (eff(c, 'protect') > 0) {
+      const n = Math.max(1, eff(c, 'protect'));
+      const slots = [t, t2].filter((x, i, a) => x != null && a.indexOf(x) === i).slice(0, n);
+      const names = [];
+      for (const sl of slots) {
+        const m = S.mons[sl]; if (!m || m.protected) continue;
+        m.protected = true; names.push(m.card.name);
+        this.events.push({ e: 'stat', side: s, slot: sl, text: 'PROTECTED' });
+      }
+      if (names.length) this.log(`${who} uses ${c.name}: ${names.join(' and ')} can't be targeted until ${who}'s next turn.`);
+    }
     if (eff(c, 'heal2') > 0) {
       const hurt = Battle.mostHurt(S, 2);
       for (const i of hurt) { const m = S.mons[i]; const amt = Math.min(eff(c, 'heal2'), m.card.hp - m.hp); m.hp += amt; this.events.push({ e: 'heal', side: s, slot: i, amount: amt }); }
@@ -308,6 +410,7 @@ export class Battle {
         const m = newMon(rc); m.hp = Math.min(eff(c, 'revive'), rc.hp); m.ready = false; m.fresh = true; S.mons[slot] = m;
         this.events.push({ e: 'played', side: s, card: rc }); this.events.push({ e: 'heal', side: s, slot, amount: m.hp });
         this.log(`${who} uses ${c.name}: ${rc.name} returns with ${m.hp} HP!`);
+        beginPassive(this, s, slot);
       }
     }
   }
@@ -328,6 +431,27 @@ export class Battle {
     const st = effS(trap, 'status') || effS(trap, 'status2');
     if (st && STATUS[st] && m.status === 'none') { m.status = st; m.statusTurns = 0; this.events.push({ e: 'status', side: me, slot, status: st }); this.log(`${m.card.name} is ${STATUS[st][1].toLowerCase()}!`); }
   }
+  /** Duel trap: replacement attack without re-springing traps. */
+  resolveDuel(from2, to) {
+    const d = this.pendingDuel; this.pendingDuel = null;
+    const me = d ? d.atkSide : this.current, o = d ? d.defSide : this.opp;
+    const a = this.sides[me].mons[from2];
+    if (!a) { this.log('Duel fizzles — no attacker.'); return; }
+    a.attacked = true;
+    this.events.push({ e: 'duel', side: me, from: from2, to });
+    this.log(`Duel! ${a.card.name} must attack${to == null ? ' directly' : ''}!`);
+    const O = this.sides[o];
+    if (to == null) { this.events.push({ e: 'direct', side: o }); this.log(`${a.card.name} attacks ${O.name} directly! (-1 life)`); this.loseLife(o); return; }
+    const dmon = O.mons[to]; if (!dmon) { this.log('Duel fizzles — no target.'); return; }
+    const [dmg, ef] = Battle.damage(a, dmon);
+    const note = ef === 0 ? ' It has no effect...' : ef > 1 ? " It's super effective!" : ef < 1 ? " It's not very effective." : '';
+    this.log(`${a.card.name} uses ${a.card.move} (${a.card.moveType}) on ${dmon.card.name} for ${dmg}.${note}`);
+    this.hurt(o, to, dmg, ef, null);
+    const left = O.mons[to];
+    if (a.card.fx && dmg > 0 && left && left.status === 'none' && STATUS[a.card.fx] && this.rng.chance((a.card.fxChance || 0) / 100)) {
+      left.status = a.card.fx; left.statusTurns = 0; this.events.push({ e: 'status', side: o, slot: to, status: a.card.fx }); this.log(`${left.card.name} is ${STATUS[a.card.fx][1].toLowerCase()}!`);
+    }
+  }
   attack(f, t, t2 = null) {
     const me = this.current, o = this.opp; const a = this.sides[me].mons[f]; if (!a) return;
     a.attacked = true;
@@ -337,6 +461,36 @@ export class Battle {
     if (ti >= 0) {
       const trap = O.traps[ti]; O.traps[ti] = null; O.discard.push(trap);
       this.events.push({ e: 'trap', side: o, card: trap }); this.log(`TRAP! ${O.name} reveals ${trap.name}!`);
+      if (eff(trap, 'roar') > 0) {
+        this.log(`${a.card.name}'s attack is cancelled by Roar!`);
+        const others = this.sides[me].mons.map((m, i) => [i, m]).filter(x => x[1] && x[0] !== f).map(x => x[0]);
+        if (others.length) {
+          const j = others[this.rng.int(others.length)];
+          const tmp = this.sides[me].mons[f]; this.sides[me].mons[f] = this.sides[me].mons[j]; this.sides[me].mons[j] = tmp;
+          this.events.push({ e: 'roar', side: me, from: f, to: j });
+          this.log(`${tmp.card.name} is forced to the bench; ${this.sides[me].mons[f].card.name} comes forward!`);
+        }
+        return;
+      }
+      if (eff(trap, 'duel') > 0) {
+        // Defender picks which enemy attacks and which of their mons is targeted. AI auto-resolves.
+        const pick = () => {
+          const foes = this.sides[me].mons.map((m, i) => [i, m]).filter(x => x[1]);
+          const from2 = foes.sort((a, b) => BattleAI.monValue(b[1].card) - BattleAI.monValue(a[1].card))[0][0];
+          const targets = this.sides[o].mons.map((m, i) => [i, m]).filter(x => x[1] && targetable(x[1]));
+          const to2 = targets.length ? targets.sort((a, b) => a[1].hp - b[1].hp)[0][0] : null;
+          return { from2, to2 };
+        };
+        if (this.humanSide === o) {
+          this.pendingDuel = { atkSide: me, defSide: o, originalFrom: f };
+          this.events.push({ e: 'duel_pick', side: o });
+          this.log(`Duel! ${O.name} chooses which attacker strikes.`);
+          return;
+        }
+        const { from2, to2 } = pick();
+        this.resolveDuel(from2, to2);
+        return;
+      }
       if (eff(trap, 'stall') > 0) { this.sides[me].stalled = true; this.log(`${a.card.name}'s attack is blocked and ${this.sides[me].name} is stalled for the rest of the turn.`); return; }
       if (eff(trap, 'block') > 0) { this.log(`${a.card.name}'s attack is blocked!`); this.hurt(me, f, eff(trap, 'recoil'), 1, 'is pricked by thorns'); return; }
       this.trapHit(trap, me, f, 0);
@@ -376,7 +530,7 @@ export class Battle {
     this.events.push({ e: 'damage', side: s, slot, amount: amt, eff: ef });
     if (why) this.log(`${m.card.name} ${why} (-${amt}).`);
     if (m.hp <= 0) {
-      S.mons[slot] = null; S.discard.push(m.card); this.sides[1 - s].koCount++;
+      clearPassive(this, s, m); S.mons[slot] = null; S.discard.push(m.card); this.sides[1 - s].koCount++;
       this.events.push({ e: 'ko', side: s, slot, name: m.card.name }); this.log(`${m.card.name} is knocked out! ${S.name} loses 1 life.`);
       this.loseLife(s);
     }
@@ -572,7 +726,7 @@ export const TRAINER_SPRITES = ['npc_rivalboy','npc_rivalgirl','npc_tr_boy','npc
 export const trainerSprite = k => TRAINER_SPRITES[k % TRAINER_SPRITES.length];
 export const SEASON_DAYS = 62;
 /** featured doremon per season: Season 1 = Egmil, then rotate through every mon species with no repeats until exhausted */
-export const SEASON_PLAN = [{"season": 1, "featured": "egmil", "mat": {"primary": "purple", "secondary": "green"}}, {"season": 2, "featured": "axerupi", "mat": {"primary": "pink", "secondary": "yellow"}}, {"season": 3, "featured": "badbulb", "mat": {"primary": "brown", "secondary": "orange"}}, {"season": 4, "featured": "senkip", "mat": {"primary": "navy", "secondary": "gold"}}, {"season": 5, "featured": "electrinx", "mat": {"primary": "teal", "secondary": "coral"}}, {"season": 6, "featured": "seraphink", "mat": {"primary": "crimson", "secondary": "silver"}}, {"season": 7, "featured": "spiraquill", "mat": {"primary": "indigo", "secondary": "lime"}}, {"season": 8, "featured": "maneshard", "mat": {"primary": "maroon", "secondary": "cyan"}}, {"season": 9, "featured": "mothmallow", "mat": {"primary": "forest", "secondary": "amber"}}, {"season": 10, "featured": "haxpion", "mat": {"primary": "violet", "secondary": "peach"}}, {"season": 11, "featured": "blazemule", "mat": {"primary": "purple", "secondary": "green"}}, {"season": 12, "featured": "blizzbear", "mat": {"primary": "pink", "secondary": "yellow"}}, {"season": 13, "featured": "drakaroo", "mat": {"primary": "brown", "secondary": "orange"}}, {"season": 14, "featured": "peaflora", "mat": {"primary": "navy", "secondary": "gold"}}, {"season": 15, "featured": "luxbull", "mat": {"primary": "teal", "secondary": "coral"}}, {"season": 16, "featured": "goldgulp", "mat": {"primary": "crimson", "secondary": "silver"}}, {"season": 17, "featured": "emodoom", "mat": {"primary": "indigo", "secondary": "lime"}}, {"season": 18, "featured": "woolveon", "mat": {"primary": "maroon", "secondary": "cyan"}}, {"season": 19, "featured": "belfable", "mat": {"primary": "forest", "secondary": "amber"}}, {"season": 20, "featured": "golechoke", "mat": {"primary": "violet", "secondary": "peach"}}, {"season": 21, "featured": "sliggy", "mat": {"primary": "purple", "secondary": "green"}}, {"season": 22, "featured": "rokbru", "mat": {"primary": "pink", "secondary": "yellow"}}, {"season": 23, "featured": "warplume", "mat": {"primary": "brown", "secondary": "orange"}}, {"season": 24, "featured": "scythron", "mat": {"primary": "navy", "secondary": "gold"}}, {"season": 25, "featured": "friscor", "mat": {"primary": "teal", "secondary": "coral"}}, {"season": 26, "featured": "rampagoone", "mat": {"primary": "crimson", "secondary": "silver"}}, {"season": 27, "featured": "twinbloom", "mat": {"primary": "indigo", "secondary": "lime"}}, {"season": 28, "featured": "mossfang", "mat": {"primary": "maroon", "secondary": "cyan"}}, {"season": 29, "featured": "fluffram", "mat": {"primary": "forest", "secondary": "amber"}}, {"season": 30, "featured": "brutality", "mat": {"primary": "violet", "secondary": "peach"}}];
+export const SEASON_PLAN = [{"season": 1, "featured": "egmil", "mat": {"primary": "purple", "secondary": "green"}}, {"season": 2, "featured": "axerupi", "mat": {"primary": "pink", "secondary": "yellow"}}, {"season": 3, "featured": "badbulb", "mat": {"primary": "brown", "secondary": "orange"}}, {"season": 4, "featured": "senkip", "mat": {"primary": "navy", "secondary": "gold"}}, {"season": 5, "featured": "electrinx", "mat": {"primary": "teal", "secondary": "coral"}}, {"season": 6, "featured": "seraphink", "mat": {"primary": "crimson", "secondary": "silver"}}, {"season": 7, "featured": "spiraquill", "mat": {"primary": "indigo", "secondary": "lime"}}, {"season": 8, "featured": "maneshard", "mat": {"primary": "maroon", "secondary": "cyan"}}, {"season": 9, "featured": "mothmallow", "mat": {"primary": "forest", "secondary": "amber"}}, {"season": 10, "featured": "haxpion", "mat": {"primary": "violet", "secondary": "peach"}, "promo": "pr_ursacoon_flame_punch"}, {"season": 11, "featured": "blazemule", "mat": {"primary": "purple", "secondary": "green"}}, {"season": 12, "featured": "blizzbear", "mat": {"primary": "pink", "secondary": "yellow"}}, {"season": 13, "featured": "drakaroo", "mat": {"primary": "brown", "secondary": "orange"}}, {"season": 14, "featured": "peaflora", "mat": {"primary": "navy", "secondary": "gold"}}, {"season": 15, "featured": "luxbull", "mat": {"primary": "teal", "secondary": "coral"}}, {"season": 16, "featured": "goldgulp", "mat": {"primary": "crimson", "secondary": "silver"}}, {"season": 17, "featured": "emodoom", "mat": {"primary": "indigo", "secondary": "lime"}}, {"season": 18, "featured": "woolveon", "mat": {"primary": "maroon", "secondary": "cyan"}}, {"season": 19, "featured": "belfable", "mat": {"primary": "forest", "secondary": "amber"}}, {"season": 20, "featured": "golechoke", "mat": {"primary": "violet", "secondary": "peach"}}, {"season": 21, "featured": "sliggy", "mat": {"primary": "purple", "secondary": "green"}}, {"season": 22, "featured": "rokbru", "mat": {"primary": "pink", "secondary": "yellow"}}, {"season": 23, "featured": "warplume", "mat": {"primary": "brown", "secondary": "orange"}}, {"season": 24, "featured": "scythron", "mat": {"primary": "navy", "secondary": "gold"}}, {"season": 25, "featured": "friscor", "mat": {"primary": "teal", "secondary": "coral"}}, {"season": 26, "featured": "rampagoone", "mat": {"primary": "crimson", "secondary": "silver"}}, {"season": 27, "featured": "twinbloom", "mat": {"primary": "indigo", "secondary": "lime"}}, {"season": 28, "featured": "mossfang", "mat": {"primary": "maroon", "secondary": "cyan"}}, {"season": 29, "featured": "fluffram", "mat": {"primary": "forest", "secondary": "amber"}}, {"season": 30, "featured": "brutality", "mat": {"primary": "violet", "secondary": "peach"}}];
 export const seasonFeaturedList = () => SEASON_PLAN.map(x => x.featured);
 export const seasonFeatured = n => { const L = seasonFeaturedList(); return L[(Math.max(1, n) - 1) % L.length]; };
 export const seasonMat = n => { const row = SEASON_PLAN[(Math.max(1, n) - 1) % SEASON_PLAN.length]; return row ? row.mat : { primary: 'navy', secondary: 'gold' }; };
@@ -631,7 +785,7 @@ export function mrDelta(me, opp, won, streakAfter = 0) {
 }
 
 const freshStats = () => ({ pulls: {}, bestPull: null, packsBought: {}, battles: { ranked: { w: 0, l: 0, d: 0 }, friendly: { w: 0, l: 0, d: 0 } }, earned: {}, spent: {}, auctionsWon: 0, auctionsSold: 0, listings: 0, bids: 0, cardsBought: 0, cardsPulled: 0 });
-const freshSave = () => ({ version: 4, oppHistory: [], nextOpp: null, money: 1500, owned: {}, packs: { WW: 3, FL: 3, T2: 3, HT: 3 }, matTheme: null, matThemes: [], _gift_ht: true, _gift_v20: true, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
+const freshSave = () => ({ version: 4, oppHistory: [], nextOpp: null, money: 1500, owned: {}, packs: { WW: 3, FL: 3, T2: 3, HT: 3, RA: 3 }, matTheme: null, matThemes: [], _gift_ht: true, _gift_v20: true, _gift_ra: true, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
   mr: 1000, bestMr: 1000, wins: 0, losses: 0, streak: 0, bestStreak: 0, leagueWins: 0, cardsSold: 0, singlesBought: 0, trades: 0, achievements: [], profilePic: null, coin: 'axerupi', seasonPics: [], seasonCoins: [], seasonHistory: [], lastSeasonEnded: 0, ai: [], offers: [], market: {}, day: 0, recent: [], seed: '0', pulledRarities: [],
   stats: freshStats(), bank: { initial: 0, faucet: 0, sink: 0 }, auctions: [], auctionLog: [], nextId: 1, lastDay: [] });
 export const ME = -1;   // "who" id for the player in the ledger / auctions; AIs are 0..7
@@ -873,6 +1027,10 @@ export class Game {
       for (const set of SETS) s.packs[set] = (s.packs[set] || 0) + 3;
       s._gift_v20 = true; s._v20Welcome = true;
     }
+    if (!s._gift_ra) {
+      s.packs.RA = (s.packs.RA || 0) + 3;
+      s._gift_ra = true; s._raWelcome = true;
+    }
     for (const set of SETS) if (s.packs[set] == null) s.packs[set] = 0;
     // WW SSR→LGD/MYT: clamp decks that hold 2 copies of a now-1-copy card
     for (const d of s.decks) this.clampDeck(d);
@@ -945,6 +1103,7 @@ export class Game {
     const grant = (who, place) => {
       const rw = SEASON_REWARDS[place];
       const pic = 'season:' + n, coin = 'season:' + n;
+      const promoId = (SEASON_PLAN[(Math.max(1, n) - 1) % SEASON_PLAN.length] || {}).promo;
       if (who === 'me') {
         s.money += rw.money; s.packs[packSet] = (s.packs[packSet] || 0) + rw.packs;
         if (!s.seasonPics.includes(n)) s.seasonPics.push(n);
@@ -953,6 +1112,7 @@ export class Game {
         if (!s.matThemes.includes(n)) s.matThemes.push(n);
         s.profilePic = pic; s.coin = coin; s.matTheme = 'season:' + n;
         s.bank && (s.bank.faucet += rw.money);
+        if (promoId) s.owned[promoId] = (s.owned[promoId] || 0) + 1;
       } else {
         const P = s.ai[who]; P.money += rw.money; P.earned = (P.earned || 0) + rw.money;
         for (let i = 0; i < rw.packs; i++) this.aiOpenPack(who, packSet, true);
@@ -961,6 +1121,7 @@ export class Game {
         if (!P.matThemes) P.matThemes = [];
         if (!P.matThemes.includes(n)) P.matThemes.push(n);
         P.profilePic = pic; P.coin = coin; P.matTheme = 'season:' + n;
+        if (promoId) P.owned[promoId] = (P.owned[promoId] || 0) + 1;
       }
     };
     top8.forEach((r, i) => grant(r.k, i));

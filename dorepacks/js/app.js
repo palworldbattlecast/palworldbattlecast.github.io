@@ -1,6 +1,6 @@
 import * as E from './engine.js';
 import { Audio, TITLES } from './audio.js';
-const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, setCards, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel, seasonOfDay, daysLeftInSeason, seasonFeatured, seasonMat, matColors, SEASON_DAYS, SEASON_PLAN, trainerSprite, SEASON_REWARDS } = E;
+const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, setCards, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel, seasonOfDay, daysLeftInSeason, seasonFeatured, seasonMat, matColors, SEASON_DAYS, SEASON_PLAN, trainerSprite, SEASON_REWARDS, targetable, passiveInfo, resolveAura, beginPassive } = E;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('en-US');
@@ -333,7 +333,7 @@ function spectateView() {
   <div class="panel list" style="padding:4px 12px">${(s.lastDay || []).map((m, i) => `<div class="it">${avImg(G.picOf(m.a), 30)}<div class="grow"><b>${esc(s.ai[m.a].name)}</b> vs <b>${esc(s.ai[m.b].name)}</b><div class="small">Day ${m.day}</div></div><button class="btn y sm" data-a="watch" data-v="R${i}">Watch</button></div>`).join('') || '<div class="small" style="padding:8px 0">No league matches yet — play or skip a day.</div>'}</div>
 `;
 }
-const NEW_GAME_WARN = 'Start a new game?\n\nThis permanently erases ALL your cards, Dorebucks, MR, decks, stats, achievements and league progress on this device.\n\nEveryone (you and all 16 AI trainers) restarts equal: starter deck, $1500, 1000 MR and 2 WW + 1 FL packs.';
+const NEW_GAME_WARN = 'Start a new game?\n\nThis permanently erases ALL your cards, Dorebucks, MR, decks, stats, achievements and league progress on this device.\n\nEveryone (you and all 16 AI trainers) restarts equal: starter deck, $1500, 1000 MR and 3 packs of every set.';
 function audioPanel() {
   const c = AU.cfg, sl = (k, label) => `<div class="row" style="margin:6px 0"><span style="width:62px">${label}</span><input type="range" min="0" max="100" step="5" value="${Math.round(c[k] * 100)}" data-vol="${k}" class="grow vol"><b id="vl_${k}" style="width:48px;text-align:right">${Math.round(c[k] * 100)}%</b></div>`;
   return `<div class="panel" id="audiopanel"><div class="row"><div class="title grow" style="font-size:20px">🎵 Sound & Music</div><button class="btn sm ${c.mute ? 'r' : 'k'}" data-a="audio" data-v="mute">${c.mute ? '🔇 Muted' : '🔊 On'}</button></div>
@@ -485,6 +485,7 @@ function beginBattle(v, first) {
   let mine = G.activeDeckCards, theirs;
   if (mode === 'draft') { const op = G.draftOpponent(); mine = G.s.draft.picks[G.draftSeat()].map(card); theirs = op.deck.map(card); } else theirs = G.aiDeck(k);
   const b = new Battle(mine, 'You', theirs, o.name, G.rng.next(), first);
+  b.humanSide = 0;
   BattleAI.openingMulligans(b, [1]);      // the AI decides first (it can't see your hand); then you get the prompt
   UI.battle = { b, k, league, mode, sel: null, ei: b.events.length, busy: false, floats: [], lines: b.events.filter(e => e.e === 'log').map(e => fixG(e.text)) };
   if (b.canMulligan(0)) UI.overlay = { kind: 'mulligan' };
@@ -503,20 +504,25 @@ function slotHTML(side, i) {
   let cls = 'slot', extra = '';
   const sel = B.sel;
   if (m) {
-    cls += ' mon';
+    cls += ' mon mini-card';
     if (me && (sel?.kind === 'mon' || sel?.kind === 'mon2' || sel?.kind === 'fresh') && sel.i === i) cls += ' sel';
     if (my && me && sel?.kind === 'hand') { const c = S.hand[sel.i]; if (isSpell(c) && b.isLegal({ t: 'spell', hand: sel.i, target: i })) cls += ' can'; }
+    if (my && me && sel?.kind === 'prot2' && m) cls += ' can';
+    if (my && me && sel?.kind === 'auraPick' && b.pendingAura && b.pendingAura.tgtSide === side) cls += ' can';
     if (my && me && !sel && b.canPickAttacker(0, i)) cls += ' can';
+    if (my && !me && sel?.kind === 'auraPick' && b.pendingAura && b.pendingAura.tgtSide === side) cls += ' can';
     if (my && !me && (sel?.kind === 'mon' || sel?.kind === 'mon2')) { const a = b.sides[0].mons[sel.i];
       const first = sel.kind === 'mon2' && sel.t === i, ok = sel.kind === 'mon' ? b.isLegal({ t: 'attack', from: sel.i, to: i }) : first || b.isLegal({ t: 'attack', from: sel.i, to: sel.t, to2: i });
-      if (a && ok) { const [dmg, ef] = Battle.damage(a, m); cls += first ? ' tgt t1' : ' tgt'; extra = `<span class="tg" style="color:${ef > 1 ? '#7dfc9f' : ef < 1 ? '#ffb3b3' : '#fff'};background:#000a;border-radius:4px;padding:0 3px">${first ? '① ' : sel.kind === 'mon2' ? '② ' : ''}-${dmg}${isDouble(a.card) ? '×2' : ''}${ef === 1 ? '' : ' ×' + (ef === 0.5 ? '½' : ef === 0.25 ? '¼' : ef)}</span>`; } }
+      if (a && ok) { const [dmg, ef] = Battle.damage(a, m); cls += first ? ' tgt t1' : ' tgt'; extra = `<span class="tg dmg" style="color:${ef > 1 ? '#7dfc9f' : ef < 1 ? '#ffb3b3' : '#fff'}">${first ? '① ' : sel.kind === 'mon2' ? '② ' : ''}-${dmg}${isDouble(a.card) ? '×2' : ''}${ef === 1 ? '' : ' ×' + (ef === 0.5 ? '½' : ef === 0.25 ? '¼' : ef)}</span>`; } }
     const pct = m.hp / m.card.hp * 100, col = pct > 50 ? 'var(--green)' : pct > 25 ? 'var(--yellow)' : 'var(--red)';
-    const st = m.status !== 'none' ? `<span style="color:#ffb84d">${STATUS[m.status][0]}</span> ` : '';
-    const stg = (m.atk ? `A${m.atk > 0 ? '+' : ''}${m.atk} ` : '') + (m.def ? `D${m.def > 0 ? '+' : ''}${m.def}` : '');
-    const tag = extra || `<span class="tg">${m.protected ? '<span class="prot" title="Protected">🛡</span>' : ''}${st}${stg}${me && canAttack(m) && b.current === 0 && !S.stalled ? '⚡' : ''}${me && !B.spec && my && b.canUndo(0, 'mon', i) ? '<span class="undo">↩</span>' : ''}</span>`;
+    const st = m.status !== 'none' ? `<span class="badge st">${STATUS[m.status][0]}</span>` : '';
+    const stg = (m.atk ? `<span class="badge atk">ATK${m.atk > 0 ? '+' : ''}${m.atk}</span>` : '') + (m.def ? `<span class="badge def">DEF${m.def > 0 ? '+' : ''}${m.def}</span>` : '');
+    const aura = passiveInfo(m.card) ? `<span class="badge aura" title="${esc(m.card.text || '')}">AURA</span>` : '';
+    const badges = `<div class="badges">${m.protected ? '<span class="badge prot">🛡</span>' : ''}${st}${stg}${aura}${me && canAttack(m) && b.current === 0 && !S.stalled ? '<span class="badge bolt">⚡</span>' : ''}${me && !B.spec && my && b.canUndo(0, 'mon', i) ? '<span class="badge undo">↩</span>' : ''}</div>`;
+    const mv = `<div class="mv">${esc(m.card.move)} · ${m.card.dmg}${isDouble(m.card) ? '×2' : ''}</div>`;
     const tc = E.DB.typeColors[m.card.types[0]];
     if (m.protected) cls += ' protected';
-    return `<div class="${cls}" data-a="slot" data-v="${side}:${i}" data-card="${m.card.id}" id="s${side}${i}" style="--tc:${tc ? 'rgb(' + tc.join(',') + ')' : '#fff'}"><div class="sh"><span class="nm">${splitIcon(m.card)}${esc(m.card.name)}</span>${tag}</div><span class="sp" data-sp="${spriteId(m.card)}"></span><div class="hp"><i style="width:${pct}%;background:${col}"></i><span>${m.hp}/${m.card.hp}</span></div></div>`;
+    return `<div class="${cls}" data-a="slot" data-v="${side}:${i}" data-card="${m.card.id}" id="s${side}${i}" style="--tc:${tc ? 'rgb(' + tc.join(',') + ')' : '#fff'}">${cardImg(m.card.id, 'mcart')}${badges}${extra}${mv}<div class="hp"><i style="width:${pct}%;background:${col}"></i><span>${m.hp}/${m.card.hp}</span></div></div>`;
   }
   if (my && me && sel?.kind === 'hand' && isMon(S.hand[sel.i]) && b.isLegal({ t: 'playMon', hand: sel.i, slot: i })) cls += ' can';
   return `<div class="${cls}" data-a="slot" data-v="${side}:${i}" id="s${side}${i}"></div>`;
@@ -533,6 +539,8 @@ function battleView() {
   B.prevLife = [me.life, op.life];
   let hint = '';
   if (B.spec) hint = b.over ? `🏆 ${esc(b.winner == null ? 'Draw' : b.winner === 0 ? B.spec.na : B.spec.nb)} wins!` : `Turn ${b.turnNumber} · ${esc(b.current === 0 ? B.spec.na : B.spec.nb)} to move`; else if (!my) hint = b.over ? '' : `${esc(o.name)} is thinking…`;
+  else if (B.sel?.kind === 'auraPick') { const p = b.pendingAura; const inf = p && b.sides[p.side].mons[p.slot]; hint = `Aura — tap one ${p && p.tgtSide !== 0 ? 'opposing' : 'allied'} doremon for ${esc(inf?.card.name || 'aura')}`; }
+  else if (B.sel?.kind === 'prot2') hint = 'Double Protect — tap a 2nd ally, or Cast to shield one';
   else if (B.sel?.kind === 'hand') { const c = me.hand[B.sel.i]; hint = isMon(c) ? (me.monsPlayed ? 'Already played a doremon this turn' : 'Tap an empty slot on your mat') : isTrap(c) ? 'Tap a SPELL/TRAP slot to set it' : b.spellNeedsTarget(c) ? 'Tap one of your doremon' : ''; }
   else if (B.sel?.kind === 'fresh') hint = `Played this turn — take ${esc(me.mons[B.sel.i].card.name)} back to your hand?`;
   else if (B.sel?.kind === 'ftrap') hint = `Set this turn — pick ${esc(me.traps[B.sel.i].name)} back up?`;
@@ -541,7 +549,7 @@ function battleView() {
   else if (b.turnNumber <= 2 && !G.s.seenHoldTip) hint = 'Tip: hold any card (or tap an enemy) to read it';
   else hint = `Turn ${b.turnNumber} · doremon ${me.monsPlayed}/1 · spell/trap ${me.stPlayed}/2${me.stalled ? ' · STALLED' : ''}`;
   const selC = B.sel?.kind === 'hand' ? me.hand[B.sel.i] : null;
-  const castBtn = my && selC && isSpell(selC) && !b.spellNeedsTarget(selC) ? `<button class="btn y sm" data-a="cast">Cast ${esc(selC.name)}</button>` : '';
+  const castBtn = my && ((selC && isSpell(selC) && !b.spellNeedsTarget(selC)) || B.sel?.kind === 'prot2') ? `<button class="btn y sm" data-a="cast">Cast ${esc(B.sel?.kind === 'prot2' ? me.hand[B.sel.hand]?.name : selC.name)}</button>` : '';
   const backBtn = my && (B.sel?.kind === 'fresh' || B.sel?.kind === 'ftrap' || (B.sel?.kind === 'mon' && b.canUndo(0, 'mon', B.sel.i))) ? `<button class="btn p sm" data-a="takeBack">↩ Take back</button>` : '';
   const selId = B.sel ? (B.sel.kind === 'hand' ? me.hand[B.sel.i]?.id : B.sel.kind === 'ftrap' ? me.traps[B.sel.i]?.id : me.mons[B.sel.i]?.card.id) : null;
   const infoBtn = selId ? `<button class="btn k sm" data-a="inspectB" data-v="${B.sel.kind === 'hand' || B.sel.kind === 'ftrap' ? 'c:' + selId : 'm:0:' + B.sel.i}" aria-label="Card details">ⓘ</button>` : '';
@@ -605,11 +613,29 @@ function drainEvents() {
     else if (e.e === 'stat') B.floats.push({ side: e.side, slot: e.slot, text: e.text, heal: true });
     else if (e.e === 'ko') setTimeout(() => sfx('ko'), 150), B.floats.push({ side: e.side, slot: e.slot, text: 'KO!' });
     else if (e.e === 'direct') sfx('superHit'), B.floats.push({ side: e.side, slot: 1, text: '-1 ❤️' });
-    else if (e.e === 'trap') sfx('trapSpring'), banner(`TRAP! ${e.card.name}`);
+    else if (e.e === 'trap') { sfx('trapSpring'); banner(`TRAP! ${e.card.name}`); flashST(e.card); }
+    else if (e.e === 'aura_pick') { /* UI picks via pendingAura */ }
   }
 }
 function banner(t) { if (SNAP) return; const d = document.createElement('div'); d.className = 'banner'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1400); }
-function act(a) { const B = UI.battle; if (!B.b.apply(a)) return false; B.sel = null; drainEvents(); render(); checkOver(); return true; }
+function flashST(card) {
+  if (!card || SNAP) return;
+  const d = document.createElement('div'); d.className = 'st-flash';
+  d.innerHTML = cardImg(card.id, 'st-flash-card');
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 900);
+}
+function act(a) { const B = UI.battle;
+  let flashCard = null;
+  if (a.t === 'spell' && B.b.sides[B.b.current]?.hand[a.hand]) flashCard = B.b.sides[B.b.current].hand[a.hand];
+  if (!B.b.apply(a)) return false;
+  if (flashCard) flashST(flashCard);
+  B.sel = null; drainEvents();
+  if (B.b.pendingAura && B.b.humanSide === B.b.pendingAura.side) {
+    B.sel = { kind: 'auraPick' };
+    const p = B.b.pendingAura; banner(`Aura — choose one ${p.tgtSide === p.side ? 'ally' : 'foe'}`);
+  }
+  render(); checkOver(); return true; }
 function checkOver() {
   const B = UI.battle; if (!B || !B.b.over || UI.overlay) return;
   const w = B.b.winner, won = w == null ? null : w === 0;
@@ -621,26 +647,67 @@ function checkOver() {
 }
 function aiTurn() {
   const B = UI.battle; if (!B || B.b.over) return;
+  if (B.b.pendingDuel) { B.busy = false; B.sel = { kind: 'duelFrom' }; banner('Duel! Tap which enemy attacks'); render(); return; }
+  if (B.b.pendingAura && B.b.humanSide === B.b.pendingAura.side) { B.busy = false; B.sel = { kind: 'auraPick' }; render(); return; }
+  if (B.b.pendingAura) { const p = autoPickAura(B.b); if (p) resolveAura(B.b, p.tgtSlot); }
   if (B.b.current !== 1) { B.busy = false; render(); return; }
   B.busy = true;
   let a = BattleAI.next(B.b);
   if (!B.b.apply(a)) B.b.apply({ t: 'end' });
-  drainEvents(); render();
+  drainEvents();
+  if (B.b.pendingAura && B.b.humanSide !== B.b.pendingAura.side) {
+    const pick = E.autoAuraTarget(B.b, B.b.pendingAura.side, B.b.pendingAura.slot);
+    if (pick) resolveAura(B.b, pick.tgtSlot); else B.b.pendingAura = null;
+  }
+  render();
   if (B.b.over) { B.busy = false; checkOver(); return; }
+  if (B.b.pendingDuel) { B.busy = false; B.sel = { kind: 'duelFrom' }; banner('Duel! Tap which enemy attacks'); render(); return; }
+  if (B.b.pendingAura && B.b.humanSide === B.b.pendingAura.side) { B.busy = false; B.sel = { kind: 'auraPick' }; banner('Aura — choose a target'); render(); return; }
   setTimeout(aiTurn, a && a.t === 'end' ? 300 : 650);
 }
+function autoPickAura(b) { return E.autoAuraTarget(b, b.pendingAura.side, b.pendingAura.slot); }
 function tapSlot(side, i) {
   const B = UI.battle, b = B.b; if (B.spec || b.current !== 0 || B.busy || b.over) { inspectMon(side, i); return; }
   const me = b.sides[0], sel = B.sel;
   if (side === 0) {
     if (sel?.kind === 'hand') { const c = me.hand[sel.i];
       if (isMon(c) && act({ t: 'playMon', hand: sel.i, slot: i })) return;
-      if (isSpell(c) && act({ t: 'spell', hand: sel.i, target: i })) return; }
+      if (isSpell(c)) {
+        const need = (c.effect && c.effect.protect) || 0;
+        if (need >= 2 && sel.kind === 'hand') {
+          // first protect target stored; wait for second or confirm
+          B.sel = { kind: 'prot2', hand: sel.i, t: i };
+          sfx('click'); banner('Double Protect — tap a 2nd ally, or Cast to shield one'); render(); return;
+        }
+        if (act({ t: 'spell', hand: sel.i, target: i })) return;
+      } }
+    if (sel?.kind === 'prot2' && me.mons[i]) {
+      if (i === sel.t) { act({ t: 'spell', hand: sel.hand, target: i }); return; }
+      act({ t: 'spell', hand: sel.hand, target: sel.t, target2: i }); return;
+    }
+    if (sel?.kind === 'auraPick' && b.pendingAura && b.pendingAura.tgtSide === side && me.mons[i]) {
+      // ally aura target on own side
+      if (resolveAura(b, i)) { B.sel = null; drainEvents(); render(); if (!b.over && b.current === 1) setTimeout(aiTurn, 500); }
+      return;
+    }
+    if (sel?.kind === 'duelFrom' && me.mons[i]) { /* picking enemy attacker is on side 1 */ }
+    if (sel?.kind === 'duelTo' && me.mons[i] && targetable(me.mons[i])) {
+      B.b.resolveDuel(sel.from2, i); B.sel = null; drainEvents(); render();
+      if (!B.b.over && B.b.current === 1) setTimeout(aiTurn, 500);
+      return;
+    }
     const m = me.mons[i];
     // a doremon that can attack is picked as the attacker FIRST - even if it was just played (quick start) and could
     // still be taken back (Take back stays available for it). Before this fix a just-played quick-start doremon could only
     // be selected for take-back, so going second you never got an attack option on your first turn.
     B.sel = tapOwnMonSel(b, 0, i, sel); render(); return;
+  }
+  if (sel?.kind === 'auraPick' && b.pendingAura && b.pendingAura.tgtSide === side && b.sides[side].mons[i]) {
+    if (resolveAura(b, i)) { B.sel = null; drainEvents(); render(); if (!b.over && b.current === 1) setTimeout(aiTurn, 500); }
+    return;
+  }
+  if (sel?.kind === 'duelFrom' && b.sides[1].mons[i]) {
+    B.sel = { kind: 'duelTo', from2: i }; sfx('click'); banner('Duel — tap which of YOUR doremon is attacked'); render(); return;
   }
   if (sel?.kind === 'mon2' && b.sides[1].mons[i]) { if (i === sel.t) act({ t: 'attack', from: sel.i, to: i }); else if (!act({ t: 'attack', from: sel.i, to: sel.t, to2: i })) inspectMon(1, i); return; }
   if (sel?.kind === 'mon' && b.sides[1].mons[i]) {
@@ -696,7 +763,7 @@ const A = {
     if (B.sel?.kind === 'hand') { act({ t: 'setTrap', hand: B.sel.i, slot: i }); return; }
     if (B.b.canUndo(0, 'trap', i)) { B.sel = B.sel?.kind === 'ftrap' && B.sel.i === i ? null : { kind: 'ftrap', i }; render(); } },
   hand: v => { const B = UI.battle; if (B.b.current !== 0 || B.busy) return; const i = +v; B.sel = B.sel?.kind === 'hand' && B.sel.i === i ? null : { kind: 'hand', i }; render(); },
-  cast: () => { const B = UI.battle; act({ t: 'spell', hand: B.sel.i, target: null }); },
+  cast: () => { const B = UI.battle, s = B.sel; if (s?.kind === 'prot2') { act({ t: 'spell', hand: s.hand, target: s.t }); return; } act({ t: 'spell', hand: s.i, target: null }); },
   hitOne: () => { const B = UI.battle, s = B.sel; if (s?.kind === 'mon2') act({ t: 'attack', from: s.i, to: s.t }); },
   packFlip: v => { UI.packBack = UI.packBack === v ? null : v; sfx('flip'); render(); },
   direct: () => { const B = UI.battle; act({ t: 'attack', from: B.sel.i, to: null }); },
@@ -754,7 +821,9 @@ function demo() {
   for (let i = 0; i < 10; i++) { g.s.packs.FL = (g.s.packs.FL || 0) + 1; g.openPack('FL'); }
   for (let i = 0; i < 12; i++) { g.s.packs.T2 = (g.s.packs.T2 || 0) + 1; g.openPack('T2'); }
   for (let i = 0; i < 8; i++) { g.s.packs.HT = (g.s.packs.HT || 0) + 1; g.openPack('HT'); }
-  g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.owned.t2_peaflora = 1; g.s.owned.t2_blizzbear = 1; g.s.packs = { WW: 3, FL: 2, T2: 4, HT: 2 }; g.s.owned.cv_rampagoone = 1; g.s.owned.ht_goldgulp = 1; g.s.owned.ht_skoldin = 1; g.s.owned.st_revive = 1; g.s.owned.st_sandstorm = 1; g.s.owned.ht_emodoom = 1;
+  for (let i = 0; i < 6; i++) { g.s.packs.RA = (g.s.packs.RA || 0) + 1; g.openPack('RA'); }
+  g.s.owned.pr_ursacoon_flame_punch = 1;
+  g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.owned.t2_peaflora = 1; g.s.owned.t2_blizzbear = 1; g.s.packs = { WW: 3, FL: 2, T2: 4, HT: 2, RA: 3 }; g.s.owned.cv_rampagoone = 1; g.s.owned.ht_goldgulp = 1; g.s.owned.ht_skoldin = 1; g.s.owned.st_revive = 1; g.s.owned.st_sandstorm = 1; g.s.owned.ht_emodoom = 1;
   for (let i = 0; i < 4; i++) { g.recordResult(i % 3 !== 2, true, g.nextLeagueOpponent()); g.skipDay(); }
   g.newAchievements = [];
   g.s.decks[1] = DeckRules.autoBuild(g.s.owned, g.rng); g.s.deckNames[1] = 'Deck 2';
@@ -863,6 +932,24 @@ function demo() {
     case 'card_revive': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_revive', back: false }; break;
     case 'card_sandstorm': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_sandstorm', back: false }; break;
     case 'binder_ht_st': UI.tab = 'binder'; UI.binderSet = 'HT'; break;
+    case 'ra_packs': UI.tab = 'packs'; break;
+    case 'ra_open': { const ch = inSet('RA').filter(c => Rarity.isChase(c.rarity)); const rest = inSet('RA').filter(c => !Rarity.isChase(c.rarity)).slice(0,4); UI.overlay = { kind: 'pack', set: 'RA', cards: [...rest, ...ch].slice(0,7), fresh: new Set(ch.map(c => c.id)), phase: 2 }; break; }
+    case 'promo_ursacoon': UI.tab = 'binder'; UI.overlay = { kind: 'inspect', id: 'pr_ursacoon_flame_punch', back: false }; break;
+    case 'doremat': {
+      const f = Array(20).fill(card('ww_snarlpup'));
+      const b = new Battle(f, 'You', f, g.s.ai[2].name, 42n, 0);
+      const put = (sd, sl, id, o) => { b.sides[sd].mons[sl] = Object.assign(E.newMon(card(id)), { ready: true, attacked: false }, o || {}); };
+      put(0, 0, 'ra_mesby', { atk: 1 }); put(0, 1, 'ra_fluffram'); put(0, 2, 'ra_rampagoone', { hp: 200 });
+      put(0, 3, 'ww_snarlpup', { status: 'brn' });
+      put(1, 0, 'ra_twinbloom'); put(1, 1, 'ra_dustwidow', { atk: -1 }); put(1, 2, 'ra_mossfang');
+      put(1, 4, 'ht_goldgulp', { protected: true });
+      b.sides[0].hand = [card('st_double_protect'), card('st_soothing_wave'), card('st_duel'), card('ra_sweuw')];
+      b.sides[0].traps[0] = card('st_roar'); b.sides[1].traps[1] = card('st_cross_guard');
+      b.sides[0].discard = [card('st_pink_cheer'), card('ww_acornix')];
+      b.sides[1].life = 3; b.sides[0].life = 4;
+      UI.battle = { b, k: 2, league: true, sel: null, ei: b.events.length, busy: false, floats: [{ side: 1, slot: 1, text: '-40' }], lines: ['Mesby aura: Snarlpup gets ATK +1.', 'TRAP! Roar!'] };
+      break; }
+    case 'binder_ra': UI.tab = 'binder'; UI.binderSet = 'RA'; break;
   }
   G.newAchievements = [];
 }
@@ -873,6 +960,7 @@ function demo() {
     hook(); if (!SNAP) G.daysDue(); render(); tickDays();
     if (G.s._htWelcome) { delete G.s._htWelcome; G.toast = 'Hidden Transcendence — free pack ready in Packs!'; G.save(); }
     if (G.s._v20Welcome) { delete G.s._v20Welcome; G.toast = 'Update gift: 3 free packs of every set are in Packs!'; G.save(); }
+    if (G.s._raWelcome) { delete G.s._raWelcome; G.toast = 'Rivals & Allies — 3 free packs ready in Packs!'; G.save(); }
   if (!SNAP && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js?v=20').then(reg => {
         // When a new SW is waiting, activate it and reload so HT / balance updates aren't stuck behind an old PWA cache.

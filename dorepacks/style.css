@@ -189,3 +189,32 @@ input.vol{accent-color:var(--yellow);height:28px}
 .mat { position: relative; background: linear-gradient(160deg, var(--mat1, #1a2744), var(--mat2, #0c1222)); }
 .gravepit { position: absolute; right: 6px; bottom: 6px; z-index: 3; border: 2px solid #fff4; background: #000a; color: #ffe7a0; border-radius: 10px; padding: 4px 8px; font-size: 12px; font-weight: 800; }
 .gravepit:active { transform: scale(0.96); }
+
+
+/* v20 doremat mini-cards (full card art on mat) */
+.slot.mini-card{display:block;padding:0;border:none;background:transparent;overflow:visible;position:relative}
+.slot.mini-card .mcart{width:100%;height:auto;aspect-ratio:600/840;object-fit:contain;border-radius:6px;image-rendering:auto;display:block;pointer-events:none;box-shadow:0 2px 6px #0008;background:#111}
+.slot.mini-card .badges{position:absolute;left:2px;top:2px;z-index:3;display:flex;flex-wrap:wrap;gap:1px;max-width:90%}
+.slot.mini-card .badge{font-size:8px;font-weight:900;line-height:1.1;padding:1px 3px;border-radius:3px;background:#000c;color:#fff;text-shadow:none}
+.slot.mini-card .badge.atk{background:#c45a00cc;color:#ffe7a0}
+.slot.mini-card .badge.def{background:#0a6e6ecc;color:#b8fff4}
+.slot.mini-card .badge.aura{background:#6a3bb5cc;color:#f0e6ff}
+.slot.mini-card .badge.st{background:#a06000cc}
+.slot.mini-card .badge.prot{background:#1a7a9acc}
+.slot.mini-card .badge.bolt{background:#000a;color:var(--yellow)}
+.slot.mini-card .badge.undo{background:#8a5cff}
+.slot.mini-card .mv{position:absolute;left:2px;right:2px;bottom:15px;z-index:3;font-size:7px;font-weight:800;line-height:1.1;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.slot.mini-card .hp{position:absolute;left:2px;right:2px;bottom:2px;z-index:3;height:12px;line-height:12px;font-size:9px;border-radius:5px;margin:0}
+.slot.mini-card .tg.dmg{position:absolute;right:2px;top:30%;z-index:4;font-size:10px;font-weight:900;background:#000c;border-radius:4px;padding:1px 4px}
+.slot.mini-card.sel .mcart{outline:3px solid var(--yellow);outline-offset:-1px}
+.slot.mini-card.tgt .mcart{outline:3px solid #ff5d5d;outline-offset:-1px}
+.slot.mini-card.can .mcart{outline:2px solid #6cf;outline-offset:-1px}
+.slot.mini-card.protected .mcart{box-shadow:0 0 0 2px #7ee0ff,0 0 10px #7ee0ffaa}
+.st-flash{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;pointer-events:none;animation:stf 0.9s forwards;background:radial-gradient(circle at 50% 45%,#0006,transparent 60%)}
+.st-flash-card{width:min(42vw,180px);border-radius:6%/4.3%;box-shadow:0 12px 40px #000c;image-rendering:auto}
+@keyframes stf{0%{transform:scale(.6);opacity:0}20%{transform:scale(1);opacity:1}70%{opacity:1}100%{transform:scale(.85) translateY(30px);opacity:0}}
+@media (max-width:400px){.slot.mini-card .mv{font-size:6px}.slot.mini-card .badge{font-size:7px}.slot.mini-card .hp{height:11px;line-height:11px;font-size:8px}}
+
+/* mini-card mat taller */
+.mat{max-height:340px}
+.slot.mini-card{display:flex;align-items:stretch;justify-content:center}

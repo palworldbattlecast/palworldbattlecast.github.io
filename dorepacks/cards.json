@@ -3139,25 +3139,6 @@
       "homeSet": "HT"
     },
     {
-      "id": "cv_rampagoone",
-      "mon": "rampagoone",
-      "name": "Rampagoone",
-      "set": "CV",
-      "rarity": "LGD",
-      "num": 1,
-      "kind": "mon",
-      "types": [
-        "Dragon",
-        "Steel"
-      ],
-      "hp": 250,
-      "move": "Iron Smash",
-      "moveType": "Steel",
-      "dmg": 120,
-      "legendary": true,
-      "mythical": false
-    },
-    {
       "id": "ht_skoldin",
       "mon": "skoldin",
       "name": "Skoldin",
@@ -3174,6 +3155,714 @@
       "dmg": 80,
       "legendary": false,
       "mythical": false
+    },
+    {
+      "id": "ra_clawdle",
+      "mon": "clawdle",
+      "name": "Clawdle",
+      "set": "RA",
+      "rarity": "C",
+      "num": 1,
+      "kind": "mon",
+      "types": [
+        "Normal",
+        "Ground"
+      ],
+      "hp": 240,
+      "move": "Burrow Strike",
+      "moveType": "Ground",
+      "dmg": 80,
+      "legendary": false,
+      "mythical": false,
+      "side": "rival"
+    },
+    {
+      "id": "ra_thornhare",
+      "mon": "thornhare",
+      "name": "Thornhare",
+      "set": "RA",
+      "rarity": "C",
+      "num": 2,
+      "kind": "mon",
+      "types": [
+        "Bug",
+        "Poison"
+      ],
+      "hp": 240,
+      "move": "Toxic Fang",
+      "moveType": "Poison",
+      "dmg": 80,
+      "legendary": false,
+      "mythical": false,
+      "side": "rival",
+      "fx": "psn",
+      "fxChance": 30
+    },
+    {
+      "id": "ra_pinchaw",
+      "mon": "pinchaw",
+      "name": "Pinchaw",
+      "set": "RA",
+      "rarity": "C",
+      "num": 3,
+      "kind": "mon",
+      "types": [
+        "Rock"
+      ],
+      "hp": 250,
+      "move": "Stone Slam",
+      "moveType": "Rock",
+      "dmg": 90,
+      "legendary": false,
+      "mythical": false,
+      "side": "rival"
+    },
+    {
+      "id": "ra_wickling",
+      "mon": "wickling",
+      "name": "Wickling",
+      "set": "RA",
+      "rarity": "C",
+      "num": 4,
+      "kind": "mon",
+      "types": [
+        "Fire",
+        "Normal"
+      ],
+      "hp": 240,
+      "move": "Magma Burst",
+      "moveType": "Fire",
+      "dmg": 120,
+      "legendary": false,
+      "mythical": false,
+      "side": "ally",
+      "fx": "brn",
+      "fxChance": 20
+    },
+    {
+      "id": "ra_leafzard",
+      "mon": "leafzard",
+      "name": "Leafzard",
+      "set": "RA",
+      "rarity": "C",
+      "num": 5,
+      "kind": "mon",
+      "types": [
+        "Grass",
+        "Normal"
+      ],
+      "hp": 240,
+      "move": "Vine Lash",
+      "moveType": "Grass",
+      "dmg": 90,
+      "legendary": false,
+      "mythical": false,
+      "side": "ally"
+    },
+    {
+      "id": "ra_chewfant",
+      "mon": "chewfant",
+      "name": "Chewfant",
+      "set": "RA",
+      "rarity": "C",
+      "num": 6,
+      "kind": "mon",
+      "types": [
+        "Ice",
+        "Normal"
+      ],
+      "hp": 250,
+      "move": "Frost Fang",
+      "moveType": "Ice",
+      "dmg": 80,
+      "legendary": false,
+      "mythical": false,
+      "side": "ally"
+    },
+    {
+      "id": "ra_beonya",
+      "mon": "beonya",
+      "name": "Beonya",
+      "set": "RA",
+      "rarity": "C",
+      "num": 7,
+      "kind": "mon",
+      "types": [
+        "Grass",
+        "Ground"
+      ],
+      "hp": 240,
+      "move": "Quake Stomp",
+      "moveType": "Ground",
+      "dmg": 100,
+      "legendary": false,
+      "mythical": false,
+      "side": "ally"
+    },
+    {
+      "id": "ra_zaptree",
+      "mon": "zaptree",
+      "name": "Zaptree",
+      "set": "RA",
+      "rarity": "U",
+      "num": 8,
+      "kind": "mon",
+      "types": [
+        "Grass",
+        "Fairy"
+      ],
+      "hp": 260,
+      "move": "Gilded Gust",
+      "moveType": "Fairy",
+      "dmg": 90,
+      "legendary": false,
+      "mythical": false,
+      "side": "ally"
+    },
+    {
+      "id": "ra_mushturtortle",
+      "mon": "mushturtortle",
+      "name": "Mushturtortle",
+      "set": "RA",
+      "rarity": "U",
+      "num": 9,
+      "kind": "mon",
+      "types": [
+        "Water",
+        "Ground"
+      ],
+      "hp": 280,
+      "move": "Tide Crash",
+      "moveType": "Water",
+      "dmg": 90,
+      "legendary": false,
+      "mythical": false,
+      "side": "ally"
+    },
+    {
+      "id": "ra_mesby",
+      "mon": "mesby",
+      "name": "Mesby",
+      "set": "RA",
+      "rarity": "U",
+      "num": 10,
+      "kind": "mon",
+      "types": [
+        "Ice",
+        "Fairy"
+      ],
+      "hp": 250,
+      "move": "Fairy Breeze",
+      "moveType": "Fairy",
+      "dmg": 80,
+      "legendary": false,
+      "mythical": false,
+      "side": "ally",
+      "passive": {
+        "allyAtk": 1
+      },
+      "text": "AURA — choose one other allied doremon: ATK +1 while Mesby is in play."
+    },
+    {
+      "id": "ra_sweuw",
+      "mon": "sweuw",
+      "name": "Sweuw",
+      "set": "RA",
+      "rarity": "U",
+      "num": 11,
+      "kind": "mon",
+      "types": [
+        "Normal",
+        "Fairy"
+      ],
+      "hp": 250,
+      "move": "Echo Roar",
+      "moveType": "Normal",
+      "dmg": 90,
+      "legendary": false,
+      "mythical": false,
+      "side": "ally",
+      "passive": {
+        "allyDef": 1
+      },
+      "text": "AURA — choose one other allied doremon: DEF +1 while Sweuw is in play."
+    },
+    {
+      "id": "ra_indeezle",
+      "mon": "indeezle",
+      "name": "Indeezle",
+      "set": "RA",
+      "rarity": "R",
+      "num": 12,
+      "kind": "mon",
+      "types": [
+        "Ghost",
+        "Ice"
+      ],
+      "hp": 260,
+      "move": "Blizzard Breath",
+      "moveType": "Ice",
+      "dmg": 90,
+      "legendary": false,
+      "mythical": false,
+      "side": "rival",
+      "fx": "frz",
+      "fxChance": 20
+    },
+    {
+      "id": "ra_petalmoth",
+      "mon": "petalmoth",
+      "name": "Petalmoth",
+      "set": "RA",
+      "rarity": "R",
+      "num": 13,
+      "kind": "mon",
+      "types": [
+        "Grass",
+        "Bug"
+      ],
+      "hp": 270,
+      "move": "Swarm Buzz",
+      "moveType": "Bug",
+      "dmg": 90,
+      "legendary": false,
+      "mythical": false,
+      "side": "ally"
+    },
+    {
+      "id": "ra_dustwidow",
+      "mon": "dustwidow",
+      "name": "Dustwidow",
+      "set": "RA",
+      "rarity": "SR",
+      "num": 14,
+      "kind": "mon",
+      "types": [
+        "Bug",
+        "Steel"
+      ],
+      "hp": 280,
+      "move": "Steel Scatter",
+      "moveType": "Steel",
+      "dmg": 100,
+      "legendary": false,
+      "mythical": false,
+      "side": "rival",
+      "passive": {
+        "foeAtk": -1
+      },
+      "text": "AURA — choose one opposing doremon: ATK −1 while Dustwidow is in play."
+    },
+    {
+      "id": "ra_rampagoone",
+      "mon": "rampagoone",
+      "name": "Rampagoone",
+      "set": "RA",
+      "rarity": "SR",
+      "num": 15,
+      "kind": "mon",
+      "types": [
+        "Dragon",
+        "Steel"
+      ],
+      "hp": 290,
+      "move": "Iron Smash",
+      "moveType": "Steel",
+      "dmg": 120,
+      "legendary": false,
+      "mythical": false,
+      "side": "rival"
+    },
+    {
+      "id": "ra_twinbloom",
+      "mon": "twinbloom",
+      "name": "Twinbloom",
+      "set": "RA",
+      "rarity": "LGD",
+      "num": 16,
+      "kind": "mon",
+      "types": [
+        "Dark"
+      ],
+      "hp": 290,
+      "move": "Night Bite",
+      "moveType": "Dark",
+      "dmg": 110,
+      "legendary": true,
+      "mythical": false,
+      "side": "rival",
+      "passive": {
+        "foeAtk": -1
+      },
+      "text": "AURA — choose one opposing doremon: ATK −1 while Twinbloom is in play."
+    },
+    {
+      "id": "ra_mossfang",
+      "mon": "mossfang",
+      "name": "Mossfang",
+      "set": "RA",
+      "rarity": "LGD",
+      "num": 17,
+      "kind": "mon",
+      "types": [
+        "Grass",
+        "Dark"
+      ],
+      "hp": 290,
+      "move": "Vine Lash",
+      "moveType": "Grass",
+      "dmg": 110,
+      "legendary": true,
+      "mythical": false,
+      "side": "rival",
+      "passive": {
+        "foeDef": -1
+      },
+      "text": "AURA — choose one opposing doremon: DEF −1 while Mossfang is in play."
+    },
+    {
+      "id": "ra_fluffram",
+      "mon": "fluffram",
+      "name": "Fluffram",
+      "set": "RA",
+      "rarity": "LGD",
+      "num": 18,
+      "kind": "mon",
+      "types": [
+        "Psychic"
+      ],
+      "hp": 300,
+      "move": "Mind Crush",
+      "moveType": "Psychic",
+      "dmg": 120,
+      "legendary": true,
+      "mythical": false,
+      "side": "ally",
+      "passive": {
+        "allyDef": 1
+      },
+      "text": "AURA — choose one other allied doremon: DEF +1 while Fluffram is in play."
+    },
+    {
+      "id": "ra_brutality",
+      "mon": "brutality",
+      "name": "Brutality",
+      "set": "RA",
+      "rarity": "MYT",
+      "num": 19,
+      "kind": "mon",
+      "types": [
+        "Flying",
+        "Fairy"
+      ],
+      "hp": 300,
+      "move": "Pixie Punch",
+      "moveType": "Fairy",
+      "dmg": 130,
+      "legendary": false,
+      "mythical": true,
+      "side": "rival"
+    },
+    {
+      "id": "st_bond_ribbon",
+      "name": "Bond Ribbon",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 40,
+      "kind": "spell",
+      "types": [
+        "Normal"
+      ],
+      "hp": 0,
+      "move": "Bond Ribbon",
+      "moveType": "Normal",
+      "dmg": 0,
+      "artMon": "mesby",
+      "effect": {
+        "heal": 40
+      },
+      "text": "Heal 40 HP from one of your doremon.",
+      "price": 80,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "st_rival_stare",
+      "name": "Rival Stare",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 41,
+      "kind": "trap",
+      "types": [
+        "Dark"
+      ],
+      "hp": 0,
+      "move": "Rival Stare",
+      "moveType": "Dark",
+      "dmg": 0,
+      "artMon": "twinbloom",
+      "effect": {
+        "atk": -1
+      },
+      "text": "When an enemy attacks, the attacker gets ATK -1 before it hits.",
+      "price": 90,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "st_pink_cheer",
+      "name": "Pink Cheer",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 42,
+      "kind": "spell",
+      "types": [
+        "Fairy"
+      ],
+      "hp": 0,
+      "move": "Pink Cheer",
+      "moveType": "Fairy",
+      "dmg": 0,
+      "artMon": "sweuw",
+      "effect": {
+        "atk": 1
+      },
+      "text": "One of your doremon gets ATK +1.",
+      "price": 100,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "st_cross_guard",
+      "name": "Cross Guard",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 43,
+      "kind": "trap",
+      "types": [
+        "Ground"
+      ],
+      "hp": 0,
+      "move": "Cross Guard",
+      "moveType": "Ground",
+      "dmg": 0,
+      "artMon": "mushturtortle",
+      "effect": {
+        "block": 1
+      },
+      "text": "When an enemy attacks, block that attack.",
+      "price": 140,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "st_tag_heal",
+      "name": "Tag Heal",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 44,
+      "kind": "spell",
+      "types": [
+        "Grass"
+      ],
+      "hp": 0,
+      "move": "Tag Heal",
+      "moveType": "Grass",
+      "dmg": 0,
+      "artMon": "petalmoth",
+      "effect": {
+        "heal2": 40
+      },
+      "text": "SPLIT HEAL: your 2 most hurt doremon each heal 40 HP.",
+      "price": 120,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "st_soothing_wave",
+      "name": "Soothing Wave",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 45,
+      "kind": "spell",
+      "types": [
+        "Psychic"
+      ],
+      "hp": 0,
+      "move": "Soothing Wave",
+      "moveType": "Psychic",
+      "dmg": 0,
+      "artMon": "fluffram",
+      "effect": {
+        "healAll": 100
+      },
+      "text": "Heal 100 HP from ALL of your doremon.",
+      "price": 280,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "st_roar",
+      "name": "Roar",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 46,
+      "kind": "trap",
+      "types": [
+        "Normal"
+      ],
+      "hp": 0,
+      "move": "Roar",
+      "moveType": "Normal",
+      "dmg": 0,
+      "artMon": "mossfang",
+      "effect": {
+        "roar": 1
+      },
+      "text": "When an enemy attacks: cancel the attack, then swap that attacker with a random other doremon on their side. If they have no other doremon, the attack is still cancelled.",
+      "price": 260,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "st_alliance_shield",
+      "name": "Alliance Shield",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 47,
+      "kind": "spell",
+      "types": [
+        "Fairy"
+      ],
+      "hp": 0,
+      "move": "Alliance Shield",
+      "moveType": "Fairy",
+      "dmg": 0,
+      "artMon": "zaptree",
+      "effect": {
+        "defAll": 1
+      },
+      "text": "ALL of your doremon get DEF +1.",
+      "price": 220,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "st_rival_mark",
+      "name": "Rival Mark",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 48,
+      "kind": "trap",
+      "types": [
+        "Dark"
+      ],
+      "hp": 0,
+      "move": "Rival Mark",
+      "moveType": "Dark",
+      "dmg": 0,
+      "artMon": "dustwidow",
+      "effect": {
+        "def": -1,
+        "recoil": 10
+      },
+      "text": "When an enemy attacks, the attacker gets DEF -1 and takes 10 damage.",
+      "price": 180,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "st_double_protect",
+      "name": "Double Protect",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 49,
+      "kind": "spell",
+      "types": [
+        "Psychic"
+      ],
+      "hp": 0,
+      "move": "Double Protect",
+      "moveType": "Psychic",
+      "dmg": 0,
+      "artMon": "fluffram",
+      "effect": {
+        "protect": 2
+      },
+      "text": "DOUBLE PROTECT: choose up to 2 of your doremon. Each can't be targeted by attacks until your next turn.",
+      "price": 360,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "st_duel",
+      "name": "Duel",
+      "set": "ST",
+      "pack": "RA",
+      "homeSet": "RA",
+      "rarity": "ITEM",
+      "num": 50,
+      "kind": "trap",
+      "types": [
+        "Dragon"
+      ],
+      "hp": 0,
+      "move": "Duel",
+      "moveType": "Dragon",
+      "dmg": 0,
+      "artMon": "rampagoone",
+      "effect": {
+        "duel": 1
+      },
+      "text": "When an enemy attacks: choose which of their doremon must attack, then choose what it attacks among your targetable doremon.",
+      "price": 340,
+      "legendary": false,
+      "mythical": false
+    },
+    {
+      "id": "pr_ursacoon_flame_punch",
+      "mon": "ursacoon",
+      "name": "Ursacoon",
+      "set": "PR",
+      "rarity": "R",
+      "num": 1,
+      "kind": "mon",
+      "types": [
+        "Bug",
+        "Fighting"
+      ],
+      "hp": 280,
+      "move": "Flame Punch",
+      "moveType": "Fire",
+      "dmg": 80,
+      "fx": "brn",
+      "fxChance": 10,
+      "legendary": false,
+      "mythical": false,
+      "promo": true,
+      "actionArt": true,
+      "actionArtTarget": "panpurr",
+      "text": "ACTION ART PROMO: Ursacoon lands Flame Punch on Panpurr. 10% burn."
     }
   ],
   "chart": {
