@@ -10,9 +10,11 @@ export function initDB(file) {
 export const card = (id) => DB.byId[id];
 export const inSet = (s) => DB.cards.filter(c => c.set === s).sort((a, b) => a.num - b.num);
 export const ofRarity = (s, r) => DB.cards.filter(c => c.set === s && c.rarity === r).sort((a, b) => a.num - b.num);
-export const supplies = () => inSet('ST');
+export const supplies = () => DB.cards.filter(c => c.kind === 'spell' || c.kind === 'trap').sort((a,b)=>a.num-b.num);
 export const SETS = ['WW', 'FL', 'T2', 'HT'];
-export const SET_NAMES = { WW: 'First Adventures', FL: 'Fallen Legends', T2: 'Troublesome 2', HT: 'Hidden Transcendence', ST: 'Supplies' };
+export const SET_NAMES = { WW: 'First Adventures', FL: 'Fallen Legends', T2: 'Troublesome 2', HT: 'Hidden Transcendence', ST: 'Supplies', CV: 'Canopy Veil' };
+/** cards shown in a set's Collection binder: that set's doremon + spells/traps whose homeSet/pack matches */
+export const setCards = (s) => DB.cards.filter(c => (c.kind === 'mon' && c.set === s) || ((c.kind === 'spell' || c.kind === 'trap') && (c.homeSet === s || c.pack === s || (!c.pack && !c.homeSet && s === 'WW')))).sort((a, b) => (a.kind === 'mon' ? 0 : 1) - (b.kind === 'mon' ? 0 : 1) || a.num - b.num);
 /** reprint-safe identity: every printing has its own card id (set_mon), the doremon itself is c.mon */
 export const nameKey = c => c.mon || c.id;
 /** spells/traps a set's packs can contain: the base supplies, plus (T2 only) the set's own new ones at 3x weight */
@@ -116,7 +118,7 @@ export const Packs = {
 };
 
 // ---------- battle ----------
-export const STATUS = { none: ['', ''], psn: ['PSN', 'Poisoned'], brn: ['BRN', 'Burned'], par: ['PAR', 'Paralyzed'], slp: ['SLP', 'Asleep'], cnf: ['CNF', 'Confused'] };
+export const STATUS = { none: ['', ''], psn: ['PSN', 'Poisoned'], brn: ['BRN', 'Burned'], par: ['PAR', 'Paralyzed'], slp: ['SLP', 'Asleep'], cnf: ['CNF', 'Confused'], frz: ['FRZ', 'Frozen'] };
 let monUid = 0;
 export const newMon = (c) => ({ uid: ++monUid, card: c, hp: c.hp, atk: 0, def: 0, status: 'none', statusTurns: 0, ready: false, attacked: false, protected: false });
 /** what tapping your own doremon in slot i selects in the UI (web app.js calls exactly this): attacker beats take-back */
@@ -130,7 +132,7 @@ export const typeGuide = () => { const ch = DB.chart, T = Object.keys(DB.typeCol
 export const isDouble = c => c && c.split === 'double', isSpread = c => c && c.split === 'spread';
 /** an enemy doremon an attack may target (Mirror Veil = protected until its owner's next turn) */
 export const targetable = m => !!m && !m.protected;
-export const canAttack = m => m.ready && !m.attacked && m.status !== 'par' && m.status !== 'slp';
+export const canAttack = m => m.ready && !m.attacked && m.status !== 'par' && m.status !== 'slp' && m.status !== 'frz';
 const newSide = (name, deck) => ({ name, deck, hand: [], discard: [], mons: Array(6).fill(null), traps: Array(6).fill(null), life: Battle.startLife, monsPlayed: 0, stPlayed: 0, stalled: false, koCount: 0, freshTraps: [] });
 export const monCount = s => s.mons.filter(Boolean).length;
 const hasAnyMonLeft = s => monCount(s) > 0 || s.hand.some(isMon) || s.deck.some(isMon);
@@ -340,7 +342,7 @@ export class Battle {
       this.trapHit(trap, me, f, 0);
       // multi-target traps (Twin Growl / Double Glare / Toxic Spray): also the attacker's strongest teammate
       if (eff(trap, 'atk2') || eff(trap, 'def2') || effS(trap, 'status2')) for (const j of Battle.strongest(this.sides[me], 1, f)) this.trapHit(trap, me, j, 1);
-      if (a.status === 'par' || a.status === 'slp') { this.log(`${a.card.name} can't attack!`); return; }
+      if (a.status === 'par' || a.status === 'slp' || a.status === 'frz') { this.log(`${a.card.name} can't attack!`); return; }
     }
     if (a.status === 'cnf' && this.rng.chance(0.5)) { this.log(`${a.card.name} is confused and hurts itself!`); this.hurt(me, f, 30, 1, 'hits itself'); return; }
     if (t == null) { this.events.push({ e: 'direct', side: o }); this.log(`${a.card.name} attacks ${O.name} directly! (-1 life)`); this.loseLife(o); return; }
@@ -406,6 +408,7 @@ export class Battle {
       m.ready = true; m.attacked = false;
       if (m.protected) { m.protected = false; this.events.push({ e: 'stat', side: n, slot: i, text: 'UNPROTECTED' }); }
       if (m.status === 'slp') { m.statusTurns++; if (m.statusTurns >= 2 || this.rng.chance(0.5)) { m.status = 'none'; m.statusTurns = 0; this.events.push({ e: 'status', side: n, slot: i, status: 'none' }); this.log(`${m.card.name} woke up!`); } }
+      if (m.status === 'frz') { m.statusTurns++; if (m.statusTurns >= 1 || this.rng.chance(0.35)) { m.status = 'none'; m.statusTurns = 0; this.events.push({ e: 'status', side: n, slot: i, status: 'none' }); this.log(`${m.card.name} thawed out!`); } }
     }
     this.events.push({ e: 'turn', side: n });
     this.log(`— Turn ${this.turnNumber}: ${N.name} —`);
@@ -569,8 +572,13 @@ export const TRAINER_SPRITES = ['npc_rivalboy','npc_rivalgirl','npc_tr_boy','npc
 export const trainerSprite = k => TRAINER_SPRITES[k % TRAINER_SPRITES.length];
 export const SEASON_DAYS = 62;
 /** featured doremon per season: Season 1 = Egmil, then rotate through every mon species with no repeats until exhausted */
-export const seasonFeaturedList = () => { const seen = new Set(), out = ['egmil']; for (const c of DB.cards) if (c.kind === 'mon' && c.mon !== 'egmil' && !seen.has(c.mon)) { seen.add(c.mon); out.push(c.mon); } return out; };
+export const SEASON_PLAN = [{"season": 1, "featured": "egmil", "mat": {"primary": "purple", "secondary": "green"}}, {"season": 2, "featured": "axerupi", "mat": {"primary": "pink", "secondary": "yellow"}}, {"season": 3, "featured": "badbulb", "mat": {"primary": "brown", "secondary": "orange"}}, {"season": 4, "featured": "senkip", "mat": {"primary": "navy", "secondary": "gold"}}, {"season": 5, "featured": "electrinx", "mat": {"primary": "teal", "secondary": "coral"}}, {"season": 6, "featured": "seraphink", "mat": {"primary": "crimson", "secondary": "silver"}}, {"season": 7, "featured": "spiraquill", "mat": {"primary": "indigo", "secondary": "lime"}}, {"season": 8, "featured": "maneshard", "mat": {"primary": "maroon", "secondary": "cyan"}}, {"season": 9, "featured": "mothmallow", "mat": {"primary": "forest", "secondary": "amber"}}, {"season": 10, "featured": "haxpion", "mat": {"primary": "violet", "secondary": "peach"}}, {"season": 11, "featured": "blazemule", "mat": {"primary": "purple", "secondary": "green"}}, {"season": 12, "featured": "blizzbear", "mat": {"primary": "pink", "secondary": "yellow"}}, {"season": 13, "featured": "drakaroo", "mat": {"primary": "brown", "secondary": "orange"}}, {"season": 14, "featured": "peaflora", "mat": {"primary": "navy", "secondary": "gold"}}, {"season": 15, "featured": "luxbull", "mat": {"primary": "teal", "secondary": "coral"}}, {"season": 16, "featured": "goldgulp", "mat": {"primary": "crimson", "secondary": "silver"}}, {"season": 17, "featured": "emodoom", "mat": {"primary": "indigo", "secondary": "lime"}}, {"season": 18, "featured": "woolveon", "mat": {"primary": "maroon", "secondary": "cyan"}}, {"season": 19, "featured": "belfable", "mat": {"primary": "forest", "secondary": "amber"}}, {"season": 20, "featured": "golechoke", "mat": {"primary": "violet", "secondary": "peach"}}, {"season": 21, "featured": "sliggy", "mat": {"primary": "purple", "secondary": "green"}}, {"season": 22, "featured": "rokbru", "mat": {"primary": "pink", "secondary": "yellow"}}, {"season": 23, "featured": "warplume", "mat": {"primary": "brown", "secondary": "orange"}}, {"season": 24, "featured": "scythron", "mat": {"primary": "navy", "secondary": "gold"}}, {"season": 25, "featured": "friscor", "mat": {"primary": "teal", "secondary": "coral"}}, {"season": 26, "featured": "rampagoone", "mat": {"primary": "crimson", "secondary": "silver"}}, {"season": 27, "featured": "twinbloom", "mat": {"primary": "indigo", "secondary": "lime"}}, {"season": 28, "featured": "mossfang", "mat": {"primary": "maroon", "secondary": "cyan"}}, {"season": 29, "featured": "fluffram", "mat": {"primary": "forest", "secondary": "amber"}}, {"season": 30, "featured": "brutality", "mat": {"primary": "violet", "secondary": "peach"}}];
+export const seasonFeaturedList = () => SEASON_PLAN.map(x => x.featured);
 export const seasonFeatured = n => { const L = seasonFeaturedList(); return L[(Math.max(1, n) - 1) % L.length]; };
+export const seasonMat = n => { const row = SEASON_PLAN[(Math.max(1, n) - 1) % SEASON_PLAN.length]; return row ? row.mat : { primary: 'navy', secondary: 'gold' }; };
+export const MAT_HEX = { purple:'#6b2db5', green:'#2a8c47', pink:'#db598c', yellow:'#ebbf2e', brown:'#734720', orange:'#e67a29', navy:'#21397a', gold:'#c79e2e', teal:'#1f8c8c', coral:'#eb6b61', crimson:'#b81e38', silver:'#9ea8b8', indigo:'#47389e', lime:'#8cd138', maroon:'#8c1e47', cyan:'#38b8c7', forest:'#1e6138', amber:'#e09e2e', violet:'#8c47c7', peach:'#f2ad7a' };
+export const matColors = m => ({ primary: MAT_HEX[m.primary] || m.primary, secondary: MAT_HEX[m.secondary] || m.secondary });
+
 export const seasonOfDay = day => Math.max(1, Math.floor(Math.max(0, day - 1) / SEASON_DAYS) + 1);
 export const daysLeftInSeason = day => SEASON_DAYS - ((Math.max(1, day) - 1) % SEASON_DAYS);
 /** season end rewards by place (1..8): packs of newest set + cash + that season's pic & gold coin */
@@ -623,7 +631,7 @@ export function mrDelta(me, opp, won, streakAfter = 0) {
 }
 
 const freshStats = () => ({ pulls: {}, bestPull: null, packsBought: {}, battles: { ranked: { w: 0, l: 0, d: 0 }, friendly: { w: 0, l: 0, d: 0 } }, earned: {}, spent: {}, auctionsWon: 0, auctionsSold: 0, listings: 0, bids: 0, cardsBought: 0, cardsPulled: 0 });
-const freshSave = () => ({ version: 3, oppHistory: [], nextOpp: null, money: 1500, owned: {}, packs: { WW: 2, FL: 1, HT: 0 }, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
+const freshSave = () => ({ version: 4, oppHistory: [], nextOpp: null, money: 1500, owned: {}, packs: { WW: 3, FL: 3, T2: 3, HT: 3 }, matTheme: null, matThemes: [], _gift_ht: true, _gift_v20: true, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
   mr: 1000, bestMr: 1000, wins: 0, losses: 0, streak: 0, bestStreak: 0, leagueWins: 0, cardsSold: 0, singlesBought: 0, trades: 0, achievements: [], profilePic: null, coin: 'axerupi', seasonPics: [], seasonCoins: [], seasonHistory: [], lastSeasonEnded: 0, ai: [], offers: [], market: {}, day: 0, recent: [], seed: '0', pulledRarities: [],
   stats: freshStats(), bank: { initial: 0, faucet: 0, sink: 0 }, auctions: [], auctionLog: [], nextId: 1, lastDay: [] });
 export const ME = -1;   // "who" id for the player in the ledger / auctions; AIs are 0..7
@@ -851,9 +859,21 @@ export class Game {
     if (!s.seasonPics) s.seasonPics = [];
     if (!s.seasonCoins) s.seasonCoins = [];
     if (!s.seasonHistory) s.seasonHistory = [];
+    if (!s.matThemes) s.matThemes = [];
+    if (s.matTheme === undefined) s.matTheme = null;
     if (s.lastSeasonEnded == null) s.lastSeasonEnded = Math.floor(Math.max(0, s.day) / SEASON_DAYS);
     if (!s.packs) s.packs = {};
-    if (s.packs.HT == null) { s.packs.HT = 1; s._htWelcome = true; }  // first time seeing HT: one free pack so the set is visible
+    // v18 bug: fresh saves had packs.HT=0 (not null), so the free HT pack never landed. Grant once via flag.
+    if (!s._gift_ht) {
+      s.packs.HT = (s.packs.HT || 0) + 1;
+      s._gift_ht = true; s._htWelcome = true;
+    }
+    // v20: 3 free packs of every released set for existing saves (once)
+    if (!s._gift_v20) {
+      for (const set of SETS) s.packs[set] = (s.packs[set] || 0) + 3;
+      s._gift_v20 = true; s._v20Welcome = true;
+    }
+    for (const set of SETS) if (s.packs[set] == null) s.packs[set] = 0;
     // WW SSR→LGD/MYT: clamp decks that hold 2 copies of a now-1-copy card
     for (const d of s.decks) this.clampDeck(d);
     for (const P of s.ai || []) {
@@ -894,6 +914,15 @@ export class Game {
   }
   setProfilePic(id) { this.s.profilePic = id; this.save(); }
   setCoin(id) { this.s.coin = id || 'axerupi'; this.save(); }
+  setMatTheme(id) { this.s.matTheme = id; this.save(); }
+  matOf(who) {
+    const raw = (who === 'me' || who === ME) ? this.s.matTheme : (this.s.ai[who]?.matTheme || null);
+    let m;
+    if (!raw) m = seasonMat(1);
+    else if (String(raw).startsWith('season:')) m = seasonMat(+raw.slice(7));
+    else m = seasonMat(1);
+    return matColors(m);
+  }
   leaderboardRows() {
     const rows = this.leaderboard; // existing getter
     return rows;
@@ -920,14 +949,18 @@ export class Game {
         s.money += rw.money; s.packs[packSet] = (s.packs[packSet] || 0) + rw.packs;
         if (!s.seasonPics.includes(n)) s.seasonPics.push(n);
         if (!s.seasonCoins.includes(n)) s.seasonCoins.push(n);
-        s.profilePic = pic; s.coin = coin;
+        if (!s.matThemes) s.matThemes = [];
+        if (!s.matThemes.includes(n)) s.matThemes.push(n);
+        s.profilePic = pic; s.coin = coin; s.matTheme = 'season:' + n;
         s.bank && (s.bank.faucet += rw.money);
       } else {
         const P = s.ai[who]; P.money += rw.money; P.earned = (P.earned || 0) + rw.money;
         for (let i = 0; i < rw.packs; i++) this.aiOpenPack(who, packSet, true);
         if (!P.seasonPics.includes(n)) P.seasonPics.push(n);
         if (!P.seasonCoins.includes(n)) P.seasonCoins.push(n);
-        P.profilePic = pic; P.coin = coin;
+        if (!P.matThemes) P.matThemes = [];
+        if (!P.matThemes.includes(n)) P.matThemes.push(n);
+        P.profilePic = pic; P.coin = coin; P.matTheme = 'season:' + n;
       }
     };
     top8.forEach((r, i) => grant(r.k, i));

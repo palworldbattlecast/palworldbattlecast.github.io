@@ -1,6 +1,6 @@
 import * as E from './engine.js';
 import { Audio, TITLES } from './audio.js';
-const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel, seasonOfDay, daysLeftInSeason, seasonFeatured, SEASON_DAYS, trainerSprite, SEASON_REWARDS } = E;
+const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, setCards, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel, seasonOfDay, daysLeftInSeason, seasonFeatured, seasonMat, matColors, SEASON_DAYS, SEASON_PLAN, trainerSprite, SEASON_REWARDS } = E;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('en-US');
@@ -135,10 +135,11 @@ function packsView() {
   }).join('') + '</div>';
 }
 function binderView() {
-  const set = UI.binderSet, list = inSet(set), s = G.s;
+  const set = UI.binderSet, list = setCards(set), s = G.s;
+  const mons = list.filter(isMon), items = list.filter(c => !isMon(c));
   const have = list.filter(c => s.owned[c.id] > 0).length;
-  return `<div class="page-head"><div><h1>Collection</h1><div class="sub">Every set you own, tidy in one place</div></div></div><div class="seg">${[...SETS.map(k => [k, SET_NAMES[k]]), ['ST', 'Supplies']].map(([k, n]) => `<button class="${set === k ? 'on' : ''}" data-a="bset" data-v="${k}">${n}</button>`).join('')}</div>
-   <div class="sub">${have}/${list.length} collected · tap a card to inspect</div>
+  return `<div class="page-head"><div><h1>Collection</h1><div class="sub">Doremon and supplies, filed under each set</div></div></div><div class="seg">${SETS.map(k => `<button class="${set === k ? 'on' : ''}" data-a="bset" data-v="${k}">${SET_NAMES[k]}</button>`).join('')}</div>
+   <div class="sub">${have}/${list.length} collected · ${mons.length} doremon · ${items.length} spells/traps · tap a card to inspect</div>
    <div class="binder-grid">${list.map(c => `<div class="cell ${s.owned[c.id] > 0 ? '' : 'missing'}" data-a="inspect" data-v="${c.id}">${cardImg(c.id)}${s.owned[c.id] > 0 ? `<span class="cnt">×${s.owned[c.id]}</span>` : ''}</div>`).join('')}</div>`;
 }
 function deckCounts(d) { const m = {}; for (const id of d) m[id] = (m[id] || 0) + 1; return m; }
@@ -272,6 +273,14 @@ function profileView() {
   </div>
   <div class="panel"><div class="title" style="font-size:18px;color:var(--yellow)">Coin</div>
     ${coins.map(c => `<button class="btn ${curC === c.id ? 'y' : 'k'} sm" style="width:100%;margin:4px 0;justify-content:flex-start;gap:10px" data-a="setCoin" data-v="${c.id}">${goldCoin(c.mon, 36)}<span class="grow" style="text-align:left">${esc(c.label)}</span>${curC === c.id ? '✓' : ''}</button>`).join('')}
+  </div>
+  <div class="panel"><div class="title" style="font-size:18px;color:var(--yellow)">Doremat theme</div>
+    <div class="small" style="margin-bottom:6px">Unlocked by finishing a season in the top 8. Colors the battle mat.</div>
+    ${([{ id: null, label: 'Default navy / gold', n: 1 }, ...((s.matThemes || []).map(n => ({ id: 'season:' + n, label: 'Season ' + n + ' · ' + seasonMat(n).primary + '/' + seasonMat(n).secondary, n })))].map(m => {
+      const on = (s.matTheme || null) === m.id || (!s.matTheme && m.id === null);
+      const mat = seasonMat(m.n);
+      return `<button class="btn ${on ? 'y' : 'k'} sm" style="width:100%;margin:4px 0;justify-content:flex-start;gap:10px" data-a="setMat" data-v="${m.id === null ? 'default' : m.id}"><span style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,${matColors(mat).primary},${matColors(mat).secondary});border:2px solid #fff3"></span><span class="grow" style="text-align:left">${esc(m.label)}</span>${on ? '✓' : ''}</button>`;
+    }).join('') || '<div class="small">Finish a season in the top 8 to unlock mat colors.</div>')}
   </div>`;
 }
 function tradesView() {
@@ -285,7 +294,7 @@ function shopView() {
   const s = G.s, t = UI.shopTab;
   let body = '';
   if (t === 'packs') body = SETS.map(set => { const r = Packs.rule(set); return `<div class="panel row"><img src="${IMG['cards/pack_' + set.toLowerCase()]}" style="width:60px" alt=""><div class="grow"><b>${r.name}</b><div class="small">You have ${s.packs[set] || 0}</div></div><button class="btn y sm" data-a="buyPack" data-v="${set}" ${s.money >= r.price ? '' : 'disabled'}>${money(r.price)}</button></div>`; }).join('');
-  if (t === 'singles' || t === 'supplies') { const list = t === 'singles' ? DB.cards.filter(isMon).sort((a, b) => G.value(b.id) - G.value(a.id)) : inSet('ST'); body = `<div class="panel list" style="padding:4px 12px">${list.map(c => `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow" data-a="inspect" data-v="${c.id}">${esc(c.name)} ${rar(c.rarity)}<div class="small">own ${s.owned[c.id] || 0}</div></div><button class="btn sm" data-a="buySingle" data-v="${c.id}" ${s.money >= G.buyPrice(c.id) ? '' : 'disabled'}>${money(G.buyPrice(c.id))}</button></div>`).join('')}</div>`; }
+  if (t === 'singles' || t === 'supplies') { const list = t === 'singles' ? DB.cards.filter(isMon).sort((a, b) => G.value(b.id) - G.value(a.id)) : DB.cards.filter(c => isSpell(c) || isTrap(c)); body = `<div class="panel list" style="padding:4px 12px">${list.map(c => `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow" data-a="inspect" data-v="${c.id}">${esc(c.name)} ${rar(c.rarity)}<div class="small">own ${s.owned[c.id] || 0}</div></div><button class="btn sm" data-a="buySingle" data-v="${c.id}" ${s.money >= G.buyPrice(c.id) ? '' : 'disabled'}>${money(G.buyPrice(c.id))}</button></div>`).join('')}</div>`; }
   if (t === 'sell') { const list = Object.keys(s.owned).filter(id => G.sellableCount(id) > 0).sort((a, b) => G.sellPrice(b) - G.sellPrice(a)); body = `<button class="btn p" style="width:100%;margin-bottom:10px" data-a="sellDupes">Sell all dupes (keeps 3 of each)</button><div class="panel list" style="padding:4px 12px">${list.map(id => { const c = card(id); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow">${esc(c.name)} ${rar(c.rarity)}<div class="small">${G.sellableCount(id)} spare</div></div><button class="btn g sm" data-a="sell" data-v="${id}">+${money(G.sellPrice(id))}</button></div>`; }).join('') || '<div class="small" style="padding:8px 0">Nothing spare to sell (you keep 1 of each doremon and what your decks use).</div>'}</div>`; }
   return `<h1>Shop</h1><div class="seg">${[['packs', 'Packs'], ['singles', 'Singles'], ['supplies', 'Supplies'], ['sell', 'Sell']].map(([k, n]) => `<button class="${t === k ? 'on' : ''}" data-a="shopTab" data-v="${k}">${n}</button>`).join('')}</div>${body}`;
 }
@@ -429,6 +438,11 @@ function renderOverlay() {
     if (o.phase === 'spin') requestAnimationFrame(() => requestAnimationFrame(() => { const c = document.getElementById('coin'); if (c) { c.style.transition = 'transform 1.6s cubic-bezier(.2,.7,.25,1)'; c.style.transform = `rotateY(${o.result === 'heads' ? 1800 : 1980}deg)`; } }));
   } else if (o.kind === 'log') {
     d.innerHTML = `<h1>Battle log</h1><div class="panel log" style="max-width:420px">${o.lines.slice().reverse().map(l => `<div>${esc(l)}</div>`).join('')}</div><button class="btn" data-a="closeOv">Close</button>`;
+  } else if (o.kind === 'grave') {
+    const who = o.side === 0 ? 'Your' : 'Opponent';
+    d.innerHTML = `<h1>Gravepit</h1><div class="sub">${who} discarded cards (${o.cards.length})</div>
+      <div class="grid3" style="width:100%;max-width:420px;margin:8px 0 14px">${o.cards.length ? o.cards.map(c => `<div class="cell">${cardImg(c.id)}</div>`).join('') : '<div class="panel small">Empty — nothing discarded yet.</div>'}</div>
+      <button class="btn" data-a="closeOv">Close</button>`;
   }
   document.body.appendChild(d);
   // animate the card turning over (render it face-down first, then flip on the next frame)
@@ -536,15 +550,15 @@ function battleView() {
   const top = B.spec ? `<div class="top" style="padding-bottom:4px"><button class="btn k sm" data-a="leaveSpec">✕</button><div class="grow" style="text-align:center;font-weight:800">📺 ${B.spec.title}</div><button class="btn k sm" data-a="log">Log</button></div>`
     : `<div class="top" style="padding-bottom:4px"><button class="btn k sm" data-a="forfeit">✕</button><div class="grow" style="text-align:center;font-weight:800">${{ league: 'Ranked', friendly: 'Friendly', tour: 'Tournament', draft: 'Draft' }[B.mode] || 'Friendly'} vs ${esc(o.name)}</div><button class="btn k sm" data-a="log">Log</button></div>`;
   const handA = B.spec ? me.hand.map(() => `<div class="hc dis">${`<img class="cardimg" src="${IMG['cards/card_back']}" alt="">`}</div>`).join('') : null;
-  const bar = B.spec ? `<div class="bbar">${[0.5, 1, 2, 4].map(x => `<button class="btn sm ${B.spec.speed === x ? 'y' : 'k'}" data-a="specSpeed" data-v="${x}">${x}×</button>`).join('')}<span class="grow"></span><button class="btn sm" data-a="specPause">${B.spec.paused ? '▶' : '⏸'}</button><button class="btn sm k" data-a="specStep" ${B.spec.paused && !b.over ? '' : 'disabled'}>Step</button>${b.over && B.spec.rec?.live ? '<button class="btn sm y" data-a="watch" data-v="N">Next match ▶</button>' : ''}</div>
+  const mat = G.matOf('me'); const matStyle = `--mat1:${mat.primary};--mat2:${mat.secondary}`; const bar = B.spec ? `<div class="bbar">${[0.5, 1, 2, 4].map(x => `<button class="btn sm ${B.spec.speed === x ? 'y' : 'k'}" data-a="specSpeed" data-v="${x}">${x}×</button>`).join('')}<span class="grow"></span><button class="btn sm" data-a="specPause">${B.spec.paused ? '▶' : '⏸'}</button><button class="btn sm k" data-a="specStep" ${B.spec.paused && !b.over ? '' : 'disabled'}>Step</button>${b.over && B.spec.rec?.live ? '<button class="btn sm y" data-a="watch" data-v="N">Next match ▶</button>' : ''}</div>
    <div class="panel log" style="max-height:92px;overflow:auto;margin:4px 0 calc(var(--sb) + 6px);font-size:13px;padding:6px 10px;flex:none">${B.lines.slice(-8).reverse().map(l => `<div>${esc(l)}</div>`).join('')}</div>` : null;
   return `${top}
   <div class="bt">
    <div class="bhead">${sprite(o.avatar, 26)}<b class="bn">${esc(o.name)}</b>${hearts(1, op.life)}<span class="grow"></span><span class="small">✋${op.hand.length} · 🂠${op.deck.length}</span></div>
    ${stRow(1)}
-   <div class="mat op" id="matop"><div class="lbl">DOREMON</div>${[3, 4, 5, 0, 1, 2].map(i => slotHTML(1, i)).join('')}</div>
+   <div class="mat op" id="matop" style="${matStyle}"><div class="lbl">DOREMON</div>${[3, 4, 5, 0, 1, 2].map(i => slotHTML(1, i)).join('')}<button class="gravepit" data-a="grave" data-v="1" title="Gravepit">🪦 ${op.discard.length}</button></div>
    <div class="prev">${hint}</div>
-   <div class="mat me" id="matme"><div class="lbl">DOREMON</div>${[0, 1, 2, 3, 4, 5].map(i => slotHTML(0, i)).join('')}</div>
+   <div class="mat me" id="matme" style="${matStyle}"><div class="lbl">DOREMON</div>${[0, 1, 2, 3, 4, 5].map(i => slotHTML(0, i)).join('')}<button class="gravepit" data-a="grave" data-v="0" title="Gravepit">🪦 ${me.discard.length}</button></div>
    ${stRow(0)}
    <div class="bhead">${sprite(avA, 26)}<b class="bn">${nA}</b>${hearts(0, me.life)}<span class="grow"></span><span class="small">${B.spec ? `✋${me.hand.length} · ` : ''}🂠${me.deck.length}</span></div>
    ${bar ? bar : `<div class="hand">${me.hand.map((c, i) => { const can = my && (isMon(c) ? me.monsPlayed < 1 && monCount(me) < 6 : me.stPlayed < 2); return `<div class="hc ${B.sel?.kind === 'hand' && B.sel.i === i ? 'sel' : ''} ${can ? '' : 'dis'}" data-a="hand" data-v="${i}" data-card="${c.id}">${cardImg(c.id)}</div>`; }).join('')}</div>
@@ -696,6 +710,8 @@ const A = {
   watch: v => watch(v),
   setPic: (e, v) => { G.setProfilePic(v === 'default' ? null : v); render(); },
   setCoin: (e, v) => { G.setCoin(v); render(); },
+  setMat: (e, v) => { G.setMatTheme(v === 'default' ? null : v); render(); },
+  grave: (e, v) => { const B = UI.battle; if (!B) return; const side = +v; const pile = B.b.sides[side].discard; UI.overlay = { kind: 'grave', side, cards: pile.slice().reverse() }; renderOverlay(); },
   skipDay: () => { G.skipDay(); banner(`Day ${G.s.day}`); render(); },
   aTab: v => { UI.aTab = v; render(); }, lKind: v => { UI.lKind = v; render(); }, lDays: v => { UI.lDays = +v; render(); },
   bid: v => { const l = G.s.auctions.find(x => x.id === v); if (!l) return; const min = G.minBid(l); const r = SNAP ? min : prompt(`Your bid for ${card(l.card).name} (minimum ${money(min)}). The cash is held until you're outbid or the auction ends.`, min); if (r == null) return; const amt = Math.round(+String(r).replace(/[$,]/g, '')); if (!G.bid(E.ME, v, amt)) alert(amt < min ? `Bid at least ${money(min)}.` : 'Not enough cash.'); render(); },
@@ -738,7 +754,7 @@ function demo() {
   for (let i = 0; i < 10; i++) { g.s.packs.FL = (g.s.packs.FL || 0) + 1; g.openPack('FL'); }
   for (let i = 0; i < 12; i++) { g.s.packs.T2 = (g.s.packs.T2 || 0) + 1; g.openPack('T2'); }
   for (let i = 0; i < 8; i++) { g.s.packs.HT = (g.s.packs.HT || 0) + 1; g.openPack('HT'); }
-  g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.owned.t2_peaflora = 1; g.s.owned.t2_blizzbear = 1; g.s.packs = { WW: 3, FL: 2, T2: 4, HT: 2 }; g.s.owned.ht_rampagoone = 1; g.s.owned.ht_emodoom = 1;
+  g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.owned.t2_peaflora = 1; g.s.owned.t2_blizzbear = 1; g.s.packs = { WW: 3, FL: 2, T2: 4, HT: 2 }; g.s.owned.cv_rampagoone = 1; g.s.owned.ht_goldgulp = 1; g.s.owned.ht_skoldin = 1; g.s.owned.st_revive = 1; g.s.owned.st_sandstorm = 1; g.s.owned.ht_emodoom = 1;
   for (let i = 0; i < 4; i++) { g.recordResult(i % 3 !== 2, true, g.nextLeagueOpponent()); g.skipDay(); }
   g.newAchievements = [];
   g.s.decks[1] = DeckRules.autoBuild(g.s.owned, g.rng); g.s.deckNames[1] = 'Deck 2';
@@ -835,6 +851,18 @@ function demo() {
     case 'snorwhirl': UI.tab = 'binder'; UI.binderSet = 'T2'; UI.overlay = { kind: 'inspect', id: 't2_snorwhirl', back: false }; break;
     case 'wirltoad': UI.tab = 'binder'; UI.binderSet = 'FL'; UI.overlay = { kind: 'inspect', id: 'fl_wirltoad', back: false }; break;
     case 'result': UI.tab = 'battle'; UI.overlay = { kind: 'result', won: true, bucks: 325, d: 17, league: true, avatar: 'zebrolt', ko: [5, 2] }; break;
+    case 'gravepit': {
+      g.s.activeDeck = 1; g.s.matTheme = 'season:1'; g.s.matThemes = [1];
+      const b = new Battle(g.activeDeckCards, 'You', g.aiDeck(2), g.s.ai[2].name, 901n, 0);
+      for (let n = 0; n < 500 && b.turnNumber < 8 && !b.over; n++) { const a = BattleAI.next(b); if (!b.apply(a)) b.apply({ t: 'end' }); }
+      while (b.current !== 0 && !b.over) { const a = BattleAI.next(b); if (!b.apply(a)) b.apply({ t: 'end' }); }
+      if (!b.sides[0].discard.length) { b.sides[0].discard.push(card('ww_snarlpup'), card('st_potion')); }
+      if (!b.sides[1].discard.length) { b.sides[1].discard.push(card('fl_swirlgon')); }
+      UI.battle = { b, k: 2, league: true, mode: 'league', sel: null, ei: b.events.length, busy: false, floats: [], lines: [] };
+      break; }
+    case 'card_revive': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_revive', back: false }; break;
+    case 'card_sandstorm': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_sandstorm', back: false }; break;
+    case 'binder_ht_st': UI.tab = 'binder'; UI.binderSet = 'HT'; break;
   }
   G.newAchievements = [];
 }
@@ -843,9 +871,10 @@ function demo() {
     await loadAssets();
     if (SNAP) demo(); else { G = new E.Game(storage()); }
     hook(); if (!SNAP) G.daysDue(); render(); tickDays();
-    if (G.s._htWelcome) { delete G.s._htWelcome; G.toast = 'New set: Hidden Transcendence — 1 free pack in Packs!'; G.save(); }
+    if (G.s._htWelcome) { delete G.s._htWelcome; G.toast = 'Hidden Transcendence — free pack ready in Packs!'; G.save(); }
+    if (G.s._v20Welcome) { delete G.s._v20Welcome; G.toast = 'Update gift: 3 free packs of every set are in Packs!'; G.save(); }
   if (!SNAP && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=18').then(reg => {
+      navigator.serviceWorker.register('sw.js?v=20').then(reg => {
         // When a new SW is waiting, activate it and reload so HT / balance updates aren't stuck behind an old PWA cache.
         const kick = () => { try { reg.waiting && reg.waiting.postMessage('skipWaiting'); } catch (_) {} };
         if (reg.waiting) kick();
