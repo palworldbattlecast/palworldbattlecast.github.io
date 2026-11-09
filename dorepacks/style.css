@@ -225,8 +225,8 @@ input.vol{accent-color:var(--yellow);height:28px}
 /* v21 collection set tabs — fit 5 sets at 390px */
 .seg.set-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex-wrap:nowrap}
 .seg.set-tabs::-webkit-scrollbar{display:none}
-.seg.set-tabs button{flex:1 1 0;min-width:0;padding:6px 4px;font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.15}
+.seg.set-tabs button{flex:1 1 0;min-width:0;padding:6px 2px;font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.15;min-height:44px}
 .seg.set-tabs button b{font-size:12px;letter-spacing:.02em}
 .seg.set-tabs button .set-full{font-size:8px;font-weight:700;opacity:.9;max-width:100%;width:100%;text-align:center;white-space:normal;overflow:visible;text-overflow:clip;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;hyphens:manual}
-@media (max-width:400px){.seg.set-tabs button{padding:5px 3px}.seg.set-tabs button b{font-size:11px}.seg.set-tabs button .set-full{font-size:7.5px;line-height:1.2}}
+@media (max-width:400px){.seg.set-tabs button{padding:5px 2px;min-height:46px}.seg.set-tabs button b{font-size:11px}.seg.set-tabs button .set-full{font-size:7px;line-height:1.15;letter-spacing:-0.01em}}
 @media (min-width:520px){.seg.set-tabs button .set-full{font-size:10px}}

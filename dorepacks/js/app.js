@@ -824,7 +824,7 @@ function demo() {
   for (let i = 0; i < 8; i++) { g.s.packs.HT = (g.s.packs.HT || 0) + 1; g.openPack('HT'); }
   for (let i = 0; i < 6; i++) { g.s.packs.RA = (g.s.packs.RA || 0) + 1; g.openPack('RA'); }
   g.s.owned.pr_ursacoon_flame_punch = 1;
-  g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.owned.t2_peaflora = 1; g.s.owned.t2_blizzbear = 1; g.s.packs = { WW: 3, FL: 2, T2: 4, HT: 2, RA: 3 }; g.s.owned.cv_rampagoone = 1; g.s.owned.ht_goldgulp = 1; g.s.owned.ht_skoldin = 1; g.s.owned.st_revive = 1; g.s.owned.st_sandstorm = 1; g.s.owned.ht_emodoom = 1;
+  g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.owned.t2_peaflora = 1; g.s.owned.t2_blizzbear = 1; g.s.packs = { WW: 3, FL: 2, T2: 4, HT: 2, RA: 3 }; g.s.owned.cv_rampagoone = 1; g.s.owned.ht_goldgulp = 1; g.s.owned.ht_skoldin = 1; g.s.owned.st_revive = 1; g.s.owned.st_sandstorm = 1; g.s.owned.st_double_protect = 1; g.s.owned.st_duel = 1; g.s.owned.st_soothing_wave = 1; g.s.owned.st_roar = 1; g.s.owned.ht_emodoom = 1;
   for (let i = 0; i < 4; i++) { g.recordResult(i % 3 !== 2, true, g.nextLeagueOpponent()); g.skipDay(); }
   g.newAchievements = [];
   g.s.decks[1] = DeckRules.autoBuild(g.s.owned, g.rng); g.s.deckNames[1] = 'Deck 2';
@@ -932,6 +932,10 @@ function demo() {
       break; }
     case 'card_revive': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_revive', back: false }; break;
     case 'card_sandstorm': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_sandstorm', back: false }; break;
+    case 'card_double_protect': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'st_double_protect', back: false }; break;
+    case 'card_duel': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'st_duel', back: false }; break;
+    case 'card_soothing_wave': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'st_soothing_wave', back: false }; break;
+    case 'card_roar': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'st_roar', back: false }; break;
     case 'binder_ht_st': UI.tab = 'binder'; UI.binderSet = 'HT'; break;
     case 'ra_packs': UI.tab = 'packs'; break;
     case 'ra_open': { const ch = inSet('RA').filter(c => Rarity.isChase(c.rarity)); const rest = inSet('RA').filter(c => !Rarity.isChase(c.rarity)).slice(0,4); UI.overlay = { kind: 'pack', set: 'RA', cards: [...rest, ...ch].slice(0,7), fresh: new Set(ch.map(c => c.id)), phase: 2 }; break; }
