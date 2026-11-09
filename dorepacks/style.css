@@ -191,9 +191,10 @@ input.vol{accent-color:var(--yellow);height:28px}
 .gravepit:active { transform: scale(0.96); }
 
 
-/* v20 doremat mini-cards (full card art on mat) */
-.slot.mini-card{display:block;padding:0;border:none;background:transparent;overflow:visible;position:relative}
-.slot.mini-card .mcart{width:100%;height:auto;aspect-ratio:600/840;object-fit:contain;border-radius:6px;image-rendering:auto;display:block;pointer-events:none;box-shadow:0 2px 6px #0008;background:#111}
+/* v21 doremat mini-cards — art + footer (name / move / HP) with no overlap */
+.slot.mini-card{display:flex;flex-direction:column;padding:0;border:none;background:transparent;overflow:visible;position:relative;gap:2px}
+.slot.mini-card .mcwrap{position:relative;flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center}
+.slot.mini-card .mcart{width:100%;height:auto;max-height:100%;aspect-ratio:600/840;object-fit:contain;border-radius:6px;image-rendering:auto;display:block;pointer-events:none;box-shadow:0 2px 6px #0008;background:#111}
 .slot.mini-card .badges{position:absolute;left:2px;top:2px;z-index:3;display:flex;flex-wrap:wrap;gap:1px;max-width:90%}
 .slot.mini-card .badge{font-size:8px;font-weight:900;line-height:1.1;padding:1px 3px;border-radius:3px;background:#000c;color:#fff;text-shadow:none}
 .slot.mini-card .badge.atk{background:#c45a00cc;color:#ffe7a0}
@@ -203,9 +204,11 @@ input.vol{accent-color:var(--yellow);height:28px}
 .slot.mini-card .badge.prot{background:#1a7a9acc}
 .slot.mini-card .badge.bolt{background:#000a;color:var(--yellow)}
 .slot.mini-card .badge.undo{background:#8a5cff}
-.slot.mini-card .mv{position:absolute;left:2px;right:2px;bottom:15px;z-index:3;font-size:7px;font-weight:800;line-height:1.1;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
-.slot.mini-card .hp{position:absolute;left:2px;right:2px;bottom:2px;z-index:3;height:12px;line-height:12px;font-size:9px;border-radius:5px;margin:0}
-.slot.mini-card .tg.dmg{position:absolute;right:2px;top:30%;z-index:4;font-size:10px;font-weight:900;background:#000c;border-radius:4px;padding:1px 4px}
+.slot.mini-card .mcfoot{flex:none;padding:2px 3px 3px;background:#000a;border-radius:0 0 7px 7px;z-index:2}
+.slot.mini-card .mcfoot .nm{font-size:9px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000;line-height:1.15}
+.slot.mini-card .mv{position:static;font-size:7px;font-weight:800;line-height:1.15;color:#ffe7a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;margin:1px 0}
+.slot.mini-card .hp{position:static;height:11px;line-height:11px;font-size:8px;border-radius:5px;margin:0}
+.slot.mini-card .tg.dmg{position:absolute;right:2px;top:28%;z-index:4;font-size:10px;font-weight:900;background:#000c;border-radius:4px;padding:1px 4px}
 .slot.mini-card.sel .mcart{outline:3px solid var(--yellow);outline-offset:-1px}
 .slot.mini-card.tgt .mcart{outline:3px solid #ff5d5d;outline-offset:-1px}
 .slot.mini-card.can .mcart{outline:2px solid #6cf;outline-offset:-1px}
@@ -213,8 +216,16 @@ input.vol{accent-color:var(--yellow);height:28px}
 .st-flash{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;pointer-events:none;animation:stf 0.9s forwards;background:radial-gradient(circle at 50% 45%,#0006,transparent 60%)}
 .st-flash-card{width:min(42vw,180px);border-radius:6%/4.3%;box-shadow:0 12px 40px #000c;image-rendering:auto}
 @keyframes stf{0%{transform:scale(.6);opacity:0}20%{transform:scale(1);opacity:1}70%{opacity:1}100%{transform:scale(.85) translateY(30px);opacity:0}}
-@media (max-width:400px){.slot.mini-card .mv{font-size:6px}.slot.mini-card .badge{font-size:7px}.slot.mini-card .hp{height:11px;line-height:11px;font-size:8px}}
+@media (max-width:400px){.slot.mini-card .mv{font-size:6px}.slot.mini-card .badge{font-size:7px}.slot.mini-card .mcfoot .nm{font-size:8px}.slot.mini-card .hp{height:10px;line-height:10px;font-size:7px}}
 
 /* mini-card mat taller */
-.mat{max-height:340px}
-.slot.mini-card{display:flex;align-items:stretch;justify-content:center}
+.mat{max-height:360px}
+
+
+/* v21 collection set tabs — fit 5 sets at 390px */
+.seg.set-tabs{display:flex;gap:3px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex-wrap:nowrap}
+.seg.set-tabs::-webkit-scrollbar{display:none}
+.seg.set-tabs button{flex:1 0 auto;min-width:0;padding:7px 6px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.1}
+.seg.set-tabs button b{font-size:12px;letter-spacing:.02em}
+.seg.set-tabs button .set-full{font-size:8px;font-weight:700;opacity:.85;max-width:64px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (min-width:520px){.seg.set-tabs button .set-full{max-width:110px;font-size:10px}}

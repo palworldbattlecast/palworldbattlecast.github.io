@@ -78,9 +78,9 @@ check(Battle.damage(mk('ww_electrinx'), mk('ww_senkip'))[0] === 0, 'Electric vs 
   const tot = o => Object.values(o).reduce((a, b) => a + b, 0);
   check(s0.ai.every(p => p.mr === s0.mr && s0.mr === 1000), 'fair start: every AI starts at the same MR as the player (1000)');
   check(s0.ai.every(p => p.money === s0.money && s0.money === 1500), 'fair start: every AI starts with the same $1500 as the player');
-  check(s0.ai.every(p => p.packsOpened === startPacks && startPacks === 3), 'fair start: every AI opens exactly the player\'s starting packs (2 WW + 1 FL)');
-  check(s0.ai.every(p => tot(p.owned) === n0 + startPacks * 7 && E.STARTER_DECK.every(id => (p.owned[id] || 0) >= E.STARTER_DECK.filter(x => x === id).length)), 'fair start: every AI owns exactly the starter deck + its 3 pack openings');
-  for (const set of Object.keys(s0.packs)) for (let i = 0; i < s0.packs[set]; i++) g0.openPack(set);
+  check(s0.ai.every(p => p.packsOpened === startPacks && startPacks === 15), 'fair start: every AI opens exactly the player\'s starting packs (3 of each set)');
+  check(s0.ai.every(p => tot(p.owned) === n0 + startPacks * 7 && E.STARTER_DECK.every(id => (p.owned[id] || 0) >= E.STARTER_DECK.filter(x => x === id).length)), 'fair start: every AI owns exactly the starter deck + its starting pack openings');
+  const packSnap = { ...s0.packs }; for (const set of Object.keys(packSnap)) for (let i = 0; i < packSnap[set]; i++) g0.openPack(set);
   check(tot(s0.owned) === n0 + startPacks * 7, 'fair start: the player ends up with the same card count after opening their packs');
   check(s0.ai.every(p => p.deck.every(id => (p.owned[id] || 0) >= p.deck.filter(x => x === id).length)), 'fair start: AI decks use only cards they own');
   check(s0.bank.initial === 17 * 1500, 'fair start: bank starts with 17 x $1500 (you + 16 trainers)');
@@ -141,7 +141,7 @@ let g = new Game(null, 99n);
   let w = 0; const N = 400; const g0 = new Game(null, 11n);
   for (let i = 0; i < N; i++) { const b = new Battle(E.STARTER_DECK.map(card), 'You', g0.aiDeck(i % 8), 'AI', BigInt(9000 + i), i % 2); if (BattleAI.simulate(b) === 0) w++; }
   console.log(`starter deck (played by the same AI brain) vs day-1 AI decks: ${w}/${N} = ${(w / N * 100).toFixed(1)}%`);
-  check(w / N > 0.19, 'buffed starter deck wins more often than the old one (16%)');
+  check(w / N > 0.05, 'starter deck still wins some games vs day-1 AI (AI opens 12 packs now)');
 }
 // ---- AI economy + auction house: money conservation and bid caps ----
 {
@@ -458,7 +458,7 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 's
   for (const P of old.s.ai) { delete P.streak; delete P.games; delete P.played; delete P.tourWins; }
   old.s.ai[0].mr = 1234; mem.t = JSON.stringify(old.s);
   const g = new Game(mem); check(g.s.ai.length === 16 && g.s.ai[0].mr === 1234, 'migration: 8 old trainers kept, 8 added');
-  check(g.s.ai.slice(8).every(P => P.mr === 1000 && P.money === 1500 && P.packsOpened === 3 && P.deck.length === 20), 'migration: new trainers get a fair start');
+  check(g.s.ai.slice(8).every(P => P.mr === 1000 && P.money === 1500 && P.packsOpened === 15 && P.deck.length === 20), 'migration: new trainers get a fair start');
   check(g.ledgerBalanced(), 'migration: ledger still balanced');
   check(['Lacey', 'Prof. Winston', 'Bram'].every(n => g.s.ai.some(P => P.name === n)), 'migration: Lacey, Prof. Winston and Bram joined');
   const st = g.trainerStats(0); check(st.name === 'Kai' && st.binder > 0 && st.games >= 0, 'trainer stats available');
@@ -546,8 +546,9 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 's
     check(tapOwnMonSel(b, 0, 0, null)?.kind === 'mon' && b.canUndo(0, 'mon', 0) && b.apply({ t: 'undo', kind: 'mon', slot: 0 }) && S.quickStart, 'quick doremon: selected as attacker, and Take back still works'); }
 }
 // ---- split / double moves are a Troublesome 2 (T2) mechanic only ----
-{ const bad = E.DB.cards.filter(c => c.split && c.set !== 'T2'); check(bad.length === 0, `no non-T2 card has a split/double move (${bad.map(c => c.id).join(',') || 'none'})`);
-  const t2 = E.DB.cards.filter(c => c.split); check(t2.length > 0 && t2.every(c => c.set === 'T2'), `T2 still has its split moves (${t2.length})`);
+{ const bad = E.DB.cards.filter(c => c.split && c.set !== 'T2' && c.id !== 'ht_empoora'); check(bad.length === 0, `no unexpected non-T2 split/double (${bad.map(c => c.id).join(',') || 'none'})`);
+  const t2 = E.DB.cards.filter(c => c.split && c.set === 'T2'); check(t2.length > 0 && t2.every(c => c.set === 'T2'), `T2 still has its split moves (${t2.length})`);
+  check(card('ht_empoora').split === 'double', 'Empoora (HT) is the allowed non-T2 split Steel');
   check(!card('ww_gruugy').split && !card('ww_rokbru').split && card('ww_gruugy').moveType === 'Rock' && card('ww_rokbru').moveType === 'Rock', 'Gruugy/Rokbru single-target Rock moves (learnset)'); }
 // ---- 200+ game balance sim: going first vs second ----
 { let fw = 0, n = 0; const all = E.DB.cards;
@@ -586,9 +587,19 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 's
 // ---- Hidden Transcendence + WW chase + seasons (Nov 9) ----
 { const ht = E.DB.cards.filter(c => c.set === 'HT'); const st = E.DB.cards.filter(c => c.pack === 'HT');
   check(ht.filter(isMon).length === 22 && st.length === 8, `HT has 22 doremon + 8 spells/traps (${ht.filter(isMon).length}+${st.length})`);
-  const rc = Object.fromEntries(['C','U','R','SR','LGD','MYT'].map(r => [r, ht.filter(c => c.rarity === r).length]));
-  check(rc.C === 8 && rc.U === 6 && rc.R === 3 && rc.SR === 1 && rc.LGD === 3 && rc.MYT === 1, `HT mon rarities 8/6/3/1/3/1 got ${JSON.stringify(rc)}`);
-  check(card('ht_rampagoone').legendary && card('ht_emodoom').mythical && card('st_revive').legendary && card('st_sandstorm').legendary, 'HT chase flags + legendary Revive/Sandstorm');
+  const rc = Object.fromEntries(['C','U','R','SR','LGD','MYT'].map(r => [r, ht.filter(c => isMon(c) && c.rarity === r).length]));
+  check(rc.C === 9 && rc.U === 6 && rc.R === 3 && rc.SR === 2 && rc.LGD === 1 && rc.MYT === 1, `HT mon rarities 9/6/3/2/1/1 got ${JSON.stringify(rc)}`);
+  check(card('ht_goldgulp').legendary && card('ht_woolveon').rarity === 'SR' && !card('ht_rampagoone') && !card('cv_rampagoone') && card('ra_rampagoone') && card('ht_emodoom').mythical && card('st_revive').legendary && card('st_sandstorm').legendary, 'HT: Goldgulp sole LGD mon, Woolveon SR, Rampagoone in RA, Revive/Sandstorm legendary');
+  check(card('ht_viletios').types.join() === 'Psychic' && card('ht_shelzele').types.join() === 'Dark' && card('ht_golechoke').types.join() === 'Fighting,Steel' && card('ht_spikebrute').types.join() === 'Dark,Steel', 'HT type updates');
+  check(card('ht_skoldin') && card('ht_skoldin').types.join() === 'Bug' && card('ht_draplin').types.join() === 'Bug,Poison', 'Skoldin Bug + Draplin Bug/Poison in HT');
+  check(card('ht_phioice').fx === 'frz' && E.STATUS.frz, 'Phioice freeze + STATUS.frz');
+  check(card('ht_empoora').split === 'double' && card('ht_empoora').moveType === 'Steel', 'Empoora split Steel');
+  // free pack migrate: packs.HT=0 still gets gifts
+  { const g = new Game(null, 7n); g.save = () => {}; g.s.packs = { WW: 0, FL: 0, T2: 0, HT: 0 }; g.s._gift_ht = false; g.s._gift_v20 = false; g.migrateSave();
+    check(g.s.packs.HT >= 1 && g.s._gift_ht && g.s.packs.WW >= 3 && g.s._gift_v20, `migrate grants HT+v20 packs even when HT was 0 (got HT=${g.s.packs.HT} WW=${g.s.packs.WW})`); }
+  // new game starts with 3 of each
+  { const g = new Game(null, 8n); g.save = () => {};
+    check(['WW','FL','T2','HT'].every(s => (g.s.packs[s] || 0) === 3), `new game has exactly 3 packs each (WW=${g.s.packs.WW} FL=${g.s.packs.FL} T2=${g.s.packs.T2} HT=${g.s.packs.HT})`); }
   check(Rarity.copyLimit(card('st_revive')) === 1 && Rarity.copyLimit(card('ww_axerupi')) === 1, 'legendary items and WW mythical are 1-copy');
   check(card('ww_axerupi').rarity === 'MYT' && card('ww_senkip').rarity === 'LGD' && !E.DB.cards.some(c => c.set === 'WW' && c.rarity === 'SSR'), 'WW SSR starters became 3 LGD + Axerupi MYT');
   check(card('t2_blazemule').legendary && card('t2_peaflora').mythical, 'T2 chase flags set');
@@ -609,4 +620,113 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 's
     check(g.s.seasonPics.includes(1) || g.s.ai.some(p => p.seasonPics.includes(1)), 'top 8 earned season pic');
     check(g.s.ai.some(p => p.coin === 'season:1') || g.s.coin === 'season:1', 'top 8 equipped gold season coin'); }
 }
+
+// ---- Rivals & Allies ----
+{ const ra = E.DB.cards.filter(c => c.set === 'RA' && isMon(c));
+  check(ra.length === 19, `RA has 19 doremon (${ra.length})`);
+  check(E.ofRarity('RA','LGD').length === 3 && E.ofRarity('RA','MYT').length === 1, 'RA chase 3 LGD + 1 MYT');
+  check(E.DB.cards.filter(c => c.pack === 'RA').length === 11, 'RA has 11 pack spells/traps');
+  check(card('pr_ursacoon_flame_punch') && card('pr_ursacoon_flame_punch').promo && card('pr_ursacoon_flame_punch').set === 'PR', 'Ursacoon Flame Punch promo');
+  check(!E.DB.cards.some(c => c.id === 'cv_rampagoone'), 'CV Rampagoone stub removed');
+  check(card('ra_rampagoone') && card('ra_rampagoone').set === 'RA', 'Rampagoone lives in RA');
+  check(card('st_soothing_wave').effect.healAll === 100, 'Soothing Wave healAll 100');
+  check(card('st_double_protect').effect.protect === 2, 'Double Protect protect:2');
+  check(card('st_roar').effect.roar === 1 && card('st_duel').effect.duel === 1, 'Roar + Duel traps');
+  check(card('ra_mesby').passive?.allyAtk === 1 && card('ra_fluffram').passive?.allyDef === 1 && card('ra_sweuw').passive?.allyDef === 1, 'Ally ATK/DEF auras');
+  check(Packs.rule('RA').chase.join() === 'LGD,MYT', 'RA pack chase');
+  check(E.SETS.includes('RA'), 'SETS includes RA');
+  { const g = new Game(null, 9n); g.save = () => {};
+    check((g.s.packs.RA || 0) === 3, `new game has 3 RA packs (got ${g.s.packs.RA})`); }
+  { const g = new Game(null, 10n); g.save = () => {}; g.s.packs = { WW:0,FL:0,T2:0,HT:0 }; g.s._gift_ht=true; g.s._gift_v20=true; g.s._gift_ra=false; g.migrateSave();
+    check((g.s.packs.RA||0) >= 3 && g.s._gift_ra, `migrate grants 3 RA packs (got ${g.s.packs.RA})`); }
+  // Roar cancels attack
+  { const b = new Battle(E.STARTER_DECK.map(card), 'A', E.STARTER_DECK.map(card), 'B', 3n, 0);
+    b.sides[0].mons[0] = Object.assign(E.newMon(card('ww_snarlpup')), { ready: true });
+    b.sides[0].mons[1] = Object.assign(E.newMon(card('ww_acornix')), { ready: true });
+    b.sides[1].mons[0] = Object.assign(E.newMon(card('ww_gruugy')), { ready: true });
+    b.sides[1].traps[0] = card('st_roar');
+    const hp = b.sides[1].mons[0].hp;
+    b.apply({ t: 'attack', from: 0, to: 0 });
+    check(b.sides[1].mons[0] && b.sides[1].mons[0].hp === hp, 'Roar cancels damage');
+  }
+  // single-target aura: Mesby buffs one chosen ally; never self; no other ally → no effect
+  { const b = new Battle(E.STARTER_DECK.map(card), 'A', E.STARTER_DECK.map(card), 'B', 4n, 0);
+    b.humanSide = null; // AI auto-pick
+    b.sides[0].mons[0] = Object.assign(E.newMon(card('ra_mesby')), { ready: true });
+    b.sides[0].mons[1] = Object.assign(E.newMon(card('ww_snarlpup')), { ready: true });
+    E.beginPassive(b, 0, 0);
+    check(b.sides[0].mons[1].atk === 1, `Mesby aura gives chosen ally ATK +1 (got ${b.sides[0].mons[1].atk})`);
+    check(b.sides[0].mons[0].atk === 0, 'aura never applies to self');
+    E.clearPassive(b, 0, b.sides[0].mons[0]);
+    check(b.sides[0].mons[1].atk === 0, 'clearing aura reverses the buff');
+  }
+  // rival aura: Dustwidow picks one foe for ATK -1
+  { const b = new Battle(E.STARTER_DECK.map(card), 'A', E.STARTER_DECK.map(card), 'B', 5n, 0);
+    b.humanSide = null;
+    b.sides[0].mons[0] = Object.assign(E.newMon(card('ra_dustwidow')), { ready: true });
+    b.sides[1].mons[0] = Object.assign(E.newMon(card('ww_gruugy')), { ready: true });
+    b.sides[1].mons[1] = Object.assign(E.newMon(card('ww_acornix')), { ready: true });
+    E.beginPassive(b, 0, 0);
+    const debuffed = [0, 1].filter(i => b.sides[1].mons[i].atk === -1);
+    check(debuffed.length === 1, `rival aura hits exactly one foe (hit ${debuffed.length})`);
+  }
+  // aura variant mix: all four kinds present
+  { const kinds = new Set();
+    for (const id of ['ra_mesby','ra_sweuw','ra_dustwidow','ra_twinbloom','ra_mossfang','ra_fluffram']) {
+      const p = card(id).passive || {}; for (const k of Object.keys(p)) kinds.add(k);
+      check(/ATK|DEF/.test(card(id).text || ''), `${id} text shows ATK/DEF`);
+    }
+    check(['allyAtk','allyDef','foeAtk','foeDef'].every(k => kinds.has(k)), `aura mix has all 4 variants (${[...kinds]})`);
+  }
+  // Season 10 League reward is Ursacoon promo
+  { check(E.SEASON_PLAN[9].promo === 'pr_ursacoon_flame_punch', 'Season 10 promo = Ursacoon');
+    const g = new Game(null, 11n); g.save = () => {};
+    g.s.lastSeasonEnded = 9; g.s.day = 620; g.s.mr = 2000; // end of season 10
+    g.endSeasonIfNeeded();
+    check((g.s.owned.pr_ursacoon_flame_punch || 0) >= 1, `Season 10 top8 get Ursacoon promo (got ${g.s.owned.pr_ursacoon_flame_punch})`);
+  }
+  // Double Protect = 2 targets for one turn (Mirror Veil timing)
+  { check(card('st_double_protect').effect.protect === 2, 'Double Protect shields up to 2 doremon for one turn'); }
+}
+
+
+// ---- v21 checks ----
+{ check(typeof E.SET_NAMES.RA === 'string', 'RA set name');
+  // HT roster: sole LGD Goldgulp; Skoldin in HT; Rampagoone in RA
+  const htL = E.DB.cards.filter(c => c.set==='HT' && c.kind==='mon' && (c.legendary || c.rarity==='LGD'));
+  check(htL.length===1 && htL[0].id==='ht_goldgulp', `HT sole LGD is Goldgulp (${htL.map(c=>c.id)})`);
+  check(card('ht_skoldin') && card('ht_skoldin').types.join()==='Bug', 'Skoldin in HT as Bug');
+  check(card('ra_rampagoone') && !card('ht_rampagoone') && !card('cv_rampagoone'), 'Rampagoone only in RA');
+  check(card('ht_viletios').types.join()==='Psychic' && card('ht_shelzele').types.join()==='Dark', 'Viletios Psychic / Shelzele Dark');
+  check(card('ht_golechoke').types.join()==='Fighting,Steel' && card('ht_spikebrute').types.join()==='Dark,Steel', 'Golechoke Fighting/Steel / Spikebrute Dark/Steel');
+  check(card('ht_empoora').types.join()==='Water,Steel' && card('ht_empoora').split==='double', 'Empoora Water/Steel double');
+  check(card('ht_draplin').types.join()==='Bug,Poison' && card('ht_phioice').types.includes('Ice'), 'Draplin Bug/Poison / Phioice Ice');
+  check(card('ht_sandtabby').hp>=280, `Sandtabby HP buff (${card('ht_sandtabby').hp})`);
+  check(card('st_sandstorm').artMon==='sandtabby', 'Sandstorm artMon is HT Sandtabby');
+  check(E.SEASON_PLAN.length===30 && E.SEASON_PLAN.every(r => r.mat && r.mat.primary), '30 seasons with mat colors');
+  check(E.SEASON_PLAN[9].promo==='pr_ursacoon_flame_punch', 'Season 10 Ursacoon promo');
+}
+
+
+// v21 regression: old saves missing gift keys must NOT inherit freshSave()'s true flags
+{
+  const g0 = new Game(null, 41n); g0.save = () => {};
+  const ai = g0.s.ai.map(p => ({ ...p, owned: { ...p.owned }, pity: { ...p.pity } }));
+  const v19 = {
+    version: 3, money: 900, owned: { ww_snarlpup: 1 }, packs: { WW: 1, FL: 0, T2: 2, HT: 0 },
+    pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
+    mr: 1000, bestMr: 1000, wins: 0, losses: 0, streak: 0, bestStreak: 0, leagueWins: 0,
+    cardsSold: 0, singlesBought: 0, trades: 0, achievements: [], ai, offers: [], market: g0.s.market,
+    day: 5, recent: [], seed: '41', pulledRarities: [], stats: g0.s.stats,
+    bank: { initial: 25500, faucet: 0, sink: 0 }, auctions: [], auctionLog: [], nextId: 1, lastDay: [],
+    oppHistory: [], clock: Date.now(), seenHoldTip: true, splitKOs: 0,
+    profilePic: null, coin: 'axerupi', seasonPics: [], seasonCoins: [], seasonHistory: [], lastSeasonEnded: 0
+  };
+  const store = { raw: JSON.stringify(v19), load() { return this.raw; }, save(t) { this.raw = t; } };
+  const g = new Game(store, 42n);
+  const exp = { WW: 4, FL: 3, T2: 5, HT: 4, RA: 6 };
+  for (const k of E.SETS) check(g.s.packs[k] === exp[k], `gift-flag bleed ${k}: got ${g.s.packs[k]} want ${exp[k]}`);
+  console.log('PASS old save without gift keys gets HT+1, v20 +3/set, RA +3');
+}
+
 console.log(fails === 0 ? 'ALL TESTS PASSED' : `${fails} FAILURES`); process.exit(fails ? 1 : 0);

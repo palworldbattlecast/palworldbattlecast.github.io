@@ -2951,7 +2951,7 @@
       "effect": {
         "revive": 100
       },
-      "text": "LEGENDARY SPELL: return one knocked-out doremon from your discard to an empty slot with 100 HP. Limit 1 per deck.",
+      "text": "Return one knocked-out doremon from your discard to an empty slot with 100 HP. Limit 1 per deck.",
       "price": 800,
       "legendary": true,
       "mythical": false,
@@ -3028,7 +3028,7 @@
         "def": -1,
         "recoil": 20
       },
-      "text": "LEGENDARY TRAP: when an enemy attacks, the attacker gets DEF -1 and takes 20 damage. Limit 1 per deck.",
+      "text": "When an enemy attacks, the attacker gets DEF -1 and takes 20 damage. Limit 1 per deck.",
       "price": 700,
       "legendary": true,
       "mythical": false,
