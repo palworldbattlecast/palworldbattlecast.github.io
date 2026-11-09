@@ -495,7 +495,7 @@
    "mon": "axerupi",
    "name": "Axerupi",
    "set": "WW",
-   "rarity": "SSR",
+   "rarity": "MYT",
    "num": 27,
    "kind": "mon",
    "types": [
@@ -506,14 +506,14 @@
    "moveType": "Grass",
    "dmg": 140,
    "legendary": false,
-   "mythical": false
+   "mythical": true
   },
   {
    "id": "ww_electrinx",
    "mon": "electrinx",
    "name": "Electrinx",
    "set": "WW",
-   "rarity": "SSR",
+   "rarity": "LGD",
    "num": 28,
    "kind": "mon",
    "types": [
@@ -523,7 +523,7 @@
    "move": "Volt Knuckle",
    "moveType": "Electric",
    "dmg": 130,
-   "legendary": false,
+   "legendary": true,
    "mythical": false,
    "fx": "par",
    "fxChance": 30
@@ -533,7 +533,7 @@
    "mon": "senkip",
    "name": "Senkip",
    "set": "WW",
-   "rarity": "SSR",
+   "rarity": "LGD",
    "num": 29,
    "kind": "mon",
    "types": [
@@ -543,7 +543,7 @@
    "move": "Quake Stomp",
    "moveType": "Ground",
    "dmg": 140,
-   "legendary": false,
+   "legendary": true,
    "mythical": false
   },
   {
@@ -551,7 +551,7 @@
    "mon": "badbulb",
    "name": "Badbulb",
    "set": "WW",
-   "rarity": "SSR",
+   "rarity": "LGD",
    "num": 30,
    "kind": "mon",
    "types": [
@@ -561,7 +561,7 @@
    "move": "Magma Burst",
    "moveType": "Fire",
    "dmg": 130,
-   "legendary": false,
+   "legendary": true,
    "mythical": false,
    "fx": "brn",
    "fxChance": 30
@@ -2242,7 +2242,7 @@
    "move": "Magma Burst",
    "moveType": "Fire",
    "dmg": 60,
-   "legendary": false,
+   "legendary": true,
    "mythical": false,
    "split": "double",
    "fx": "brn",
@@ -2264,7 +2264,7 @@
    "move": "Thunderclap",
    "moveType": "Electric",
    "dmg": 70,
-   "legendary": false,
+   "legendary": true,
    "mythical": false,
    "split": "spread",
    "fx": "par",
@@ -2286,7 +2286,7 @@
    "move": "Rock Avalanche",
    "moveType": "Rock",
    "dmg": 60,
-   "legendary": false,
+   "legendary": true,
    "mythical": false,
    "split": "spread"
   },
@@ -2307,7 +2307,7 @@
    "moveType": "Psychic",
    "dmg": 70,
    "legendary": false,
-   "mythical": false,
+   "mythical": true,
    "split": "spread",
    "fx": "cnf",
    "fxChance": 25
@@ -2477,6 +2477,617 @@
    },
    "text": "When an enemy attacks, the attacker AND its strongest teammate are Poisoned.",
    "price": 220,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_salantra",
+   "mon": "salantra",
+   "name": "Salantra",
+   "set": "HT",
+   "rarity": "C",
+   "num": 1,
+   "kind": "mon",
+   "types": [
+    "Ground",
+    "Dark"
+   ],
+   "hp": 190,
+   "move": "Quake Stomp",
+   "moveType": "Ground",
+   "dmg": 100,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_expeydo",
+   "mon": "expeydo",
+   "name": "Expeydo",
+   "set": "HT",
+   "rarity": "C",
+   "num": 2,
+   "kind": "mon",
+   "types": [
+    "Water",
+    "Flying"
+   ],
+   "hp": 180,
+   "move": "Bubble Jet",
+   "moveType": "Water",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_viletios",
+   "mon": "viletios",
+   "name": "Viletios",
+   "set": "HT",
+   "rarity": "C",
+   "num": 3,
+   "kind": "mon",
+   "types": [
+    "Dark",
+    "Flying"
+   ],
+   "hp": 190,
+   "move": "Night Bite",
+   "moveType": "Dark",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_shelzele",
+   "mon": "shelzele",
+   "name": "Shelzele",
+   "set": "HT",
+   "rarity": "C",
+   "num": 4,
+   "kind": "mon",
+   "types": [
+    "Ghost",
+    "Dark"
+   ],
+   "hp": 190,
+   "move": "Phantom Wail",
+   "moveType": "Ghost",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_owldrul",
+   "mon": "owldrul",
+   "name": "Owldrul",
+   "set": "HT",
+   "rarity": "C",
+   "num": 5,
+   "kind": "mon",
+   "types": [
+    "Flying",
+    "Normal"
+   ],
+   "hp": 200,
+   "move": "Boom Blast",
+   "moveType": "Normal",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_oddbat",
+   "mon": "oddbat",
+   "name": "Oddbat",
+   "set": "HT",
+   "rarity": "C",
+   "num": 6,
+   "kind": "mon",
+   "types": [
+    "Ice",
+    "Flying"
+   ],
+   "hp": 170,
+   "move": "Blizzard Breath",
+   "moveType": "Ice",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_sligx",
+   "mon": "sligx",
+   "name": "Sligx",
+   "set": "HT",
+   "rarity": "C",
+   "num": 7,
+   "kind": "mon",
+   "types": [
+    "Dragon"
+   ],
+   "hp": 160,
+   "move": "Wyrm Pulse",
+   "moveType": "Dragon",
+   "dmg": 80,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_crangoone",
+   "mon": "crangoone",
+   "name": "Crangoone",
+   "set": "HT",
+   "rarity": "C",
+   "num": 8,
+   "kind": "mon",
+   "types": [
+    "Dragon"
+   ],
+   "hp": 130,
+   "move": "Dragon Rend",
+   "moveType": "Dragon",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_lunarpent",
+   "mon": "lunarpent",
+   "name": "Lunarpent",
+   "set": "HT",
+   "rarity": "U",
+   "num": 9,
+   "kind": "mon",
+   "types": [
+    "Fairy",
+    "Grass"
+   ],
+   "hp": 210,
+   "move": "Gilded Gust",
+   "moveType": "Fairy",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_phioice",
+   "mon": "phioice",
+   "name": "Phioice",
+   "set": "HT",
+   "rarity": "U",
+   "num": 10,
+   "kind": "mon",
+   "types": [
+    "Ice"
+   ],
+   "hp": 230,
+   "move": "Blizzard Breath",
+   "moveType": "Ice",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_sandtabby",
+   "mon": "sandtabby",
+   "name": "Sandtabby",
+   "set": "HT",
+   "rarity": "U",
+   "num": 11,
+   "kind": "mon",
+   "types": [
+    "Ground"
+   ],
+   "hp": 210,
+   "move": "Quake Stomp",
+   "moveType": "Ground",
+   "dmg": 100,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_empoora",
+   "mon": "empoora",
+   "name": "Empoora",
+   "set": "HT",
+   "rarity": "U",
+   "num": 12,
+   "kind": "mon",
+   "types": [
+    "Water",
+    "Steel"
+   ],
+   "hp": 200,
+   "move": "Bubble Jet",
+   "moveType": "Water",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_draplin",
+   "mon": "draplin",
+   "name": "Draplin",
+   "set": "HT",
+   "rarity": "U",
+   "num": 13,
+   "kind": "mon",
+   "types": [
+    "Steel",
+    "Flying"
+   ],
+   "hp": 200,
+   "move": "Feather Storm",
+   "moveType": "Flying",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_meowpurr",
+   "mon": "meowpurr",
+   "name": "Meowpurr",
+   "set": "HT",
+   "rarity": "U",
+   "num": 14,
+   "kind": "mon",
+   "types": [
+    "Water",
+    "Normal"
+   ],
+   "hp": 190,
+   "move": "Boom Blast",
+   "moveType": "Normal",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_grumtose",
+   "mon": "grumtose",
+   "name": "Grumtose",
+   "set": "HT",
+   "rarity": "R",
+   "num": 15,
+   "kind": "mon",
+   "types": [
+    "Psychic"
+   ],
+   "hp": 240,
+   "move": "Mind Crush",
+   "moveType": "Psychic",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_belfable",
+   "mon": "belfable",
+   "name": "Belfable",
+   "set": "HT",
+   "rarity": "R",
+   "num": 16,
+   "kind": "mon",
+   "types": [
+    "Fairy",
+    "Ghost"
+   ],
+   "hp": 220,
+   "move": "Gilded Gust",
+   "moveType": "Fairy",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_golechoke",
+   "mon": "golechoke",
+   "name": "Golechoke",
+   "set": "HT",
+   "rarity": "R",
+   "num": 17,
+   "kind": "mon",
+   "types": [
+    "Ground",
+    "Steel"
+   ],
+   "hp": 210,
+   "move": "Quake Stomp",
+   "moveType": "Ground",
+   "dmg": 100,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_spikebrute",
+   "mon": "spikebrute",
+   "name": "Spikebrute",
+   "set": "HT",
+   "rarity": "SR",
+   "num": 18,
+   "kind": "mon",
+   "types": [
+    "Rock",
+    "Steel"
+   ],
+   "hp": 230,
+   "move": "Stone Slam",
+   "moveType": "Rock",
+   "dmg": 90,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "ht_rampagoone",
+   "mon": "rampagoone",
+   "name": "Rampagoone",
+   "set": "HT",
+   "rarity": "LGD",
+   "num": 19,
+   "kind": "mon",
+   "types": [
+    "Dragon",
+    "Steel"
+   ],
+   "hp": 210,
+   "move": "Dragon Rend",
+   "moveType": "Dragon",
+   "dmg": 110,
+   "legendary": true,
+   "mythical": false
+  },
+  {
+   "id": "ht_goldgulp",
+   "mon": "goldgulp",
+   "name": "Goldgulp",
+   "set": "HT",
+   "rarity": "LGD",
+   "num": 20,
+   "kind": "mon",
+   "types": [
+    "Water",
+    "Ground"
+   ],
+   "hp": 250,
+   "move": "Tidal Crash",
+   "moveType": "Water",
+   "dmg": 110,
+   "legendary": true,
+   "mythical": false
+  },
+  {
+   "id": "ht_woolveon",
+   "mon": "woolveon",
+   "name": "Woolveon",
+   "set": "HT",
+   "rarity": "LGD",
+   "num": 21,
+   "kind": "mon",
+   "types": [
+    "Normal",
+    "Steel"
+   ],
+   "hp": 210,
+   "move": "Boom Blast",
+   "moveType": "Normal",
+   "dmg": 120,
+   "legendary": true,
+   "mythical": false
+  },
+  {
+   "id": "ht_emodoom",
+   "mon": "emodoom",
+   "name": "Emodoom",
+   "set": "HT",
+   "rarity": "MYT",
+   "num": 22,
+   "kind": "mon",
+   "types": [
+    "Normal",
+    "Dark"
+   ],
+   "hp": 200,
+   "move": "Boom Blast",
+   "moveType": "Normal",
+   "dmg": 120,
+   "legendary": false,
+   "mythical": true
+  },
+  {
+   "id": "st_revive",
+   "name": "Revive",
+   "set": "ST",
+   "pack": "HT",
+   "rarity": "ITEM",
+   "num": 32,
+   "kind": "spell",
+   "types": [
+    "Psychic"
+   ],
+   "hp": 0,
+   "move": "Aid Pulse",
+   "moveType": "Psychic",
+   "dmg": 0,
+   "artMon": "emodoom",
+   "effect": {
+    "revive": 100
+   },
+   "text": "LEGENDARY SPELL: return one knocked-out doremon from your discard to an empty slot with 100 HP. Limit 1 per deck.",
+   "price": 800,
+   "legendary": true,
+   "mythical": false
+  },
+  {
+   "id": "st_iron_polish",
+   "name": "Iron Polish",
+   "set": "ST",
+   "pack": "HT",
+   "rarity": "ITEM",
+   "num": 33,
+   "kind": "spell",
+   "types": [
+    "Steel"
+   ],
+   "hp": 0,
+   "move": "Iron Guard",
+   "moveType": "Steel",
+   "dmg": 0,
+   "artMon": "woolveon",
+   "effect": {
+    "atk": 1,
+    "def": 1
+   },
+   "text": "One of your doremon gets ATK +1 and DEF +1.",
+   "price": 240,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_clean_slate",
+   "name": "Clean Slate",
+   "set": "ST",
+   "pack": "HT",
+   "rarity": "ITEM",
+   "num": 34,
+   "kind": "spell",
+   "types": [
+    "Water"
+   ],
+   "hp": 0,
+   "move": "Pal Patch",
+   "moveType": "Water",
+   "dmg": 0,
+   "artMon": "grumtose",
+   "effect": {
+    "reset": 1
+   },
+   "text": "Clear ALL ATK and DEF stage changes on one of your doremon (buffs and debuffs).",
+   "price": 120,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_sandstorm",
+   "name": "Sandstorm",
+   "set": "ST",
+   "pack": "HT",
+   "rarity": "ITEM",
+   "num": 35,
+   "kind": "trap",
+   "types": [
+    "Ground"
+   ],
+   "hp": 0,
+   "move": "Quake Stomp",
+   "moveType": "Ground",
+   "dmg": 0,
+   "artMon": "sandtabby",
+   "effect": {
+    "def": -1,
+    "recoil": 20
+   },
+   "text": "LEGENDARY TRAP: when an enemy attacks, the attacker gets DEF -1 and takes 20 damage. Limit 1 per deck.",
+   "price": 700,
+   "legendary": true,
+   "mythical": false
+  },
+  {
+   "id": "st_counter_plate",
+   "name": "Counter Plate",
+   "set": "ST",
+   "pack": "HT",
+   "rarity": "ITEM",
+   "num": 36,
+   "kind": "trap",
+   "types": [
+    "Steel"
+   ],
+   "hp": 0,
+   "move": "Iron Smash",
+   "moveType": "Steel",
+   "dmg": 0,
+   "artMon": "spikebrute",
+   "effect": {
+    "block": 1,
+    "recoil": 50
+   },
+   "text": "When an enemy attacks, block that attack and deal 50 damage to the attacker.",
+   "price": 320,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_sinkhole",
+   "name": "Sinkhole",
+   "set": "ST",
+   "pack": "HT",
+   "rarity": "ITEM",
+   "num": 37,
+   "kind": "trap",
+   "types": [
+    "Ground"
+   ],
+   "hp": 0,
+   "move": "Mud Burst",
+   "moveType": "Ground",
+   "dmg": 0,
+   "artMon": "golechoke",
+   "effect": {
+    "def": -2,
+    "recoil": 10
+   },
+   "text": "When an enemy attacks, the attacker gets DEF -2 and takes 10 damage (sinks into the pit).",
+   "price": 200,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_rust_cloud",
+   "name": "Rust Cloud",
+   "set": "ST",
+   "pack": "HT",
+   "rarity": "ITEM",
+   "num": 38,
+   "kind": "trap",
+   "types": [
+    "Steel"
+   ],
+   "hp": 0,
+   "move": "Metal Screech",
+   "moveType": "Steel",
+   "dmg": 0,
+   "artMon": "draplin",
+   "effect": {
+    "atk": -1,
+    "def": -1
+   },
+   "text": "When an enemy attacks, the attacker gets ATK -1 and DEF -1.",
+   "price": 180,
+   "legendary": false,
+   "mythical": false
+  },
+  {
+   "id": "st_last_stand",
+   "name": "Last Stand",
+   "set": "ST",
+   "pack": "HT",
+   "rarity": "ITEM",
+   "num": 39,
+   "kind": "trap",
+   "types": [
+    "Dark"
+   ],
+   "hp": 0,
+   "move": "Menace",
+   "moveType": "Dark",
+   "dmg": 0,
+   "artMon": "rampagoone",
+   "effect": {
+    "atk": -2,
+    "recoil": 20
+   },
+   "text": "When an enemy attacks, the attacker gets ATK -2 and takes 20 damage.",
+   "price": 260,
    "legendary": false,
    "mythical": false
   }

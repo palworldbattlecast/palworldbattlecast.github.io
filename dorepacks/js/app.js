@@ -1,6 +1,6 @@
 import * as E from './engine.js';
 import { Audio, TITLES } from './audio.js';
-const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel } = E;
+const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel, seasonOfDay, daysLeftInSeason, seasonFeatured, SEASON_DAYS, trainerSprite, SEASON_REWARDS } = E;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('en-US');
@@ -52,14 +52,27 @@ function fitSprite(id, bw, bh, box = true) {
   return box ? `<span class="sprbox" style="width:${bw}px;height:${bh}px">${inner}</span>` : inner;
 }
 const sprite = (id, maxSide) => fitSprite(id, maxSide, maxSide);
+/** profile / trainer art: season pics & mon sprites use sprite(); trainer NPCs use IMG trainers/ */
+function avImg(id, size = 40) {
+  if (!id) id = 'axerupi';
+  if (String(id).startsWith('trainers/') || String(id).startsWith('npc_') || String(id).startsWith('trainer_') || String(id).startsWith('boy_')) {
+    const k = String(id).startsWith('trainers/') ? id : 'trainers/' + id;
+    return `<img class="px" src="${IMG[k] || ''}" style="width:${size}px;height:${size}px;image-rendering:pixelated;object-fit:contain" alt="" draggable="false">`;
+  }
+  return sprite(id, size);
+}
+function goldCoin(mon, size = 54) {
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffe9a0,#d4a017 55%,#8a6a10);box-shadow:inset 0 0 0 3px #f5d76e,0 2px 6px #0008">${sprite(mon, Math.round(size * 0.7))}</span>`;
+}
+
 const rar = r => `<span class="rar" style="background:${RCOL[r] || '#888'}">${r === 'ITEM' ? 'ITEM' : r}</span>`;
 
 // ---------- state ----------
 const params = new URLSearchParams(location.search);
 const SNAP = params.get('snap'), DEBUG = params.has('debug');
 // ---------- real-time league days ----------
-const clock = ms => { const t = Math.ceil(ms / 1000); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
-function dayText() { return `<span>📅 League day <b>${G.s.day}</b></span><span class="grow"></span><span>next day in <b class="cd">${clock(G.msToNextDay())}</b></span>`; }
+const clock = ms => { const t = Math.ceil(ms / 1000); const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60; return h ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`; };
+function dayText() { const sn = seasonOfDay(G.s.day); return `<span>📅 Day <b>${G.s.day}</b> · Season <b>${sn}</b></span><span class="grow"></span><span>next day in <b class="cd">${clock(G.msToNextDay())}</b></span>`; }
 let catching = false;
 function tickDays() {
   if (!G || SNAP || catching) return;
@@ -114,7 +127,7 @@ function packsView() {
     return `<div class="panel"><div class="row"><img src="${flip ? packBack(set) : IMG['cards/pack_' + set.toLowerCase()]}" style="width:96px;border-radius:8px;image-rendering:pixelated;cursor:pointer" alt="" data-a="packFlip" data-v="${set}" title="Tap to see the back">
       <div class="grow col" style="gap:6px"><div class="title" style="font-size:22px;color:var(--yellow)">${r.name}</div>
       <div class="small">7 cards · ${money(r.price)} · you have <b style="color:#fff">${s.packs[set] || 0}</b></div>
-      <div class="small" style="color:#7ee0ff">${set === 'T2' ? 'Split attacks · ' : ''}tap the pack to flip it</div><div class="small">Pity ${pity}/${r.pity - 1}</div><div class="bar"><i style="width:${pity / (r.pity - 1) * 100}%"></i></div>
+      <div class="small" style="color:#7ee0ff">${set === 'T2' ? 'Split attacks · ' : set === 'HT' ? 'Brown & silver · Revive & Sandstorm · ' : ''}tap the pack to flip it</div><div class="small">Pity ${pity}/${r.pity - 1}</div><div class="bar"><i style="width:${pity / (r.pity - 1) * 100}%"></i></div>
       <div class="row"><button class="btn y sm grow" data-a="open" data-v="${set}" ${s.packs[set] > 0 ? '' : 'disabled'}>Open</button><button class="btn sm grow" data-a="buyPack" data-v="${set}" ${s.money >= r.price ? '' : 'disabled'}>Buy ${money(r.price)}</button></div></div></div>
       <div class="row wrap" style="margin-top:8px;gap:4px">${chase.map(c => `<span style="opacity:${s.owned[c.id] > 0 ? 1 : .3}">${sprite(spriteId(c), 40)}</span>`).join('')}</div>
       <details style="margin-top:6px"><summary class="small">Odds &amp; pity</summary>${Packs.ratesText(set).map(([a, b]) => `<div class="small" style="margin-top:5px"><b style="color:#fff">${a}:</b> ${esc(b)}</div>`).join('')}</details></div>`;
@@ -209,39 +222,61 @@ function trainersView() {
   if (UI.trainer != null) {
     const t = G.trainerStats(UI.trainer), mp = t.mostPlayed ? card(t.mostPlayed) : null;
     const kv = (k, v) => `<div class="it"><span class="grow">${k}</span><b>${v}</b></div>`;
-    return `<h1>Trainer</h1><div class="panel" style="text-align:center;border-color:#4fc3ff"><div class="pix" style="color:#4fc3ff">✔ VERIFIED TRAINER</div><div style="margin:10px 0">${sprite(t.avatar, 90)}</div><div class="title" style="font-size:26px">${esc(t.name)}</div><div class="small">${esc(t.tier)} · ${t.mr} MR${UI.trainer !== E.ME ? ` · plays ${esc(E.persOf(UI.trainer).fav.join(' / '))} · ${esc(E.persOf(UI.trainer).style)}` : ''}</div></div>
+    return `<h1>Trainer</h1><div class="panel" style="text-align:center;border-color:#4fc3ff"><div class="pix" style="color:#4fc3ff">✔ VERIFIED TRAINER</div><div style="margin:10px 0">${avImg(t.avatar || (UI.trainer === E.ME ? G.picOf('me') : G.picOf(UI.trainer)), 90)}</div><div class="title" style="font-size:26px">${esc(t.name)}</div><div class="small">${esc(t.tier)} · ${t.mr} MR${UI.trainer !== E.ME ? ` · plays ${esc(E.persOf(UI.trainer).fav.join(' / '))} · ${esc(E.persOf(UI.trainer).style)}` : ''}</div></div>
      <div class="panel list" style="padding:4px 12px">${kv('Cash', `<span style="color:#7dfc9f">${money(t.money)}</span>`)}${kv('Binder', `${t.binder} / ${t.binderTotal} cards (${t.copies} copies)`)}${kv('Ranked games', t.games)}${kv('Record', `${t.wins}W ${t.losses}L · ${t.wins + t.losses ? Math.round(t.wins / (t.wins + t.losses) * 100) : 0}%`)}${kv('Win streak', t.streak)}${kv('Tournaments won', t.tourWins)}
       <div class="it"><span class="grow">Most played card</span>${mp ? `${isMon(mp) ? sprite(spriteId(mp), 30) : '✨'}<b data-a="inspect" data-v="${mp.id}">${esc(mp.name)} ×${t.mostPlayedN}</b>` : '<b>—</b>'}</div></div>
      <button class="btn k" style="width:100%" data-a="trainer" data-v="">‹ All trainers</button>`;
   }
   const lb = G.leaderboard;
-  return `<h1>Trainers</h1><div class="sub">${lb.length} trainers in the league · tap one for their Verified card</div><div class="grid3">${lb.map(r => `<button class="btn k" style="flex-direction:column;padding:8px 4px${r.me ? ';border:2px solid var(--yellow)' : ''}" data-a="trainer" data-v="${r.k}">${sprite(r.avatar, 44)}<span style="font-size:13px">${esc(r.name)} <span style="color:#4fc3ff">✔</span></span><span class="small">${r.mr} · ${tier(r.mr)}</span></button>`).join('')}</div>`;
+  return `<h1>Trainers</h1><div class="sub">${lb.length} trainers in the league · tap one for their Verified card</div><div class="grid3">${lb.map(r => `<button class="btn k" style="flex-direction:column;padding:8px 4px${r.me ? ';border:2px solid var(--yellow)' : ''}" data-a="trainer" data-v="${r.k}">${avImg(r.avatar, 44)}<span style="font-size:13px">${esc(r.name)} <span style="color:#4fc3ff">✔</span></span><span class="small">${r.mr} · ${tier(r.mr)}</span></button>`).join('')}</div>`;
 }
 function moreView() {
   const m = UI.more;
   if (!m) {
     const T = G.tour, qd = G.quests.filter(q => q.done).length;
     const it = { league: ['🏆', 'League', 'Leaderboard'], spectate: ['📺', 'Spectate', 'Live matches'], tour: ['🥇', 'Tournament', T ? (T.done ? 'Finished today' : 'Today!') : 'Every 3rd day'], quests: ['🗺', 'Adventures', `${qd}/3 done`], draft: ['🎲', 'Draft', G.s.draft && !G.s.draft.done ? 'In progress' : `${money(Game.DRAFT_FEE)} entry`], trainers: ['🪪', 'Trainers', 'Verified stats'], shop: ['🛒', 'Shop', 'Packs · singles · sell'], auction: ['🔨', 'Auctions', `${G.s.auctions.length} listings`],
-      market: ['📈', 'Market', 'Prices'], trades: ['🤝', 'Trades', `${G.s.offers.length} offer${G.s.offers.length === 1 ? '' : 's'}`], stats: ['📊', 'Stats', 'Career'], ach: ['🏅', 'Achievements', `${G.s.achievements.length}/${ACHIEVEMENTS.length}`], rules: ['📖', 'How to Play', 'Rules'] };
+      profile: ['👤', 'Profile', 'Pic & coin'], market: ['📈', 'Market', 'Prices'], trades: ['🤝', 'Trades', `${G.s.offers.length} offer${G.s.offers.length === 1 ? '' : 's'}`], stats: ['📊', 'Stats', 'Career'], ach: ['🏅', 'Achievements', `${G.s.achievements.length}/${ACHIEVEMENTS.length}`], rules: ['📖', 'How to Play', 'Rules'] };
     const grp = (t, ks) => `<div class="gh">${t}</div><div class="tiles">${ks.map(k => { const [i, n, d] = it[k]; return `<button class="tile" data-a="more" data-v="${k}"><span class="ti">${i}</span><span class="tn">${n}</span><span class="td">${d}</span>${k === 'trades' && G.s.offers.length ? '<span class="dot"></span>' : ''}</button>`; }).join('')}</div>`;
-    return `<h1>More</h1>` + grp('League', ['league', 'tour', 'spectate']) + grp('Play', ['quests', 'draft', 'trainers']) + grp('Cards', ['trades']) + grp('Trading', ['shop', 'auction', 'market']) + grp('You', ['stats', 'ach', 'rules'])
+    return `<h1>More</h1>` + grp('League', ['league', 'tour', 'spectate']) + grp('You', ['profile', 'stats', 'ach', 'rules']) + grp('Play', ['quests', 'draft', 'trainers']) + grp('Cards', ['trades']) + grp('Trading', ['shop', 'auction', 'market'])
       + `<div class="gh">Settings</div>` + audioPanel() + newGameBtn() + `<div class="small" style="margin-top:8px;text-align:center">Progress is saved on this device.</div>`;
   }
   const back = `<button class="btn k sm" data-a="more" data-v="" style="margin-bottom:8px">‹ Back</button>`;
-  return back + ({ league: leagueView, trades: tradesView, shop: shopView, market: marketView, ach: achView, rules: rulesView, auction: auctionView, spectate: spectateView, stats: statsView, tour: tourView, quests: () => `<h1>Daily Adventures</h1>` + questsPanel(false), draft: draftView, trainers: trainersView })[m]();
+  return back + ({ league: leagueView, profile: profileView, trades: tradesView, shop: shopView, market: marketView, ach: achView, rules: rulesView, auction: auctionView, spectate: spectateView, stats: statsView, tour: tourView, quests: () => `<h1>Daily Adventures</h1>` + questsPanel(false), draft: draftView, trainers: trainersView })[m]();
 }
 function leagueView() {
-  const lb = G.leaderboard;
-  return `<h1>League</h1><div class="sub">Season ladder · ${lb.length} trainers · tap a trainer for stats</div>
-  <div class="panel"><div class="row wrap" style="gap:4px">${TIERS.map(([n, v]) => `<span class="chip">${n} ${v ? v + '+' : ''}</span>`).join('')}</div><div class="small" style="margin-top:6px">A win is always worth at least +${MR.minWin} MR, plus a streak bonus (+${MR.streakStep} per win in a row, up to +${MR.streakMax}). Losing to a lower-rated trainer costs a bit less, and no loss costs more than ${MR.maxLoss}. Every league day everyone above 1000 gives back ${MR.rust * 100}% of the excess, so ratings don't inflate forever.</div></div>
-  <div class="panel list" style="padding:4px 12px">${lb.map((r, i) => `<div class="it" data-a="trainerFrom" data-v="${r.k}" style="cursor:pointer;"${r.me ? 'background:#ffd64022;margin:0 -12px;padding:9px 12px' : ''}"><b style="width:22px">${i + 1}</b><span style="width:40px;text-align:center">${sprite(r.avatar, 34)}</span><div class="grow"><b>${esc(r.name)}</b><div class="small">${tier(r.mr)} · ${r.w}W ${r.l}L · <span style="color:#7dfc9f">${money(r.cash)}</span>${r.escrow ? ` <span title="in bids">(+${money(r.escrow)} bid)</span>` : ''}</div></div><b style="color:var(--yellow)">${r.mr}</b></div>`).join('')}</div>
+  const lb = G.leaderboard, sn = seasonOfDay(G.s.day), left = daysLeftInSeason(G.s.day), feat = seasonFeatured(sn);
+  const top8 = lb.slice(0, 8);
+  const hist = (G.s.seasonHistory || []).slice().reverse();
+  return `<h1>League</h1><div class="sub">Season ${sn} · ${left} day${left === 1 ? '' : 's'} left · featured ${esc(feat)} · ${lb.length} trainers</div>
+  <div class="panel" id="seasontracker"><div class="title" style="font-size:20px;color:var(--yellow)">Season Tracker</div>
+    <div class="row" style="margin:6px 0;gap:10px;align-items:center">${avImg(feat, 48)}<div class="grow"><b>Season ${sn}</b> · featured <b>${esc(feat)}</b><div class="small">${left} league days left (seasons last ${SEASON_DAYS} days). Ranks reset every season.</div></div></div>
+    <div class="small" style="color:var(--yellow);margin:6px 0 2px">Top 8 this season</div>
+    <div class="list">${top8.map((r, i) => `<div class="it">${avImg(r.avatar, 36)}<div class="grow"><b>${i + 1}. ${esc(r.name)}</b>${r.me ? ' · you' : ''}<div class="small">${r.mr} MR</div></div></div>`).join('')}</div>
+    <div class="small" style="margin-top:8px">End rewards: 1st 5 packs + $5,000 · 2nd 3 + $3,000 · 3rd 2 + $2,000 · 4th–8th 1 + $1,000 · plus season pic & gold coin</div>
+  </div>
+  ${hist.length ? `<div class="panel"><div class="title" style="font-size:18px;color:var(--yellow)">Past seasons</div>${hist.map(h => `<div style="margin:8px 0;border-top:1px solid #fff2;padding-top:6px"><div class="row" style="gap:8px;align-items:center">${avImg(h.featured, 32)}<b>Season ${h.season}</b><span class="small">featured ${esc(h.featured)}</span></div><div class="small">${(h.top8 || []).map((t, i) => `${i + 1}. ${esc(t.name)} (${t.mr})`).join(' · ')}</div></div>`).join('')}</div>` : ''}
+  <div class="panel"><div class="row wrap" style="gap:4px">${TIERS.map(([n, v]) => `<span class="chip">${n} ${v ? v + '+' : ''}</span>`).join('')}</div><div class="small" style="margin-top:6px">A win always gains at least +15 MR (plus a streak bonus). Loss costs Elo points vs that opponent.</div></div>
+  <div class="panel list" style="padding:4px 12px">${lb.map((r, i) => `<div class="it" data-a="trainerFrom" data-v="${r.k}" style="cursor:pointer;${r.me ? 'background:#ffd64022;margin:0 -12px;padding:8px 12px' : ''}">${avImg(r.avatar, 40)}<div class="grow"><b>${i + 1}. ${esc(r.name)}</b><div class="small">${r.mr} MR · ${r.w}-${r.l}</div></div></div>`).join('')}</div>
   ${DEBUG ? '<button class="btn k" style="width:100%" data-a="skipDay">[debug] Skip a day</button>' : ''}
-  <div class="sub">Recent results</div><div class="panel list" style="padding:4px 12px">${G.s.recent.slice(0, 15).map(r => `<div class="it small"><span class="grow" style="color:#fff">${esc(r.a)} vs ${esc(r.b)}</span><span>🏆 ${esc(r.winner)}${r.mrChange ? ` (${r.mrChange > 0 ? '+' : ''}${r.mrChange}${r.mrLoss != null ? ' / ' + r.mrLoss : ''} MR)` : ''}</span></div>`).join('') || '<div class="small">No games yet.</div>'}</div>`;
+  <div class="sub">Recent results</div><div class="panel list" style="padding:4px 12px">${G.s.recent.slice(0, 15).map(r => `<div class="it small"><span class="grow" style="color:#fff">${esc(r.a)} vs ${esc(r.b)}</span><span>${esc(r.winner)}${r.mrChange ? ` (${r.mrChange > 0 ? '+' : ''}${r.mrChange})` : ''}</span></div>`).join('') || '<div class="it small">No matches yet</div>'}</div>`;
+}
+function profileView() {
+  const s = G.s, pics = [{ id: null, label: 'Default (Axerupi)', mon: 'axerupi' }, ...((s.seasonPics || []).map(n => ({ id: 'season:' + n, label: 'Season ' + n + ' · ' + seasonFeatured(n), mon: seasonFeatured(n) })))];
+  const coins = [{ id: 'axerupi', label: 'Default Axerupi coin', mon: 'axerupi' }, ...((s.seasonCoins || []).map(n => ({ id: 'season:' + n, label: 'Season ' + n + ' gold · ' + seasonFeatured(n), mon: seasonFeatured(n) })))];
+  const curP = s.profilePic, curC = s.coin || 'axerupi';
+  return `<h1>Profile</h1><div class="sub">Equip a profile pic and a coin for the opening flip</div>
+  <div class="panel" id="profiletab"><div class="row" style="gap:14px;align-items:center">${avImg(G.picOf('me'), 72)}${goldCoin(G.coinOf('me'), 64)}<div class="grow"><b>Your look</b><div class="small">Shown on the league ladder and when AIs face you. Season rewards unlock new pics and gold coins.</div></div></div></div>
+  <div class="panel"><div class="title" style="font-size:18px;color:var(--yellow)">Profile pic</div>
+    ${pics.map(p => `<button class="btn ${curP === p.id || (!curP && p.id === null) ? 'y' : 'k'} sm" style="width:100%;margin:4px 0;justify-content:flex-start;gap:10px" data-a="setPic" data-v="${p.id === null ? 'default' : p.id}">${avImg(p.mon, 36)}<span class="grow" style="text-align:left">${esc(p.label)}</span>${curP === p.id || (!curP && !p.id) ? '✓' : ''}</button>`).join('') || '<div class="small">Finish a season in the top 8 to earn pics.</div>'}
+  </div>
+  <div class="panel"><div class="title" style="font-size:18px;color:var(--yellow)">Coin</div>
+    ${coins.map(c => `<button class="btn ${curC === c.id ? 'y' : 'k'} sm" style="width:100%;margin:4px 0;justify-content:flex-start;gap:10px" data-a="setCoin" data-v="${c.id}">${goldCoin(c.mon, 36)}<span class="grow" style="text-align:left">${esc(c.label)}</span>${curC === c.id ? '✓' : ''}</button>`).join('')}
+  </div>`;
 }
 function tradesView() {
   const s = G.s;
   if (UI.counter) { const o = s.offers.find(x => x.id === UI.counter); if (o) { const opts = G.counterOptions(o); return `<h1>Counter</h1><div class="sub">Ask for a different card in exchange for your ${esc(card(o.want).name)} (${money(G.value(o.want))}).</div><div class="panel list" style="padding:4px 12px">${opts.map(id => `<div class="it" data-a="doCounter" data-v="${id}">${sprite(spriteId(card(id)), 30)}<div class="grow">${esc(card(id).name)} ${rar(card(id).rarity)}</div><b>${money(G.value(id))}</b></div>`).join('') || '<div class="small">Nothing they can spare.</div>'}</div><button class="btn k" data-a="cancelCounter">Cancel</button>`; } UI.counter = null; }
-  return `<h1>Trades</h1><div class="sub">AI players send new offers every league day (every 10 minutes).</div>` + (s.offers.length ? s.offers.map(o => { const p = s.ai.find(a => a.id === o.aiId); return `<div class="panel"><div class="row">${sprite(p.avatar, 34)}<b class="grow">${esc(p.name)}</b><span class="small">${esc(o.note)}</span></div>
+  return `<h1>Trades</h1><div class="sub">AI players send new offers every league day (every 2 hours).</div>` + (s.offers.length ? s.offers.map(o => { const p = s.ai.find(a => a.id === o.aiId); return `<div class="panel"><div class="row">${sprite(p.avatar, 34)}<b class="grow">${esc(p.name)}</b><span class="small">${esc(o.note)}</span></div>
    <div class="row" style="margin:10px 0;align-items:flex-start"><div class="grow" style="text-align:center"><div class="small">You get</div>${cardImg(o.give)}<b>${money(G.value(o.give))}</b></div><div style="align-self:center;font-size:24px">⇄</div><div class="grow" style="text-align:center"><div class="small">You give</div>${cardImg(o.want)}<b>${money(G.value(o.want))}</b></div></div>
    <div class="row"><button class="btn g sm grow" data-a="accept" data-v="${o.id}">Accept</button><button class="btn sm grow" data-a="counter" data-v="${o.id}" ${o.countered ? 'disabled' : ''}>Counter</button><button class="btn r sm grow" data-a="decline" data-v="${o.id}">Decline</button></div></div>`; }).join('') : '<div class="panel small">No offers right now. Play a battle to advance the day — AIs who want your cards will reach out.</div>');
 }
@@ -260,7 +295,7 @@ function marketView() {
   ${top ? `<div class="panel row">${sprite(spriteId(card(top)), 56)}<div class="grow"><div class="pix" style="color:var(--yellow)">TOP CARD</div><div class="title" style="font-size:22px">${esc(card(top).name)}</div><b>${money(G.value(top))}</b></div></div>` : ''}
   <div class="panel list" style="padding:4px 12px">${ids.map(id => { const c = card(id), ch = G.change(id); return `<div class="it" data-a="inspect" data-v="${id}">${sprite(spriteId(c), 28)}<div class="grow" style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</div>${rar(c.rarity)}</div>${spark(G.s.market[id].history)}<div style="text-align:right;width:76px"><b>${money(G.value(id))}</b><div class="small" style="color:${ch > 0 ? '#40c773' : ch < 0 ? '#f25252' : 'var(--dim)'}">${ch > 0 ? '+' : ''}${(ch * 100).toFixed(1)}%</div></div></div>`; }).join('')}</div>`;
 }
-function ends(l) { const d = l.endDay - G.s.day; return d <= 1 ? `ends in ${clock(G.msToNextDay())}` : `ends in ${d} days (~${Math.round(((d - 1) * 10 + G.msToNextDay() / 60000))} min)`; }
+function ends(l) { const d = l.endDay - G.s.day; return d <= 1 ? `ends in ${clock(G.msToNextDay())}` : `ends in ${d} days (~${Math.round(((d - 1) * 120 + G.msToNextDay() / 60000))} min)`; }
 function auctionView() {
   const s = G.s, t = UI.aTab || 'browse'; let body = '';
   const who = w => w === E.ME ? 'You' : esc(s.ai[w].name);
@@ -285,7 +320,7 @@ function spectateView() {
   const s = G.s;
   return `<h1>Spectate</h1><div class="panel" style="text-align:center"><div class="pix" style="color:var(--yellow)">LIVE LEAGUE MATCHES</div><div class="small" style="margin:6px 0">A fresh pairing every time, never the same two trainers twice in a row. The result really counts: MR, cash and records.</div><button class="btn y" style="width:100%" data-a="watch" data-v="N">📺 Watch a live match</button></div>
   <div class="sub">Replays from league day ${s.lastDay?.[0]?.day ?? '—'}</div>
-  <div class="panel list" style="padding:4px 12px">${(s.lastDay || []).map((m, i) => `<div class="it">${sprite(s.ai[m.a].avatar, 30)}<div class="grow"><b>${esc(s.ai[m.a].name)}</b> vs <b>${esc(s.ai[m.b].name)}</b><div class="small">Day ${m.day}</div></div><button class="btn y sm" data-a="watch" data-v="R${i}">Watch</button></div>`).join('') || '<div class="small" style="padding:8px 0">No league matches yet — play or skip a day.</div>'}</div>
+  <div class="panel list" style="padding:4px 12px">${(s.lastDay || []).map((m, i) => `<div class="it">${avImg(G.picOf(m.a), 30)}<div class="grow"><b>${esc(s.ai[m.a].name)}</b> vs <b>${esc(s.ai[m.b].name)}</b><div class="small">Day ${m.day}</div></div><button class="btn y sm" data-a="watch" data-v="R${i}">Watch</button></div>`).join('') || '<div class="small" style="padding:8px 0">No league matches yet — play or skip a day.</div>'}</div>
 `;
 }
 const NEW_GAME_WARN = 'Start a new game?\n\nThis permanently erases ALL your cards, Dorebucks, MR, decks, stats, achievements and league progress on this device.\n\nEveryone (you and all 16 AI trainers) restarts equal: starter deck, $1500, 1000 MR and 2 WW + 1 FL packs.';
@@ -340,7 +375,8 @@ const RULES = [
   ['Packs', 'Every pack has 7 cards: 2 Commons, a Common-or-spell/trap slot (30% spell/trap), 1 guaranteed spell/trap, then 3 doremon slots where Uncommons, Rares and the chase cards live. Cheaper spells/traps drop more often. Pity guarantees a chase card if you go long enough without one.'],
   ['Dupes & selling', 'You always keep 3 copies of every card (2 for a deck + 1 spare to trade). Only copies beyond 3 count as dupes: those show up in Sell and get sold by Sell all dupes. Cards in your decks are never sold. The AIs follow the same rule.'],
   ['Ranked matchmaking', 'Your ranked opponent is picked at random, weighted toward players near your MR. You never face the same player twice in a row, and the last few opponents are much less likely to come up again.'],
-  ['League days', 'The league runs in real time: a new league day starts every 10 minutes (the countdown is under the top bar). Each day the AI players battle each other, open packs, trade, list and bid at the Auction House, and market prices move. Days keep passing while the app is closed and catch up when you come back (up to one week). Your own battles don\'t use up days.'],
+  ['Seasons', 'A league season lasts 62 league days. Season 1 features Egmil. At season end the top 8 get packs, cash, that season\'s profile pic and a gold coin for the flip; then EVERY trainer\'s MR resets to 1000. Future seasons rotate a new featured doremon (no repeats until all are used).'],
+  ['League days', 'The league runs in real time: a new league day starts every 2 hours (the countdown is under the top bar). Each day the AI players battle each other, open packs, trade, list and bid at the Auction House, and market prices move. Days keep passing while the app is closed and catch up when you come back (up to one week). Your own battles don\'t use up days.'],
   ['Auction House', 'List spare cards at a fixed price or as an auction lasting 1–5 league days. Bids are held in escrow and refunded the moment someone outbids you; when the timer ends the seller gets the winning bid and the winner gets the card. AIs list and bid too, using only their own cash.'],
   ['Fair play', 'The AI players open packs with the exact same function, odds and pity as you, shuffle the same way, build decks only from cards they own, and play by the same rules. They never see your hand, your deck order or which traps you set. Each AI has its own wallet: it earns the same battle rewards you do and pays for packs and bids out of it, and it never bids more than a card is worth to it or more than it can afford.'],
 ];
@@ -415,7 +451,8 @@ function coinCall(call) {
 function coinHTML(o) {
   const face = (cls, label, icon) => `<div class="cf ${cls}"><div class="ci">${icon}</div><div class="cl">${label}</div></div>`;
   const spin = o.phase === 'spin', rot = (o.result === 'heads' ? 1800 : 1980);
-  const coin = `<div class="coinwrap"><div class="coin" id="coin" style="transform:rotateY(${spin ? 0 : rot}deg)">${face('h', 'HEADS', sprite('axerupi', 54))}${face('t', 'TAILS', '★')}</div></div>`;
+  const myCoin = G.coinOf('me'); const coinFace = myCoin === 'axerupi' ? sprite('axerupi', 54) : goldCoin(myCoin, 54);
+  const coin = `<div class="coinwrap"><div class="coin" id="coin" style="transform:rotateY(${spin ? 0 : rot}deg)">${face('h', 'HEADS', coinFace)}${face('t', 'TAILS', '★')}</div></div>`;
   const opp = G.s.ai[+o.v.slice(1)].name, what = { L: 'RANKED', F: 'FRIENDLY', T: 'TOURNAMENT', D: 'DRAFT' }[o.v[0]];
   let body = '';
   if (o.phase === 'call') body = `<div class="title" style="font-size:24px;margin-bottom:10px">Call it!</div><div class="row" style="width:100%;max-width:340px"><button class="btn y grow" data-a="coinCall" data-v="heads">Heads</button><button class="btn p grow" data-a="coinCall" data-v="tails">Tails</button></div>`;
@@ -523,8 +560,11 @@ function watch(v) {
   const b = new Battle(da, s.ai[A].name, db, s.ai[Bk].name, seed, first);
   BattleAI.openingMulligans(b);
   UI.battle = { b, k: Bk, league: false, sel: null, ei: b.events.length, busy: true, floats: [], lines: b.events.filter(e => e.e === 'log').map(e => e.text),
-    spec: { na: s.ai[A].name, nb: s.ai[Bk].name, aa: s.ai[A].avatar, ab: s.ai[Bk].avatar, speed: 1, paused: false, title, timer: null, rec } };
-  render(); specTick();
+    spec: { na: s.ai[A].name, nb: s.ai[Bk].name, aa: G.picOf(A), ab: G.picOf(Bk), ca: G.coinOf(A), cb: G.coinOf(Bk), speed: 1, paused: false, title, timer: null, rec } };
+  // opening flip uses each trainer's equipped coin (season gold coin if they earned one)
+  UI.overlay = { kind: 'speccoin', a: A, b: Bk, ca: G.coinOf(A), cb: G.coinOf(Bk), na: s.ai[A].name, nb: s.ai[Bk].name, first };
+  render();
+  setTimeout(() => { if (UI.overlay?.kind === 'speccoin') { UI.overlay = null; render(); specTick(); } }, SNAP ? 0 : 2200);
 }
 function specStep() { const B = UI.battle; if (!B?.spec || B.b.over) return; const a = BattleAI.next(B.b); if (!B.b.apply(a)) B.b.apply({ t: 'end' }); drainEvents(); if (B.b.over) specDone(B); render(); return a; }
 // a live match counts when it ends; leaving early plays the rest out instantly so the result still counts
@@ -653,6 +693,8 @@ const A = {
   specPause: () => { const S = UI.battle.spec; S.paused = !S.paused; render(); specTick(); },
   specStep: () => specStep(),
   watch: v => watch(v),
+  setPic: (e, v) => { G.setProfilePic(v === 'default' ? null : v); render(); },
+  setCoin: (e, v) => { G.setCoin(v); render(); },
   skipDay: () => { G.skipDay(); banner(`Day ${G.s.day}`); render(); },
   aTab: v => { UI.aTab = v; render(); }, lKind: v => { UI.lKind = v; render(); }, lDays: v => { UI.lDays = +v; render(); },
   bid: v => { const l = G.s.auctions.find(x => x.id === v); if (!l) return; const min = G.minBid(l); const r = SNAP ? min : prompt(`Your bid for ${card(l.card).name} (minimum ${money(min)}). The cash is held until you're outbid or the auction ends.`, min); if (r == null) return; const amt = Math.round(+String(r).replace(/[$,]/g, '')); if (!G.bid(E.ME, v, amt)) alert(amt < min ? `Bid at least ${money(min)}.` : 'Not enough cash.'); render(); },
@@ -694,7 +736,8 @@ function demo() {
   for (let i = 0; i < 12; i++) { g.s.packs.WW = (g.s.packs.WW || 0) + 1; g.openPack('WW'); }
   for (let i = 0; i < 10; i++) { g.s.packs.FL = (g.s.packs.FL || 0) + 1; g.openPack('FL'); }
   for (let i = 0; i < 12; i++) { g.s.packs.T2 = (g.s.packs.T2 || 0) + 1; g.openPack('T2'); }
-  g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.owned.t2_peaflora = 1; g.s.owned.t2_blizzbear = 1; g.s.packs = { WW: 3, FL: 2, T2: 4 };
+  for (let i = 0; i < 8; i++) { g.s.packs.HT = (g.s.packs.HT || 0) + 1; g.openPack('HT'); }
+  g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.owned.t2_peaflora = 1; g.s.owned.t2_blizzbear = 1; g.s.packs = { WW: 3, FL: 2, T2: 4, HT: 2 }; g.s.owned.ht_rampagoone = 1; g.s.owned.ht_emodoom = 1;
   for (let i = 0; i < 4; i++) { g.recordResult(i % 3 !== 2, true, g.nextLeagueOpponent()); g.skipDay(); }
   g.newAchievements = [];
   g.s.decks[1] = DeckRules.autoBuild(g.s.owned, g.rng); g.s.deckNames[1] = 'Deck 2';
@@ -731,6 +774,19 @@ function demo() {
       g.auctionDay();
       const l = g.s.auctions.find(x => x.seller !== E.ME && x.kind === 'auction' && !x.high) || g.s.auctions.find(x => x.seller !== E.ME && x.kind === 'auction'); if (l) g.bid(E.ME, l.id, g.minBid(l)); break; }
     case 'spectate': UI.tab = 'more'; UI.more = 'spectate'; UI.specA = 2; UI.specB = 5; break;
+    case 'season': {
+      g.s.day = 62; g.s.lastSeasonEnded = 0; g.s.mr = 2200;
+      g.s.ai.forEach((a, i) => { a.mr = 2100 - i * 40; });
+      g.endSeasonIfNeeded(); UI.tab = 'more'; UI.more = 'league'; break; }
+    case 'profile': {
+      g.s.seasonPics = [1]; g.s.seasonCoins = [1]; g.s.profilePic = 'season:1'; g.s.coin = 'season:1';
+      UI.tab = 'more'; UI.more = 'profile'; break; }
+    case 'goldcoin': {
+      g.s.coin = 'season:1'; UI.overlay = { kind: 'coin', v: 'L0', phase: 'call', result: 'heads' }; break; }
+    case 'speccoin': {
+      const w = 9; g.s.ai[w].coin = 'season:1'; g.s.ai[w].profilePic = 'season:1'; g.s.ai[w].seasonPics = [1]; g.s.ai[w].seasonCoins = [1];
+      UI.overlay = { kind: 'speccoin', a: w, b: 0, ca: g.coinOf(w), cb: g.coinOf(0), na: g.s.ai[w].name, nb: g.s.ai[0].name, first: 0 }; break; }
+    case 'ht_packs': UI.tab = 'packs'; break;
     case 'rules': UI.tab = 'more'; UI.more = 'rules'; break;
     case 'opening': { UI.tab = 'packs'; g.s.packs.FL++; const r = g.openPack('FL'); const fl = inSet('FL'); UI.overlay = { kind: 'pack', set: 'FL', cards: r.cards, fresh: r.fresh, phase: 0 }; break; }
     case 'reveal': { const fl = inSet('FL').filter(c => c.rarity === 'LGD'); UI.overlay = { kind: 'pack', set: 'FL', cards: inSet('FL').slice(-7), fresh: new Set([fl[0].id]), phase: 1, i: 6, flipped: true }; UI.overlay.cards[6] = fl[0]; break; }

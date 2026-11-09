@@ -11,8 +11,8 @@ export const card = (id) => DB.byId[id];
 export const inSet = (s) => DB.cards.filter(c => c.set === s).sort((a, b) => a.num - b.num);
 export const ofRarity = (s, r) => DB.cards.filter(c => c.set === s && c.rarity === r).sort((a, b) => a.num - b.num);
 export const supplies = () => inSet('ST');
-export const SETS = ['WW', 'FL', 'T2'];
-export const SET_NAMES = { WW: 'First Adventures', FL: 'Fallen Legends', T2: 'Troublesome 2', ST: 'Supplies' };
+export const SETS = ['WW', 'FL', 'T2', 'HT'];
+export const SET_NAMES = { WW: 'First Adventures', FL: 'Fallen Legends', T2: 'Troublesome 2', HT: 'Hidden Transcendence', ST: 'Supplies' };
 /** reprint-safe identity: every printing has its own card id (set_mon), the doremon itself is c.mon */
 export const nameKey = c => c.mon || c.id;
 /** spells/traps a set's packs can contain: the base supplies, plus (T2 only) the set's own new ones at 3x weight */
@@ -30,7 +30,7 @@ export const Rarity = {
   name: r => ({ C: 'Common', U: 'Uncommon', R: 'Rare', SR: 'Super Rare', SSR: 'SSR', LGD: 'Legendary', MYT: 'Mythical', ITEM: 'Spell/Trap' }[r] || 'Supply'),
   isChase: r => r === 'SSR' || r === 'LGD' || r === 'MYT',
   baseValue: r => ({ C: 30, U: 75, R: 180, SR: 450, SSR: 3000, LGD: 4500, MYT: 9000 }[r] ?? 100),
-  copyLimit: c => (c.rarity === 'LGD' || c.rarity === 'MYT') ? 1 : 2,   // max 2 of any doremon (counted by NAME across printings); Legendary/Mythical 1
+  copyLimit: c => (c.rarity === 'LGD' || c.rarity === 'MYT' || c.legendary || c.mythical) ? 1 : 2,   // LGD/MYT + legendary-flagged spells/traps: 1
   keepCopies: 3,   // a card is a dupe (sellable) only beyond 3 owned copies: 2 for a deck + 1 to trade
 };
 
@@ -55,8 +55,8 @@ export const randomSeed = () => { const a = new Uint32Array(2); (globalThis.cryp
 export const Packs = {
   size: 7,
   // ITEM = a spell/trap card (Supplies). Slot 3: 30% spell/trap, slot 4: always a spell/trap. Slots 5-7 (and every chase rate + pity) unchanged.
-  WW: { set: 'WW', name: 'First Adventures', price: 500, pity: 30, tiers: ['C', 'U', 'R', 'SR', 'SSR', 'ITEM'],
-    slots: [[100,0,0,0,0,0],[100,0,0,0,0,0],[70,0,0,0,0,30],[0,0,0,0,0,100],[0,88,10,2,0,0],[0,65,30,5,0,0],[0,0,80,18.5,1.5,0]], chase: ['SSR'], pityOdds: [1] },
+  WW: { set: 'WW', name: 'First Adventures', price: 500, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT', 'ITEM'],
+    slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
   FL: { set: 'FL', name: 'Fallen Legends', price: 800, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT', 'ITEM'],
     slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
   /** spell/trap pick weight: inverse of shop price (Potion common, Guard Wall rare) */
@@ -65,7 +65,9 @@ export const Packs = {
   pickItem(rng, set = 'WW') { const sup = packSupplies(set), tot = sup.reduce((a, c) => a + Packs.itemWeight(c), 0); let r = rng.unit() * tot; for (const c of sup) { r -= Packs.itemWeight(c); if (r < 0) return c; } return sup[sup.length - 1]; },
   T2: { set: 'T2', name: 'Troublesome 2', price: 700, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT', 'ITEM'],
     slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
-  rule: s => s === 'FL' ? Packs.FL : s === 'T2' ? Packs.T2 : Packs.WW,
+  HT: { set: 'HT', name: 'Hidden Transcendence', price: 900, pity: 40, tiers: ['C', 'U', 'R', 'SR', 'LGD', 'MYT', 'ITEM'],
+    slots: [[100,0,0,0,0,0,0],[100,0,0,0,0,0,0],[70,0,0,0,0,0,30],[0,0,0,0,0,0,100],[0,88,10,2,0,0,0],[0,65,30,5,0,0,0],[0,0,78,18,3.5,0.5,0]], chase: ['LGD', 'MYT'], pityOdds: [3.5, 0.5] },
+  rule: s => Packs[s] || Packs.WW,
   rollRarity(rule, slot, forceChase, rng) {
     if (forceChase && slot === Packs.size - 1) {
       const tot = rule.pityOdds.reduce((a, b) => a + b, 0); let r = rng.unit() * tot;
@@ -103,10 +105,11 @@ export const Packs = {
     rows.push(['Pity', `Guaranteed ${names} in slot 7 on pack ${r.pity} if you haven't hit one in the ${r.pity - 1} before`]);
     const ec = Packs.effectiveChase(set);
     rows.push(['With pity', `Real long-run rate ≈ ${(ec * 100).toFixed(1)}% per pack (about 1 every ${Math.round(1 / ec)} packs)`]);
-    rows.push(['Each card', set !== 'WW' ? 'Each Legendary ~1.17% · Mythical 0.5% per pack (pity: Mythical 1 in 8)' : 'Each SSR starter 0.375% per pack']);
+    rows.push(['Each card', 'Each Legendary ~1.17% · Mythical 0.5% per pack (pity: Mythical 1 in 8)']);
     const io = Packs.itemOdds(set); const ex = n => io.filter(x => x[0].id === n)[0][1];
     rows.push(['Spells/traps', `1.3 per pack on average. Which one is weighted by shop price: Potion ${(ex('st_potion') * 100).toFixed(1)}%, Super Potion ${(ex('st_super_potion') * 100).toFixed(1)}%, Guard Wall ${(ex('st_guard_wall') * 100).toFixed(1)}% of spell/trap pulls`]);
-    if (set === 'T2') { const t2 = io.filter(x => x[0].pack === 'T2').reduce((a, x) => a + x[1], 0); rows.push(['New in T2', `The set's 7 new spells/traps (Mirror Veil, Twin Remedy, Duo Bloom, Twin War Cry, Twin Growl, Double Glare, Toxic Spray) are ${(t2 * 100).toFixed(1)}% of its spell/trap pulls (3x weight); they only come from Troublesome 2 packs or the shop`]); }
+    if (set === 'T2') { const t2 = io.filter(x => x[0].pack === 'T2').reduce((a, x) => a + x[1], 0); rows.push(['New in T2', `The set's 7 new spells/traps are ${(t2 * 100).toFixed(1)}% of its spell/trap pulls (3x weight)`]); }
+    if (set === 'HT') { const ht = io.filter(x => x[0].pack === 'HT').reduce((a, x) => a + x[1], 0); rows.push(['New in HT', `The set's 8 spells/traps (incl. legendary Revive & Sandstorm, 1-copy) are ${(ht * 100).toFixed(1)}% of its spell/trap pulls (3x weight). Chase LGD/MYT slots stay doremon-only.`]); }
     rows.push(['Fairness', 'Every AI opens packs with this exact function and its own pity counter']);
     return rows;
   },
@@ -197,12 +200,14 @@ export class Battle {
   spellValid(c, s, target) {
     const st = this.sides[s];
     if (!this.spellNeedsTarget(c)) {
+      if (eff(c, 'revive') > 0) return st.discard.some(isMon) && st.mons.some(m => !m);
       if (eff(c, 'healAll') > 0 || eff(c, 'heal2') > 0) return st.mons.some(m => m && m.hp < m.card.hp);
       return monCount(st) > 0;
     }
     if (target == null || target < 0 || target >= 6) return false; const m = st.mons[target]; if (!m) return false;
     if (eff(c, 'heal') > 0) return m.hp < m.card.hp;
     if (eff(c, 'protect') > 0) return !m.protected;
+    if (eff(c, 'reset') > 0) return m.atk !== 0 || m.def !== 0;
     const cu = effS(c, 'cure'); if (cu != null) return m.status !== 'none' && (cu === 'all' || cu === m.status);
     return true;
   }
@@ -289,6 +294,19 @@ export class Battle {
       const txt = eff(c, 'atkAll') !== 0 ? `ATK +${eff(c, 'atkAll')}` : `DEF +${eff(c, 'defAll')}`;
       for (let i = 0; i < 6; i++) { const m = S.mons[i]; if (m) { m.atk = clamp4(m.atk + eff(c, 'atkAll')); m.def = clamp4(m.def + eff(c, 'defAll')); this.events.push({ e: 'stat', side: s, slot: i, text: txt }); } }
       this.log(`${who} uses ${c.name}: the whole team gets ${txt}.`);
+    }
+    if (eff(c, 'reset') > 0 && t != null && S.mons[t]) {
+      const m = S.mons[t]; m.atk = 0; m.def = 0; this.events.push({ e: 'stat', side: s, slot: t, text: 'RESET' });
+      this.log(`${who} uses ${c.name}: ${m.card.name}'s ATK/DEF stages are cleared.`);
+    }
+    if (eff(c, 'revive') > 0) {
+      const slot = S.mons.findIndex(m => !m); const di = [...S.discard].map((c, i) => [c, i]).reverse().find(([c]) => isMon(c));
+      if (slot >= 0 && di) {
+        const [rc] = di; S.discard.splice(S.discard.lastIndexOf(rc), 1);
+        const m = newMon(rc); m.hp = Math.min(eff(c, 'revive'), rc.hp); m.ready = false; m.fresh = true; S.mons[slot] = m;
+        this.events.push({ e: 'played', side: s, card: rc }); this.events.push({ e: 'heal', side: s, slot, amount: m.hp });
+        this.log(`${who} uses ${c.name}: ${rc.name} returns with ${m.hp} HP!`);
+      }
     }
   }
   /** slots of the n most damaged doremon (missing HP desc, then slot) */
@@ -444,6 +462,8 @@ export const BattleAI = {
         if (eff(c, 'atkAll') > 0 && monCount(os) > 0) consider({ t: 'spell', hand: i, target: null }, monCount(s) * 14 - 8);
         if (eff(c, 'heal2') > 0) { const miss = Battle.mostHurt(s, 2).map(t => Math.min(eff(c, 'heal2'), s.mons[t].card.hp - s.mons[t].hp)).reduce((x, y) => x + y, 0); consider({ t: 'spell', hand: i, target: null }, miss * 0.55 - (eff(c, 'heal2') > 60 ? 30 : 12)); }
         if (eff(c, 'atk2') > 0 && monCount(os) > 0) consider({ t: 'spell', hand: i, target: null }, Math.min(2, monCount(s)) * 16 - 8);
+        if (eff(c, 'revive') > 0 && s.discard.some(isMon) && s.mons.some(m => !m)) consider({ t: 'spell', hand: i, target: null }, 70);
+        if (eff(c, 'reset') > 0) s.mons.forEach((m, t) => { if (m && (m.atk < 0 || m.def < 0)) consider({ t: 'spell', hand: i, target: t }, 35); });
         if (eff(c, 'protect') > 0 && monCount(os) > 0) s.mons.forEach((m, t) => { if (m && !m.protected) consider({ t: 'spell', hand: i, target: t }, MV(m.card) * 0.12 * (m.hp < m.card.hp * 0.6 ? 1.6 : 0.7) - 10); });
         if (eff(c, 'defAll') > 0) consider({ t: 'spell', hand: i, target: null }, monCount(s) * 12 - 8);
       });
@@ -544,6 +564,21 @@ export const AI_NAMES = [['Kai', 'zebrolt', ['Electric', 'Psychic'], 'aggro'], [
   ['Rex', 'galefang', ['Dragon', 'Ice'], 'aggro'], ['Ivy', 'acornix', ['Grass', 'Poison'], 'control']];
 export const persOf = k => ({ fav: AI_NAMES[k][2], style: AI_NAMES[k][3] });
 export const N_AI = AI_NAMES.length;
+/** overworld NPC/trainer sprites assigned 1:1 to AI trainers (stable by index) */
+export const TRAINER_SPRITES = ['npc_rivalboy','npc_rivalgirl','npc_tr_boy','npc_tr_lass','npc_tr_hiker','npc_tr_monk','npc_grunt','npc_brandy','npc_winston','npc_professor','npc_suitman','npc_clerk','npc_oldman','npc_oldwoman','npc_aide','npc_dorefan'];
+export const trainerSprite = k => TRAINER_SPRITES[k % TRAINER_SPRITES.length];
+export const SEASON_DAYS = 62;
+/** featured doremon per season: Season 1 = Egmil, then rotate through every mon species with no repeats until exhausted */
+export const seasonFeaturedList = () => { const seen = new Set(), out = ['egmil']; for (const c of DB.cards) if (c.kind === 'mon' && c.mon !== 'egmil' && !seen.has(c.mon)) { seen.add(c.mon); out.push(c.mon); } return out; };
+export const seasonFeatured = n => { const L = seasonFeaturedList(); return L[(Math.max(1, n) - 1) % L.length]; };
+export const seasonOfDay = day => Math.max(1, Math.floor(Math.max(0, day - 1) / SEASON_DAYS) + 1);
+export const daysLeftInSeason = day => SEASON_DAYS - ((Math.max(1, day) - 1) % SEASON_DAYS);
+/** season end rewards by place (1..8): packs of newest set + cash + that season's pic & gold coin */
+export const SEASON_REWARDS = [
+  { packs: 5, money: 5000 }, { packs: 3, money: 3000 }, { packs: 2, money: 2000 },
+  { packs: 1, money: 1000 }, { packs: 1, money: 1000 }, { packs: 1, money: 1000 },
+  { packs: 1, money: 1000 }, { packs: 1, money: 1000 },
+];
 export const STARTER = ['ww_snarlpup', 'ww_acornix', 'ww_zapwing', 'ww_spydo', 'ww_gruugy', 'ww_hootuft'];
 // Phase 3 starter buff: 1 Zapwing -> Giggleti, 1 Hootuft -> Embertail, Potion -> Super Potion, Cute Growl -> Menace
 const STARTER_MONS = ['ww_snarlpup', 'ww_snarlpup', 'ww_acornix', 'ww_acornix', 'ww_giggleti', 'ww_zapwing', 'ww_spydo', 'ww_spydo', 'ww_gruugy', 'ww_gruugy', 'ww_embertail', 'ww_hootuft'];
@@ -555,7 +590,7 @@ const inc = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
 export const ACHIEVEMENTS = [
   ['first_pack', 'Rip It!', 'Open your first Dorepack', { WW: 1 }, 0], ['packs_10', 'Pack Rat', 'Open 10 packs', { WW: 1 }, 0],
   ['packs_50', 'Pack Hoarder', 'Open 50 packs', { FL: 2 }, 0], ['first_sr', 'Shiny!', 'Pull a Super Rare', {}, 300],
-  ['first_ssr', 'Starter Chase', 'Pull an SSR starter', { FL: 1 }, 0], ['first_lgd', 'Fallen No More', 'Pull a Legendary', { FL: 1 }, 0],
+  ['first_ssr', 'Starter Legend', 'Pull a First Adventures Legendary or Mythical', { FL: 1 }, 0], ['first_lgd', 'Fallen No More', 'Pull a Legendary', { FL: 1 }, 0],
   ['mythic', 'Myth Made Real', 'Pull the Mythical', { FL: 2 }, 0], ['ww_half', 'Half a Breeze', 'Collect 15 First Adventures cards', { WW: 1 }, 0],
   ['ww_all', 'Whirlwind Master', 'Complete First Adventures (30/30)', { FL: 2 }, 0], ['fl_half', 'Legend Hunter', 'Collect 15 Fallen Legends cards', { FL: 1 }, 0],
   ['fl_all', 'Keeper of Legends', 'Complete Fallen Legends (30/30)', { FL: 3 }, 0], ['first_deck', 'Deck Builder', 'Build your own legal 20-card deck', { WW: 1 }, 0],
@@ -566,6 +601,9 @@ export const ACHIEVEMENTS = [
   ['t2_half', 'Split Decision', 'Collect 15 Troublesome 2 cards', { T2: 1 }, 0], ['t2_all', 'Double Trouble', 'Complete Troublesome 2 (30/30)', { T2: 3 }, 0],
   ['t2_chase', 'Twice the Trouble', 'Pull a Troublesome 2 Legendary or Mythical', { T2: 1 }, 0], ['t2_split', 'Split Second', 'Knock out 2 doremon with one split attack', { T2: 1 }, 300],
   ['sell_10', 'Card Shark', 'Sell 10 cards', {}, 200], ['buy_single', 'Window Shopper', 'Buy a single card', { WW: 1 }, 0],
+  ['ht_half', 'Beyond the Veil', 'Collect 15 Hidden Transcendence cards', { HT: 1 }, 0],
+  ['ht_all', 'Transcendent', 'Complete Hidden Transcendence (22/22 doremon)', { HT: 3 }, 0],
+  ['ht_chase', 'Sealed Power', 'Pull an HT Legendary or Mythical', { HT: 1 }, 0],
 ].map(([id, title, desc, packs, money]) => ({ id, title, desc, packs, money }));
 
 export const TIERS = [['Bronze', 0], ['Silver', 1050], ['Gold', 1150], ['Platinum', 1250], ['Diamond', 1400], ['Master', 1550]];
@@ -585,12 +623,12 @@ export function mrDelta(me, opp, won, streakAfter = 0) {
 }
 
 const freshStats = () => ({ pulls: {}, bestPull: null, packsBought: {}, battles: { ranked: { w: 0, l: 0, d: 0 }, friendly: { w: 0, l: 0, d: 0 } }, earned: {}, spent: {}, auctionsWon: 0, auctionsSold: 0, listings: 0, bids: 0, cardsBought: 0, cardsPulled: 0 });
-const freshSave = () => ({ version: 2, oppHistory: [], nextOpp: null, money: 1500, owned: {}, packs: { WW: 2, FL: 1 }, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
-  mr: 1000, bestMr: 1000, wins: 0, losses: 0, streak: 0, bestStreak: 0, leagueWins: 0, cardsSold: 0, singlesBought: 0, trades: 0, achievements: [], ai: [], offers: [], market: {}, day: 0, recent: [], seed: '0', pulledRarities: [],
+const freshSave = () => ({ version: 3, oppHistory: [], nextOpp: null, money: 1500, owned: {}, packs: { WW: 2, FL: 1, HT: 0 }, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
+  mr: 1000, bestMr: 1000, wins: 0, losses: 0, streak: 0, bestStreak: 0, leagueWins: 0, cardsSold: 0, singlesBought: 0, trades: 0, achievements: [], profilePic: null, coin: 'axerupi', seasonPics: [], seasonCoins: [], seasonHistory: [], lastSeasonEnded: 0, ai: [], offers: [], market: {}, day: 0, recent: [], seed: '0', pulledRarities: [],
   stats: freshStats(), bank: { initial: 0, faucet: 0, sink: 0 }, auctions: [], auctionLog: [], nextId: 1, lastDay: [] });
 export const ME = -1;   // "who" id for the player in the ledger / auctions; AIs are 0..7
 
-export const DAY_MS = 10 * 60 * 1000, MAX_CATCHUP = 7 * 24 * 6;   // a league day every 10 real minutes; at most 1 week caught up
+export const DAY_MS = 2 * 60 * 60 * 1000, MAX_CATCHUP = 7 * 12;   // a league day every 2 real hours; at most 1 week caught up
 export class Game {
   /** storage: {load():string|null, save(string)} or null */
   constructor(storage = null, seed = null) {
@@ -603,6 +641,7 @@ export class Game {
       for (const P of this.s.ai) { P.earned ??= 0; P.spent ??= 0; P.auctionsWon ??= 0; P.auctionsSold ??= 0; }
       for (const c of DB.cards) if (isMon(c) && !this.s.market[c.id]) this.s.market[c.id] = { factor: 1, history: [Rarity.baseValue(c.rarity)] };   // new sets (T2) in old saves
       if (!loaded.bank) this.s.bank = { initial: this.totalCash(), faucet: 0, sink: 0 };   // migrate v1 saves: start the ledger now
+      this.migrateSave();
       this.rng = new SplitMix(BigInt.asUintN(64, BigInt(this.s.seed || '1') + BigInt(Math.floor(Date.now() / 1000))));
       this.migrateTrainers();
     } else { this.s = freshSave(); this.rng = new SplitMix(seed ?? randomSeed()); this.newGame(); }
@@ -621,8 +660,8 @@ export class Game {
   }
   /** a brand-new trainer with exactly the player's starting kit: starter deck, 1000 MR, $1500, the starting packs (opened free) */
   addTrainer(k) {
-    const s = this.s, [n, av] = AI_NAMES[k], f = freshSave();
-    const p = { id: `ai${k}`, name: n, avatar: av, mr: f.mr, money: f.money, owned: {}, deck: [], pity: {}, wins: 0, losses: 0, packsOpened: 0, wants: [], earned: 0, spent: 0, auctionsWon: 0, auctionsSold: 0, streak: 0, games: 0, played: {}, tourWins: 0 };
+    const s = this.s, [n, av] = AI_NAMES[k], f = freshSave(); const spr = trainerSprite(k);
+    const p = { id: `ai${k}`, name: n, avatar: av, trainer: spr, profilePic: spr, coin: 'axerupi', seasonPics: [], seasonCoins: [], mr: f.mr, money: f.money, owned: {}, deck: [], pity: {}, wins: 0, losses: 0, packsOpened: 0, wants: [], earned: 0, spent: 0, auctionsWon: 0, auctionsSold: 0, streak: 0, games: 0, played: {}, tourWins: 0 };
     for (const id of STARTER_DECK) inc(p.owned, id);
     s.ai[k] = p;
     for (const set of SETS) for (let i = 0; i < (f.packs[set] || 0); i++) this.aiOpenPack(k, set, true);
@@ -804,6 +843,101 @@ export class Game {
     this.marketTick();
     this.settleAuctions();
   }
+
+  migrateSave() {
+    const s = this.s;
+    if (s.profilePic === undefined) s.profilePic = null;
+    if (!s.coin) s.coin = 'axerupi';
+    if (!s.seasonPics) s.seasonPics = [];
+    if (!s.seasonCoins) s.seasonCoins = [];
+    if (!s.seasonHistory) s.seasonHistory = [];
+    if (s.lastSeasonEnded == null) s.lastSeasonEnded = Math.floor(Math.max(0, s.day) / SEASON_DAYS);
+    if (!s.packs) s.packs = {};
+    if (s.packs.HT == null) s.packs.HT = 0;
+    // WW SSR→LGD/MYT: clamp decks that hold 2 copies of a now-1-copy card
+    for (const d of s.decks) this.clampDeck(d);
+    for (const P of s.ai || []) {
+      if (!P.trainer) { const k = +String(P.id).replace('ai', ''); P.trainer = trainerSprite(k); }
+      if (!P.profilePic) P.profilePic = P.trainer;
+      if (!P.coin) P.coin = 'axerupi';
+      if (!P.seasonPics) P.seasonPics = [];
+      if (!P.seasonCoins) P.seasonCoins = [];
+      this.clampDeck(P.deck);
+    }
+  }
+  clampDeck(d) {
+    if (!Array.isArray(d)) return;
+    const cnt = {};
+    for (let i = d.length - 1; i >= 0; i--) {
+      const c = card(d[i]); if (!c) continue;
+      const k = nameKey(c); cnt[k] = (cnt[k] || 0) + 1;
+      if (cnt[k] > Rarity.copyLimit(c)) d.splice(i, 1);
+    }
+  }
+  picOf(who) { // who = 'me' | ai index
+    if (who === 'me' || who === ME) {
+      const p = this.s.profilePic; if (!p) return 'axerupi';
+      if (String(p).startsWith('season:')) return seasonFeatured(+p.slice(7));
+      if (String(p).startsWith('trainers/')) return p;
+      return p;
+    }
+    const P = this.s.ai[who]; if (!P) return 'axerupi';
+    const p = P.profilePic; if (!p) return P.trainer || trainerSprite(who);
+    if (String(p).startsWith('season:')) return seasonFeatured(+p.slice(7));
+    return p;
+  }
+  coinOf(who) {
+    const raw = (who === 'me' || who === ME) ? this.s.coin : (this.s.ai[who]?.coin || 'axerupi');
+    if (!raw || raw === 'axerupi') return 'axerupi';
+    if (String(raw).startsWith('season:')) return seasonFeatured(+raw.slice(7));
+    return raw;
+  }
+  setProfilePic(id) { this.s.profilePic = id; this.save(); }
+  setCoin(id) { this.s.coin = id || 'axerupi'; this.save(); }
+  leaderboardRows() {
+    const rows = this.leaderboard; // existing getter
+    return rows;
+  }
+  endSeasonIfNeeded() {
+    // season N covers days (N-1)*62+1 .. N*62; it resolves once day reaches N*62
+    const s = this.s; const completed = Math.floor(Math.max(0, s.day) / SEASON_DAYS);
+    while ((s.lastSeasonEnded || 0) < completed) {
+      const ended = (s.lastSeasonEnded || 0) + 1;
+      this.resolveSeason(ended);
+      s.lastSeasonEnded = ended;
+    }
+  }
+  resolveSeason(n) {
+    const s = this.s, feat = seasonFeatured(n);
+    const rows = [{ k: 'me', name: 'You', mr: s.mr }, ...s.ai.map((p, k) => ({ k, name: p.name, mr: p.mr }))]
+      .sort((a, b) => b.mr - a.mr || String(a.name).localeCompare(b.name));
+    const top8 = rows.slice(0, 8);
+    const packSet = SETS[SETS.length - 1];
+    const grant = (who, place) => {
+      const rw = SEASON_REWARDS[place];
+      const pic = 'season:' + n, coin = 'season:' + n;
+      if (who === 'me') {
+        s.money += rw.money; s.packs[packSet] = (s.packs[packSet] || 0) + rw.packs;
+        if (!s.seasonPics.includes(n)) s.seasonPics.push(n);
+        if (!s.seasonCoins.includes(n)) s.seasonCoins.push(n);
+        s.profilePic = pic; s.coin = coin;
+        s.bank && (s.bank.faucet += rw.money);
+      } else {
+        const P = s.ai[who]; P.money += rw.money; P.earned = (P.earned || 0) + rw.money;
+        for (let i = 0; i < rw.packs; i++) this.aiOpenPack(who, packSet, true);
+        if (!P.seasonPics.includes(n)) P.seasonPics.push(n);
+        if (!P.seasonCoins.includes(n)) P.seasonCoins.push(n);
+        P.profilePic = pic; P.coin = coin;
+      }
+    };
+    top8.forEach((r, i) => grant(r.k, i));
+    s.seasonHistory.push({ season: n, featured: feat, endDay: n * SEASON_DAYS, top8: top8.map(r => ({ k: r.k, name: r.name, mr: r.mr })) });
+    // reset ALL league ranks
+    s.mr = 1000; s.bestMr = Math.max(s.bestMr || 1000, 1000);
+    for (const P of s.ai) { P.mr = 1000; }
+    s.recent.unshift({ a: 'Season ' + n, b: 'Ended', winner: top8[0]?.name || '—', mrChange: 0 });
+  }
+
   /** real-time league days: one every DAY_MS of wall-clock time, caught up (capped) when the app reopens.
    *  Returns how many days are due; call advanceDays to process them (in chunks if you like). */
   daysDue(now = Date.now()) {
@@ -816,12 +950,12 @@ export class Game {
     const s = this.s; const due = this.daysDue(now); n = Math.min(n, due); if (n <= 0) return 0;
     if (due > MAX_CATCHUP) { s.clock += (due - MAX_CATCHUP) * DAY_MS; n = Math.min(n, MAX_CATCHUP); }
     for (let i = 0; i < n; i++) this.worldStep(null);
-    s.clock += n * DAY_MS; this.checkAchievements(); this.save();
+    s.clock += n * DAY_MS; this.endSeasonIfNeeded(); this.checkAchievements(); this.save();
     return n;
   }
   msToNextDay(now = Date.now()) { const c = this.s.clock || now; return Math.max(0, DAY_MS - ((now - c) % DAY_MS)); }
   /** advance a league day without the player battling (auctions tick, AIs play each other) */
-  skipDay() { this.worldStep(null); this.checkAchievements(); this.save(); }
+  skipDay() { this.worldStep(null); this.endSeasonIfNeeded(); this.checkAchievements(); this.save(); }
   availableOwned(k) { return this.s.ai[k].owned; }
   /** a ready-to-play AI-vs-AI pairing (decks, seed, coin toss) */
   aiMatch(a, b) {
@@ -1172,13 +1306,16 @@ export class Game {
     const s = this.s, opened = Object.values(s.packsOpened).reduce((a, b) => a + b, 0);
     switch (id) {
       case 'first_pack': return opened >= 1; case 'packs_10': return opened >= 10; case 'packs_50': return opened >= 50;
-      case 'first_sr': return s.pulledRarities.includes('SR'); case 'first_ssr': return s.pulledRarities.includes('SSR');
+      case 'first_sr': return s.pulledRarities.includes('SR'); case 'first_ssr': return s.pulledRarities.includes('SSR') || s.pulledRarities.includes('LGD') || s.pulledRarities.includes('MYT') || DB.cards.some(c => c.set === 'WW' && Rarity.isChase(c.rarity) && (s.owned[c.id] || 0) > 0);
       case 'first_lgd': return s.pulledRarities.includes('LGD'); case 'mythic': return s.pulledRarities.includes('MYT');
       case 'ww_half': return this.distinct('WW') >= 15; case 'ww_all': return this.distinct('WW') >= 30;
       case 'fl_half': return this.distinct('FL') >= 15; case 'fl_all': return this.distinct('FL') >= 30;
       case 't2_half': return this.distinct('T2') >= 15; case 't2_all': return this.distinct('T2') >= 30;
       case 't2_chase': return inSet('T2').some(c => Rarity.isChase(c.rarity) && this.s.owned[c.id] > 0);
       case 't2_split': return (s.splitKOs || 0) >= 1;
+      case 'ht_half': return this.distinct('HT') >= 15;
+      case 'ht_all': return this.distinct('HT') >= 22;
+      case 'ht_chase': return DB.cards.some(c => c.set === 'HT' && Rarity.isChase(c.rarity) && (s.owned[c.id] || 0) > 0);
       case 'first_deck': { const st = STARTER_DECK.slice().sort().join(); return s.decks.some(d => DeckRules.problems(d).length === 0 && d.slice().sort().join() !== st); }
       case 'first_win': return s.wins >= 1; case 'wins_10': return s.wins >= 10; case 'streak_5': return s.bestStreak >= 5;
       case 'silver': return s.bestMr >= 1050; case 'gold': return s.bestMr >= 1150; case 'platinum': return s.bestMr >= 1250;
@@ -1200,8 +1337,8 @@ export class Game {
     if (a.money > 0) p.push(`$${a.money}`); return p.join(' + ');
   }
   get leaderboard() {
-    const r = this.s.ai.map((p, k) => ({ name: p.name, mr: p.mr, me: false, avatar: p.avatar, w: p.wins, l: p.losses, cash: p.money, escrow: this.committed(k), k }));
-    r.push({ name: 'You', mr: this.s.mr, me: true, avatar: 'axerupi', w: this.s.wins, l: this.s.losses, cash: this.s.money, escrow: this.committed(ME), k: ME });
+    const r = this.s.ai.map((p, k) => ({ name: p.name, mr: p.mr, me: false, avatar: this.picOf(k), mon: p.avatar, trainer: p.trainer || trainerSprite(k), w: p.wins, l: p.losses, cash: p.money, escrow: this.committed(k), k }));
+    r.push({ name: 'You', mr: this.s.mr, me: true, avatar: this.picOf('me'), mon: 'axerupi', trainer: null, w: this.s.wins, l: this.s.losses, cash: this.s.money, escrow: this.committed(ME), k: ME });
     return r.sort((a, b) => b.mr - a.mr);
   }
 }
