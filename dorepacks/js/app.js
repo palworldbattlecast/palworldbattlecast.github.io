@@ -507,7 +507,7 @@ function slotHTML(side, i) {
   if (m) {
     cls += ' mon mini-card';
     if (me && (sel?.kind === 'mon' || sel?.kind === 'mon2' || sel?.kind === 'fresh') && sel.i === i) cls += ' sel';
-    if (my && me && sel?.kind === 'hand') { const c = S.hand[sel.i]; if (isSpell(c) && b.isLegal({ t: 'spell', hand: sel.i, target: i })) cls += ' can'; }
+    if (my && sel?.kind === 'hand') { const c = b.sides[0].hand[sel.i]; if (isSpell(c) && b.isLegal({ t: 'spell', hand: sel.i, target: i }) && (!!me === !b.spellTargetsFoe(c))) cls += ' can'; }
     if (my && me && sel?.kind === 'prot2' && m) cls += ' can';
     if (my && me && sel?.kind === 'auraPick' && b.pendingAura && b.pendingAura.tgtSide === side) cls += ' can';
     if (my && me && !sel && b.canPickAttacker(0, i)) cls += ' can';
@@ -542,7 +542,7 @@ function battleView() {
   if (B.spec) hint = b.over ? `🏆 ${esc(b.winner == null ? 'Draw' : b.winner === 0 ? B.spec.na : B.spec.nb)} wins!` : `Turn ${b.turnNumber} · ${esc(b.current === 0 ? B.spec.na : B.spec.nb)} to move`; else if (!my) hint = b.over ? '' : `${esc(o.name)} is thinking…`;
   else if (B.sel?.kind === 'auraPick') { const p = b.pendingAura; const inf = p && b.sides[p.side].mons[p.slot]; hint = `Aura — tap one ${p && p.tgtSide !== 0 ? 'opposing' : 'allied'} doremon for ${esc(inf?.card.name || 'aura')}`; }
   else if (B.sel?.kind === 'prot2') hint = 'Double Protect — tap a 2nd ally, or Cast to shield one';
-  else if (B.sel?.kind === 'hand') { const c = me.hand[B.sel.i]; hint = isMon(c) ? (me.monsPlayed ? 'Already played a doremon this turn' : 'Tap an empty slot on your mat') : isTrap(c) ? 'Tap a SPELL/TRAP slot to set it' : b.spellNeedsTarget(c) ? 'Tap one of your doremon' : ''; }
+  else if (B.sel?.kind === 'hand') { const c = me.hand[B.sel.i]; hint = isMon(c) ? (me.monsPlayed ? 'Already played a doremon this turn' : 'Tap an empty slot on your mat') : isTrap(c) ? 'Tap a SPELL/TRAP slot to set it' : b.spellTargetsFoe(c) ? 'Clean Slate — tap an opposing doremon' : b.spellNeedsTarget(c) ? 'Tap one of your doremon' : ''; }
   else if (B.sel?.kind === 'fresh') hint = `Played this turn — take ${esc(me.mons[B.sel.i].card.name)} back to your hand?`;
   else if (B.sel?.kind === 'ftrap') hint = `Set this turn — pick ${esc(me.traps[B.sel.i].name)} back up?`;
   else if (B.sel?.kind === 'mon2') hint = `Split! Tap a 2nd target, or hit ${esc(op.mons[B.sel.t].card.name)} only`;
@@ -674,6 +674,7 @@ function tapSlot(side, i) {
     if (sel?.kind === 'hand') { const c = me.hand[sel.i];
       if (isMon(c) && act({ t: 'playMon', hand: sel.i, slot: i })) return;
       if (isSpell(c)) {
+        if (b.spellTargetsFoe(c)) { banner('Clean Slate — tap an opposing doremon'); return; }
         const need = (c.effect && c.effect.protect) || 0;
         if (need >= 2 && sel.kind === 'hand') {
           // first protect target stored; wait for second or confirm
@@ -706,6 +707,10 @@ function tapSlot(side, i) {
   if (sel?.kind === 'auraPick' && b.pendingAura && b.pendingAura.tgtSide === side && b.sides[side].mons[i]) {
     if (resolveAura(b, i)) { B.sel = null; drainEvents(); render(); if (!b.over && b.current === 1) setTimeout(aiTurn, 500); }
     return;
+  }
+  if (sel?.kind === 'hand' && side === 1) {
+    const c = me.hand[sel.i];
+    if (isSpell(c) && b.spellTargetsFoe(c) && act({ t: 'spell', hand: sel.i, target: i })) return;
   }
   if (sel?.kind === 'duelFrom' && b.sides[1].mons[i]) {
     B.sel = { kind: 'duelTo', from2: i }; sfx('click'); banner('Duel — tap which of YOUR doremon is attacked'); render(); return;
@@ -898,6 +903,16 @@ function demo() {
       for (let n = 0; n < 400 && B.b.turnNumber < 9 && !B.b.over; n++) specStep(); break; }
     case 'coinflip': UI.tab = 'battle'; UI.overlay = { kind: 'coin', v: 'L' + g.nextLeagueOpponent(), phase: 'choose', result: 'heads', call: 'heads', won: true }; break;
     case 'settings': UI.tab = 'more'; setTimeout(() => { const el = document.getElementById('audiopanel'); if (el) el.scrollIntoView(); }, 50); break;
+    case 'clean_slate': case 'clean_slate_pick': {
+      const f = Array(20).fill(card('ww_snarlpup'));
+      const b = new Battle(f, 'You', f, g.s.ai[2].name, 55n, 0);
+      const put = (sd, sl, id, o) => { b.sides[sd].mons[sl] = Object.assign(E.newMon(card(id)), { ready: true }, o || {}); };
+      put(0, 0, 'ww_snarlpup'); put(0, 1, 't2_bonkbob');
+      put(1, 0, 'fl_swirlgon', { atk: 2, def: 1 }); put(1, 1, 'ww_gruugy', { atk: -1, def: 0 }); put(1, 2, 'ww_hootuft');
+      b.sides[0].hand = [card('st_clean_slate'), card('st_mirror_veil'), card('t2_grinhorn')];
+      UI.battle = { b, k: 2, league: false, sel: SNAP === 'clean_slate_pick' ? { kind: 'hand', i: 0 } : null, ei: b.events.length, busy: false, floats: [], lines: [] };
+      if (SNAP === 'clean_slate') UI.overlay = { kind: 'inspect', id: 'st_clean_slate', back: false, battle: true };
+      break; }
     case 'takeback': {
       const b = new Battle(g.activeDeckCards, 'You', g.aiDeck(2), g.s.ai[2].name, 778n, 0);
       UI.battle = { b, k: 2, league: true, sel: null, ei: 0, busy: false, floats: [], lines: [] };

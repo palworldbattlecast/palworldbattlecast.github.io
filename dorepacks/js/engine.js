@@ -289,7 +289,9 @@ export class Battle {
     if (a.status === 'brn') x *= 0.5;
     return [Math.max(10, swiftRound(x / 10) * 10), ef];
   }
-  spellNeedsTarget(c) { return eff(c, 'heal') > 0 || effS(c, 'cure') != null || eff(c, 'atk') !== 0 || eff(c, 'def') !== 0 || eff(c, 'protect') > 0; }
+  spellNeedsTarget(c) { return eff(c, 'heal') > 0 || effS(c, 'cure') != null || eff(c, 'atk') !== 0 || eff(c, 'def') !== 0 || eff(c, 'protect') > 0 || eff(c, 'reset') > 0; }
+  /** Clean Slate & any future foe-target spells */
+  spellTargetsFoe(c) { return eff(c, 'reset') > 0; }
   spellValid(c, s, target) {
     const st = this.sides[s];
     if (!this.spellNeedsTarget(c)) {
@@ -297,7 +299,10 @@ export class Battle {
       if (eff(c, 'healAll') > 0 || eff(c, 'heal2') > 0) return st.mons.some(m => m && m.hp < m.card.hp);
       return monCount(st) > 0;
     }
-    if (target == null || target < 0 || target >= 6) return false; const m = st.mons[target]; if (!m) return false;
+    if (target == null || target < 0 || target >= 6) return false;
+    // Clean Slate targets an OPPOSING doremon (same picker side as rival auras)
+    const board = this.spellTargetsFoe(c) ? this.sides[1 - s] : st;
+    const m = board.mons[target]; if (!m) return false;
     if (eff(c, 'heal') > 0) return m.hp < m.card.hp;
     if (eff(c, 'protect') > 0) return !m.protected;
     if (eff(c, 'reset') > 0) return m.atk !== 0 || m.def !== 0;
@@ -360,7 +365,7 @@ export class Battle {
   }
   castSpell(c, s, t, t2 = null) {
     const S = this.sides[s], who = S.name;
-    if (t != null && S.mons[t]) S.mons[t].fresh = false;                                 // a spell resolved onto it: locked in
+    if (t != null && !this.spellTargetsFoe(c) && S.mons[t]) S.mons[t].fresh = false;     // ally-target spell locks that ally in
     if (eff(c, 'healAll') > 0 || eff(c, 'atkAll') !== 0 || eff(c, 'defAll') !== 0 || eff(c, 'heal2') > 0 || eff(c, 'atk2') !== 0) for (const m of S.mons) if (m) m.fresh = false;
     if (eff(c, 'protect') > 0) {
       const n = Math.max(1, eff(c, 'protect'));
@@ -399,9 +404,13 @@ export class Battle {
       for (let i = 0; i < 6; i++) { const m = S.mons[i]; if (m) { m.atk = clamp4(m.atk + eff(c, 'atkAll')); m.def = clamp4(m.def + eff(c, 'defAll')); this.events.push({ e: 'stat', side: s, slot: i, text: txt }); } }
       this.log(`${who} uses ${c.name}: the whole team gets ${txt}.`);
     }
-    if (eff(c, 'reset') > 0 && t != null && S.mons[t]) {
-      const m = S.mons[t]; m.atk = 0; m.def = 0; this.events.push({ e: 'stat', side: s, slot: t, text: 'RESET' });
-      this.log(`${who} uses ${c.name}: ${m.card.name}'s ATK/DEF stages are cleared.`);
+    if (eff(c, 'reset') > 0 && t != null) {
+      const foe = 1 - s, F = this.sides[foe], m = F.mons[t];
+      if (m) {
+        m.atk = 0; m.def = 0; m.fresh = false;
+        this.events.push({ e: 'stat', side: foe, slot: t, text: 'RESET' });
+        this.log(`${who} uses ${c.name}: ${m.card.name}'s ATK/DEF stages are cleared.`);
+      }
     }
     if (eff(c, 'revive') > 0) {
       const slot = S.mons.findIndex(m => !m); const di = [...S.discard].map((c, i) => [c, i]).reverse().find(([c]) => isMon(c));
@@ -620,7 +629,7 @@ export const BattleAI = {
         if (eff(c, 'heal2') > 0) { const miss = Battle.mostHurt(s, 2).map(t => Math.min(eff(c, 'heal2'), s.mons[t].card.hp - s.mons[t].hp)).reduce((x, y) => x + y, 0); consider({ t: 'spell', hand: i, target: null }, miss * 0.55 - (eff(c, 'heal2') > 60 ? 30 : 12)); }
         if (eff(c, 'atk2') > 0 && monCount(os) > 0) consider({ t: 'spell', hand: i, target: null }, Math.min(2, monCount(s)) * 16 - 8);
         if (eff(c, 'revive') > 0 && s.discard.some(isMon) && s.mons.some(m => !m)) consider({ t: 'spell', hand: i, target: null }, 70);
-        if (eff(c, 'reset') > 0) s.mons.forEach((m, t) => { if (m && (m.atk < 0 || m.def < 0)) consider({ t: 'spell', hand: i, target: t }, 35); });
+        if (eff(c, 'reset') > 0) os.mons.forEach((m, t) => { if (m && (m.atk !== 0 || m.def !== 0)) consider({ t: 'spell', hand: i, target: t }, (m.atk > 0 || m.def > 0) ? 48 : 28); });
         if (eff(c, 'protect') > 0 && monCount(os) > 0) s.mons.forEach((m, t) => { if (m && !m.protected) consider({ t: 'spell', hand: i, target: t }, MV(m.card) * 0.12 * (m.hp < m.card.hp * 0.6 ? 1.6 : 0.7) - 10); });
         if (eff(c, 'defAll') > 0) consider({ t: 'spell', hand: i, target: null }, monCount(s) * 12 - 8);
       });

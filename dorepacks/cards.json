@@ -3002,7 +3002,7 @@
       "effect": {
         "reset": 1
       },
-      "text": "Clear ALL ATK and DEF stage changes on one of your doremon (buffs and debuffs).",
+      "text": "Clear ALL ATK and DEF stage changes on one opposing doremon (buffs and debuffs).",
       "price": 120,
       "legendary": false,
       "mythical": false,
@@ -3361,7 +3361,7 @@
       "passive": {
         "allyAtk": 1
       },
-      "text": "AURA — choose one other allied doremon: ATK +1 while Mesby is in play."
+      "text": "AURA \u2014 choose one other allied doremon: ATK +1 while Mesby is in play."
     },
     {
       "id": "ra_sweuw",
@@ -3385,7 +3385,7 @@
       "passive": {
         "allyDef": 1
       },
-      "text": "AURA — choose one other allied doremon: DEF +1 while Sweuw is in play."
+      "text": "AURA \u2014 choose one other allied doremon: DEF +1 while Sweuw is in play."
     },
     {
       "id": "ra_indeezle",
@@ -3451,7 +3451,7 @@
       "passive": {
         "foeAtk": -1
       },
-      "text": "AURA — choose one opposing doremon: ATK −1 while Dustwidow is in play."
+      "text": "AURA \u2014 choose one opposing doremon: ATK \u22121 while Dustwidow is in play."
     },
     {
       "id": "ra_rampagoone",
@@ -3494,7 +3494,7 @@
       "passive": {
         "foeAtk": -1
       },
-      "text": "AURA — choose one opposing doremon: ATK −1 while Twinbloom is in play."
+      "text": "AURA \u2014 choose one opposing doremon: ATK \u22121 while Twinbloom is in play."
     },
     {
       "id": "ra_mossfang",
@@ -3518,7 +3518,7 @@
       "passive": {
         "foeDef": -1
       },
-      "text": "AURA — choose one opposing doremon: DEF −1 while Mossfang is in play."
+      "text": "AURA \u2014 choose one opposing doremon: DEF \u22121 while Mossfang is in play."
     },
     {
       "id": "ra_fluffram",
@@ -3541,7 +3541,7 @@
       "passive": {
         "allyDef": 1
       },
-      "text": "AURA — choose one other allied doremon: DEF +1 while Fluffram is in play."
+      "text": "AURA \u2014 choose one other allied doremon: DEF +1 while Fluffram is in play."
     },
     {
       "id": "ra_brutality",
