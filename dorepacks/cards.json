@@ -34,9 +34,9 @@
     "Normal"
    ],
    "hp": 230,
-   "move": "Boom Blast",
-   "moveType": "Normal",
-   "dmg": 120,
+   "move": "Ice Punch",
+   "moveType": "Ice",
+   "dmg": 80,
    "legendary": false,
    "mythical": false
   },
@@ -316,9 +316,9 @@
     "Normal"
    ],
    "hp": 210,
-   "move": "Boom Blast",
+   "move": "Echo Roar",
    "moveType": "Normal",
-   "dmg": 120,
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -638,9 +638,9 @@
     "Ice"
    ],
    "hp": 250,
-   "move": "Boom Blast",
-   "moveType": "Normal",
-   "dmg": 120,
+   "move": "Blizzard Breath",
+   "moveType": "Ice",
+   "dmg": 90,
    "legendary": false,
    "mythical": false
   },
@@ -2137,9 +2137,9 @@
     "Flying"
    ],
    "hp": 240,
-   "move": "Boom Blast",
-   "moveType": "Normal",
-   "dmg": 80,
+   "move": "Feather Storm",
+   "moveType": "Flying",
+   "dmg": 90,
    "legendary": false,
    "mythical": false,
    "split": "spread"
@@ -2569,9 +2569,9 @@
     "Normal"
    ],
    "hp": 200,
-   "move": "Boom Blast",
-   "moveType": "Normal",
-   "dmg": 120,
+   "move": "Gale Talon",
+   "moveType": "Flying",
+   "dmg": 80,
    "legendary": false,
    "mythical": false
   },
@@ -2736,9 +2736,9 @@
     "Normal"
    ],
    "hp": 280,
-   "move": "Boom Blast",
-   "moveType": "Normal",
-   "dmg": 120,
+   "move": "Surf Surge",
+   "moveType": "Water",
+   "dmg": 80,
    "legendary": false,
    "mythical": false
   },
@@ -2868,9 +2868,9 @@
     "Steel"
    ],
    "hp": 250,
-   "move": "Boom Blast",
-   "moveType": "Normal",
-   "dmg": 120,
+   "move": "Iron Smash",
+   "moveType": "Steel",
+   "dmg": 90,
    "legendary": true,
    "mythical": false
   },
