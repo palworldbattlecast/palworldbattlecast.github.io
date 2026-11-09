@@ -74,8 +74,8 @@ h1{font-family:Lilita;font-weight:400;color:var(--yellow);font-size:30px;margin:
 @keyframes hlost{0%{transform:scale(1.6);filter:drop-shadow(0 0 6px #ff4d6d)}40%{transform:scale(.6) rotate(-15deg);opacity:.4}100%{transform:none}}
 .hn{font-family:Lilita;font-weight:400;font-size:17px;color:#ffb3c1;margin-left:4px;min-width:10px}
 .mat{flex:1 1 0;min-height:0;max-height:300px;border-radius:14px;padding:4px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:4px;position:relative}
-.mat.me{background:linear-gradient(#1d3f8a,#16306b);border:2px solid #3f7cf0}
-.mat.op{background:linear-gradient(#6b5a14,#8a7418);border:2px solid #e6c13a}
+.mat.me{background:linear-gradient(160deg,var(--mat1,#1d3f8a),var(--mat2,#16306b));border:2px solid color-mix(in srgb,var(--mat1,#3f7cf0) 70%,#fff)}
+.mat.op{background:linear-gradient(160deg,var(--mat2,#6b5a14),var(--mat1,#8a7418));border:2px solid color-mix(in srgb,var(--mat2,#e6c13a) 70%,#fff)}
 .mat .lbl{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-family:Lilita;font-size:40px;opacity:.12;pointer-events:none}
 .slot{position:relative;min-height:0;border-radius:10px;background:rgba(0,0,0,.22);border:1px dashed rgba(255,255,255,.18);display:grid;grid-template-rows:15px minmax(0,1fr) 14px;padding:2px 3px 3px;gap:1px;overflow:visible}
 .slot.mon{border:1px solid rgba(255,255,255,.3);background:radial-gradient(ellipse at 50% 85%,rgba(255,255,255,.12),rgba(0,0,0,.25) 70%);box-shadow:inset 0 2px 0 var(--tc)}
@@ -184,3 +184,8 @@ input.vol{accent-color:var(--yellow);height:28px}
 .overlay{backdrop-filter:blur(2px);animation:ov-in .18s ease}
 @keyframes ov-in{from{opacity:0}to{opacity:1}}
 .pack.sealed{filter:drop-shadow(0 12px 28px #000a)}
+
+/* v20 gravepit + mat themes */
+.mat { position: relative; background: linear-gradient(160deg, var(--mat1, #1a2744), var(--mat2, #0c1222)); }
+.gravepit { position: absolute; right: 6px; bottom: 6px; z-index: 3; border: 2px solid #fff4; background: #000a; color: #ffe7a0; border-radius: 10px; padding: 4px 8px; font-size: 12px; font-weight: 800; }
+.gravepit:active { transform: scale(0.96); }
