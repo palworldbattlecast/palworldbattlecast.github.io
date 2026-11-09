@@ -13,7 +13,8 @@ const FORK = '<svg class="fork" viewBox="0 0 16 12"><path d="M1 6h5l4-4h3M6 6l4 
 const splitIcon = c => isDouble(c) ? '<span class="sx d" title="Double hit">x2</span>' : isSpread(c) ? `<span class="sx s" title="Split: up to 2 targets">${FORK}</span>` : '';
 // every set has a printed back (curved DOREMONSTERS / TRADING CARD GAME over four doreballs)
 const packBack = set => IMG['cards/pack_' + String(set).toLowerCase() + '_back'];
-const SETICON = { WW: '🌱', FL: '🔥', T2: '⚡' , HT: '🌑'};
+const SETICON = { WW: '🌱', FL: '🔥', T2: '⚡', HT: '🌑', RA: '⚔️' };
+const SET_SHORT = { WW: 'FA', FL: 'FL', T2: 'T2', HT: 'HT', RA: 'RA' };
 const SAVE_KEY = 'dorepacks_save_v1';
 
 // ---------- assets ----------
@@ -138,7 +139,7 @@ function binderView() {
   const set = UI.binderSet, list = setCards(set), s = G.s;
   const mons = list.filter(isMon), items = list.filter(c => !isMon(c));
   const have = list.filter(c => s.owned[c.id] > 0).length;
-  return `<div class="page-head"><div><h1>Collection</h1><div class="sub">Doremon and supplies, filed under each set</div></div></div><div class="seg">${SETS.map(k => `<button class="${set === k ? 'on' : ''}" data-a="bset" data-v="${k}">${SET_NAMES[k]}</button>`).join('')}</div>
+  return `<div class="page-head"><div><h1>Collection</h1><div class="sub">Doremon and supplies, filed under each set</div></div></div><div class="seg set-tabs">${SETS.map(k => `<button class="${set === k ? 'on' : ''}" data-a="bset" data-v="${k}" title="${esc(SET_NAMES[k])}"><b>${SET_SHORT[k] || k}</b><span class="set-full">${esc(SET_NAMES[k])}</span></button>`).join('')}</div>
    <div class="sub">${have}/${list.length} collected · ${mons.length} doremon · ${items.length} spells/traps · tap a card to inspect</div>
    <div class="binder-grid">${list.map(c => `<div class="cell ${s.owned[c.id] > 0 ? '' : 'missing'}" data-a="inspect" data-v="${c.id}">${cardImg(c.id)}${s.owned[c.id] > 0 ? `<span class="cnt">×${s.owned[c.id]}</span>` : ''}</div>`).join('')}</div>`;
 }
@@ -522,7 +523,7 @@ function slotHTML(side, i) {
     const mv = `<div class="mv">${esc(m.card.move)} · ${m.card.dmg}${isDouble(m.card) ? '×2' : ''}</div>`;
     const tc = E.DB.typeColors[m.card.types[0]];
     if (m.protected) cls += ' protected';
-    return `<div class="${cls}" data-a="slot" data-v="${side}:${i}" data-card="${m.card.id}" id="s${side}${i}" style="--tc:${tc ? 'rgb(' + tc.join(',') + ')' : '#fff'}">${cardImg(m.card.id, 'mcart')}${badges}${extra}${mv}<div class="hp"><i style="width:${pct}%;background:${col}"></i><span>${m.hp}/${m.card.hp}</span></div></div>`;
+    return `<div class="${cls}" data-a="slot" data-v="${side}:${i}" data-card="${m.card.id}" id="s${side}${i}" style="--tc:${tc ? 'rgb(' + tc.join(',') + ')' : '#fff'}"><div class="mcwrap">${cardImg(m.card.id, 'mcart')}${badges}${extra}</div><div class="mcfoot"><div class="nm">${splitIcon(m.card)}${esc(m.card.name)}</div>${mv}<div class="hp"><i style="width:${pct}%;background:${col}"></i><span>${m.hp}/${m.card.hp}</span></div></div></div>`;
   }
   if (my && me && sel?.kind === 'hand' && isMon(S.hand[sel.i]) && b.isLegal({ t: 'playMon', hand: sel.i, slot: i })) cls += ' can';
   return `<div class="${cls}" data-a="slot" data-v="${side}:${i}" id="s${side}${i}"></div>`;
@@ -950,6 +951,8 @@ function demo() {
       UI.battle = { b, k: 2, league: true, sel: null, ei: b.events.length, busy: false, floats: [{ side: 1, slot: 1, text: '-40' }], lines: ['Mesby aura: Snarlpup gets ATK +1.', 'TRAP! Roar!'] };
       break; }
     case 'binder_ra': UI.tab = 'binder'; UI.binderSet = 'RA'; break;
+    case 'v21_tabs': UI.tab = 'binder'; UI.binderSet = 'RA'; break;
+    case 'v21_packs': UI.tab = 'packs'; break;
   }
   G.newAchievements = [];
 }
@@ -962,7 +965,7 @@ function demo() {
     if (G.s._v20Welcome) { delete G.s._v20Welcome; G.toast = 'Update gift: 3 free packs of every set are in Packs!'; G.save(); }
     if (G.s._raWelcome) { delete G.s._raWelcome; G.toast = 'Rivals & Allies — 3 free packs ready in Packs!'; G.save(); }
   if (!SNAP && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=20').then(reg => {
+      navigator.serviceWorker.register('sw.js?v=21').then(reg => {
         // When a new SW is waiting, activate it and reload so HT / balance updates aren't stuck behind an old PWA cache.
         const kick = () => { try { reg.waiting && reg.waiting.postMessage('skipWaiting'); } catch (_) {} };
         if (reg.waiting) kick();

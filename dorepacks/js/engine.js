@@ -799,6 +799,8 @@ export class Game {
     try { const t = storage && storage.load(); if (t) loaded = JSON.parse(t); } catch (e) { loaded = null; }
     if (loaded && loaded.ai && loaded.ai.length >= 8 && loaded.ai.length <= N_AI) {
       this.s = Object.assign(freshSave(), loaded);
+      // freshSave() stamps gift flags true; old saves that omit them must NOT inherit that or migrate skips free packs
+      for (const k of ['_gift_ht', '_gift_v20', '_gift_ra']) if (!(k in loaded)) this.s[k] = false;
       this.s.stats = Object.assign(freshStats(), this.s.stats || {});
       for (const P of this.s.ai) { P.earned ??= 0; P.spent ??= 0; P.auctionsWon ??= 0; P.auctionsSold ??= 0; }
       for (const c of DB.cards) if (isMon(c) && !this.s.market[c.id]) this.s.market[c.id] = { factor: 1, history: [Rarity.baseValue(c.rarity)] };   // new sets (T2) in old saves
