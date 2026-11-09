@@ -128,7 +128,7 @@ function packsView() {
     return `<div class="panel set-card"><div class="row" style="width:100%"><img class="pack-thumb" src="${flip ? packBack(set) : IMG['cards/pack_' + set.toLowerCase()]}" style="cursor:pointer" alt="" data-a="packFlip" data-v="${set}" title="Tap to see the back">
       <div class="grow col" style="gap:6px"><div class="title" style="font-size:22px;color:var(--yellow)">${r.name}</div>
       <div class="small">7 cards · ${money(r.price)} · you have <b style="color:#fff">${s.packs[set] || 0}</b></div>
-      <div class="small" style="color:#7ee0ff">${set === 'T2' ? 'Split attacks · ' : set === 'HT' ? 'Brown & silver · Revive & Sandstorm · ' : ''}tap the pack to flip it</div><div class="small">Pity ${pity}/${r.pity - 1}</div><div class="bar"><i style="width:${pity / (r.pity - 1) * 100}%"></i></div>
+      <div class="small" style="color:#7ee0ff">${set === 'T2' ? 'Split attacks · ' : set === 'HT' ? 'NEW · Brown & silver · Revive & Sandstorm · ' : ''}tap the pack to flip it</div><div class="small">Pity ${pity}/${r.pity - 1}</div><div class="bar"><i style="width:${pity / (r.pity - 1) * 100}%"></i></div>
       <div class="row"><button class="btn y sm grow" data-a="open" data-v="${set}" ${s.packs[set] > 0 ? '' : 'disabled'}>Open</button><button class="btn sm grow" data-a="buyPack" data-v="${set}" ${s.money >= r.price ? '' : 'disabled'}>Buy ${money(r.price)}</button></div></div></div>
       <div class="row wrap" style="margin-top:8px;gap:4px">${chase.map(c => `<span style="opacity:${s.owned[c.id] > 0 ? 1 : .3}">${sprite(spriteId(c), 40)}</span>`).join('')}</div>
       <details style="margin-top:6px"><summary class="small">Odds &amp; pity</summary>${Packs.ratesText(set).map(([a, b]) => `<div class="small" style="margin-top:5px"><b style="color:#fff">${a}:</b> ${esc(b)}</div>`).join('')}</details></div>`;
@@ -840,7 +840,22 @@ function demo() {
     await loadAssets();
     if (SNAP) demo(); else { G = new E.Game(storage()); }
     hook(); if (!SNAP) G.daysDue(); render(); tickDays();
-    if (!SNAP && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    if (G.s._htWelcome) { delete G.s._htWelcome; G.toast = 'New set: Hidden Transcendence — 1 free pack in Packs!'; G.save(); }
+  if (!SNAP && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js?v=18').then(reg => {
+        // When a new SW is waiting, activate it and reload so HT / balance updates aren't stuck behind an old PWA cache.
+        const kick = () => { try { reg.waiting && reg.waiting.postMessage('skipWaiting'); } catch (_) {} };
+        if (reg.waiting) kick();
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing; if (!nw) return;
+          nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) kick(); });
+        });
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => { if (refreshing) return; refreshing = true; location.reload(); });
+        // Periodic update check (installed PWAs otherwise sit on stale caches for days)
+        setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+      }).catch(() => {});
+    }
     document.body.dataset.ready = '1';
   } catch (e) { $('#loadmsg').textContent = 'ERROR: ' + e.message; console.error(e); }
 })();
