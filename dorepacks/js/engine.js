@@ -853,7 +853,7 @@ export class Game {
     if (!s.seasonHistory) s.seasonHistory = [];
     if (s.lastSeasonEnded == null) s.lastSeasonEnded = Math.floor(Math.max(0, s.day) / SEASON_DAYS);
     if (!s.packs) s.packs = {};
-    if (s.packs.HT == null) s.packs.HT = 0;
+    if (s.packs.HT == null) { s.packs.HT = 1; s._htWelcome = true; }  // first time seeing HT: one free pack so the set is visible
     // WW SSR→LGD/MYT: clamp decks that hold 2 copies of a now-1-copy card
     for (const d of s.decks) this.clampDeck(d);
     for (const P of s.ai || []) {

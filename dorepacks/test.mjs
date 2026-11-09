@@ -548,7 +548,7 @@ const g3 = new Game(mem); check(g3.s.money === 4242 && g3.s.ai.length === 16, 's
 // ---- split / double moves are a Troublesome 2 (T2) mechanic only ----
 { const bad = E.DB.cards.filter(c => c.split && c.set !== 'T2'); check(bad.length === 0, `no non-T2 card has a split/double move (${bad.map(c => c.id).join(',') || 'none'})`);
   const t2 = E.DB.cards.filter(c => c.split); check(t2.length > 0 && t2.every(c => c.set === 'T2'), `T2 still has its split moves (${t2.length})`);
-  check(card('ww_gruugy').move === 'Boulder Toss' && card('ww_rokbru').move === 'Granite Crush', 'Gruugy/Rokbru got single-target moves'); }
+  check(!card('ww_gruugy').split && !card('ww_rokbru').split && card('ww_gruugy').moveType === 'Rock' && card('ww_rokbru').moveType === 'Rock', 'Gruugy/Rokbru single-target Rock moves (learnset)'); }
 // ---- 200+ game balance sim: going first vs second ----
 { let fw = 0, n = 0; const all = E.DB.cards;
   for (let k = 0; k < 300; k++) { const r = new SplitMix(BigInt(k + 1000)); const deck = () => { const o = {}; for (let i = 0; i < 80; i++) { const c = all[r.int(all.length)]; o[c.id] = (o[c.id] || 0) + 1; } return DeckRules.autoBuild(o, r).map(card); };
