@@ -13,7 +13,7 @@ const FORK = '<svg class="fork" viewBox="0 0 16 12"><path d="M1 6h5l4-4h3M6 6l4 
 const splitIcon = c => isDouble(c) ? '<span class="sx d" title="Double hit">x2</span>' : isSpread(c) ? `<span class="sx s" title="Split: up to 2 targets">${FORK}</span>` : '';
 // every set has a printed back (curved DOREMONSTERS / TRADING CARD GAME over four doreballs)
 const packBack = set => IMG['cards/pack_' + String(set).toLowerCase() + '_back'];
-const SETICON = { WW: '🌱', FL: '🔥', T2: '⚡' };
+const SETICON = { WW: '🌱', FL: '🔥', T2: '⚡' , HT: '🌑'};
 const SAVE_KEY = 'dorepacks_save_v1';
 
 // ---------- assets ----------
@@ -104,7 +104,7 @@ function render() {
   AU.music(UI.battle ? 'battle' : 'menu');
   if (UI.battle) { app.innerHTML = battleView(); afterBattleRender(); renderOverlay(); return; }
   const s = G.s;
-  const tabs = [['packs', '🎴', 'Packs'], ['binder', '📒', 'Binder'], ['decks', '🃏', 'Decks'], ['battle', '⚔️', 'Battle'], ['more', '☰', 'More']];
+  const tabs = [['packs', '🎴', 'Packs'], ['binder', '📒', 'Collection'], ['decks', '🃏', 'Decks'], ['league', '🏆', 'League'], ['profile', '👤', 'Profile'], ['more', '⚙️', 'More']];
   app.innerHTML = `<div class="top"><div class="brand">DOREPACKS</div>
     <span class="chip" style="color:#7dfc9f">${money(s.money)}</span>${SETS.map(k => `<span class="chip" title="${esc(SET_NAMES[k])} packs">${SETICON[k]} ${s.packs[k] || 0}</span>`).join('')}<span class="chip" style="color:var(--yellow)">${s.mr}</span></div>
     <div class="dayline" id="dayline">${dayText()}</div>
@@ -115,30 +115,31 @@ function render() {
 function screen() {
   switch (UI.tab) {
     case 'packs': return packsView(); case 'binder': return binderView(); case 'decks': return decksView();
-    case 'battle': return battleSetupView(); case 'more': return moreView();
+    case 'battle': return battleSetupView(); case 'league': return leagueView(); case 'profile': return profileView();
+    case 'more': return moreView();
   }
 }
 function packsView() {
   const s = G.s;
-  return `<h1>Packs</h1><div class="sub">Rip packs, chase the SSRs and Legends.</div>` + SETS.map(set => {
+  return `<div class="page-head"><div><h1>Packs</h1><div class="sub">Rip packs · chase Legendaries & Mythicals</div></div><button class="btn y sm" data-a="tab" data-v="battle">⚔️ Battle</button></div><div class="pack-grid">` + SETS.map(set => {
     const r = Packs.rule(set), pity = s.pity[set] || 0;
     const chase = inSet(set).filter(c => Rarity.isChase(c.rarity));
     const flip = UI.packBack === set;
-    return `<div class="panel"><div class="row"><img src="${flip ? packBack(set) : IMG['cards/pack_' + set.toLowerCase()]}" style="width:96px;border-radius:8px;image-rendering:pixelated;cursor:pointer" alt="" data-a="packFlip" data-v="${set}" title="Tap to see the back">
+    return `<div class="panel set-card"><div class="row" style="width:100%"><img class="pack-thumb" src="${flip ? packBack(set) : IMG['cards/pack_' + set.toLowerCase()]}" style="cursor:pointer" alt="" data-a="packFlip" data-v="${set}" title="Tap to see the back">
       <div class="grow col" style="gap:6px"><div class="title" style="font-size:22px;color:var(--yellow)">${r.name}</div>
       <div class="small">7 cards · ${money(r.price)} · you have <b style="color:#fff">${s.packs[set] || 0}</b></div>
       <div class="small" style="color:#7ee0ff">${set === 'T2' ? 'Split attacks · ' : set === 'HT' ? 'Brown & silver · Revive & Sandstorm · ' : ''}tap the pack to flip it</div><div class="small">Pity ${pity}/${r.pity - 1}</div><div class="bar"><i style="width:${pity / (r.pity - 1) * 100}%"></i></div>
       <div class="row"><button class="btn y sm grow" data-a="open" data-v="${set}" ${s.packs[set] > 0 ? '' : 'disabled'}>Open</button><button class="btn sm grow" data-a="buyPack" data-v="${set}" ${s.money >= r.price ? '' : 'disabled'}>Buy ${money(r.price)}</button></div></div></div>
       <div class="row wrap" style="margin-top:8px;gap:4px">${chase.map(c => `<span style="opacity:${s.owned[c.id] > 0 ? 1 : .3}">${sprite(spriteId(c), 40)}</span>`).join('')}</div>
       <details style="margin-top:6px"><summary class="small">Odds &amp; pity</summary>${Packs.ratesText(set).map(([a, b]) => `<div class="small" style="margin-top:5px"><b style="color:#fff">${a}:</b> ${esc(b)}</div>`).join('')}</details></div>`;
-  }).join('');
+  }).join('') + '</div>';
 }
 function binderView() {
   const set = UI.binderSet, list = inSet(set), s = G.s;
   const have = list.filter(c => s.owned[c.id] > 0).length;
-  return `<h1>Binder</h1><div class="seg">${[...SETS.map(k => [k, SET_NAMES[k]]), ['ST', 'Supplies']].map(([k, n]) => `<button class="${set === k ? 'on' : ''}" data-a="bset" data-v="${k}">${n}</button>`).join('')}</div>
+  return `<div class="page-head"><div><h1>Collection</h1><div class="sub">Every set you own, tidy in one place</div></div></div><div class="seg">${[...SETS.map(k => [k, SET_NAMES[k]]), ['ST', 'Supplies']].map(([k, n]) => `<button class="${set === k ? 'on' : ''}" data-a="bset" data-v="${k}">${n}</button>`).join('')}</div>
    <div class="sub">${have}/${list.length} collected · tap a card to inspect</div>
-   <div class="grid3">${list.map(c => `<div class="cell ${s.owned[c.id] > 0 ? '' : 'missing'}" data-a="inspect" data-v="${c.id}">${cardImg(c.id)}${s.owned[c.id] > 0 ? `<span class="cnt">×${s.owned[c.id]}</span>` : ''}</div>`).join('')}</div>`;
+   <div class="binder-grid">${list.map(c => `<div class="cell ${s.owned[c.id] > 0 ? '' : 'missing'}" data-a="inspect" data-v="${c.id}">${cardImg(c.id)}${s.owned[c.id] > 0 ? `<span class="cnt">×${s.owned[c.id]}</span>` : ''}</div>`).join('')}</div>`;
 }
 function deckCounts(d) { const m = {}; for (const id of d) m[id] = (m[id] || 0) + 1; return m; }
 function decksView() {
@@ -234,14 +235,14 @@ function moreView() {
   const m = UI.more;
   if (!m) {
     const T = G.tour, qd = G.quests.filter(q => q.done).length;
-    const it = { league: ['🏆', 'League', 'Leaderboard'], spectate: ['📺', 'Spectate', 'Live matches'], tour: ['🥇', 'Tournament', T ? (T.done ? 'Finished today' : 'Today!') : 'Every 3rd day'], quests: ['🗺', 'Adventures', `${qd}/3 done`], draft: ['🎲', 'Draft', G.s.draft && !G.s.draft.done ? 'In progress' : `${money(Game.DRAFT_FEE)} entry`], trainers: ['🪪', 'Trainers', 'Verified stats'], shop: ['🛒', 'Shop', 'Packs · singles · sell'], auction: ['🔨', 'Auctions', `${G.s.auctions.length} listings`],
+    const it = { battle: ['⚔️', 'Battle', 'Ranked & friendly'], league: ['🏆', 'League', 'Leaderboard'], spectate: ['📺', 'Spectate', 'Live matches'], tour: ['🥇', 'Tournament', T ? (T.done ? 'Finished today' : 'Today!') : 'Every 3rd day'], quests: ['🗺', 'Adventures', `${qd}/3 done`], draft: ['🎲', 'Draft', G.s.draft && !G.s.draft.done ? 'In progress' : `${money(Game.DRAFT_FEE)} entry`], trainers: ['🪪', 'Trainers', 'Verified stats'], shop: ['🛒', 'Shop', 'Packs · singles · sell'], auction: ['🔨', 'Auctions', `${G.s.auctions.length} listings`],
       profile: ['👤', 'Profile', 'Pic & coin'], market: ['📈', 'Market', 'Prices'], trades: ['🤝', 'Trades', `${G.s.offers.length} offer${G.s.offers.length === 1 ? '' : 's'}`], stats: ['📊', 'Stats', 'Career'], ach: ['🏅', 'Achievements', `${G.s.achievements.length}/${ACHIEVEMENTS.length}`], rules: ['📖', 'How to Play', 'Rules'] };
     const grp = (t, ks) => `<div class="gh">${t}</div><div class="tiles">${ks.map(k => { const [i, n, d] = it[k]; return `<button class="tile" data-a="more" data-v="${k}"><span class="ti">${i}</span><span class="tn">${n}</span><span class="td">${d}</span>${k === 'trades' && G.s.offers.length ? '<span class="dot"></span>' : ''}</button>`; }).join('')}</div>`;
-    return `<h1>More</h1>` + grp('League', ['league', 'tour', 'spectate']) + grp('You', ['profile', 'stats', 'ach', 'rules']) + grp('Play', ['quests', 'draft', 'trainers']) + grp('Cards', ['trades']) + grp('Trading', ['shop', 'auction', 'market'])
+    return `<h1>More</h1><div class="sub">Shop, play modes & settings</div>` + grp('Play', ['battle', 'quests', 'draft', 'tour', 'spectate', 'trainers']) + grp('Trading', ['shop', 'auction', 'market', 'trades']) + grp('Record', ['stats', 'ach', 'rules'])
       + `<div class="gh">Settings</div>` + audioPanel() + newGameBtn() + `<div class="small" style="margin-top:8px;text-align:center">Progress is saved on this device.</div>`;
   }
   const back = `<button class="btn k sm" data-a="more" data-v="" style="margin-bottom:8px">‹ Back</button>`;
-  return back + ({ league: leagueView, profile: profileView, trades: tradesView, shop: shopView, market: marketView, ach: achView, rules: rulesView, auction: auctionView, spectate: spectateView, stats: statsView, tour: tourView, quests: () => `<h1>Daily Adventures</h1>` + questsPanel(false), draft: draftView, trainers: trainersView })[m]();
+  return back + ({ battle: battleSetupView, league: leagueView, profile: profileView, trades: tradesView, shop: shopView, market: marketView, ach: achView, rules: rulesView, auction: auctionView, spectate: spectateView, stats: statsView, tour: tourView, quests: () => `<h1>Daily Adventures</h1>` + questsPanel(false), draft: draftView, trainers: trainersView })[m]();
 }
 function leagueView() {
   const lb = G.leaderboard, sn = seasonOfDay(G.s.day), left = daysLeftInSeason(G.s.day), feat = seasonFeatured(sn);
