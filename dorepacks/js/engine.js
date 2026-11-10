@@ -14,7 +14,16 @@ export const supplies = () => DB.cards.filter(c => c.kind === 'spell' || c.kind 
 export const SETS = ['WW', 'FL', 'T2', 'HT', 'RA'];
 export const SET_NAMES = { WW: 'First Adventures', FL: 'Fallen Legends', T2: 'Troublesome 2', HT: 'Hidden Transcendence', RA: 'Rivals & Allies', ST: 'Supplies', PR: 'Promo', CV: 'Canopy Veil' };
 /** cards shown in a set's Collection binder: that set's doremon + spells/traps whose homeSet/pack matches */
-export const setCards = (s) => DB.cards.filter(c => (c.kind === 'mon' && c.set === s) || ((c.kind === 'spell' || c.kind === 'trap') && (c.homeSet === s || c.pack === s || (!c.pack && !c.homeSet && s === 'WW')))).sort((a, b) => (a.kind === 'mon' ? 0 : 1) - (b.kind === 'mon' ? 0 : 1) || a.num - b.num);
+export const isLegendaryST = c => c && (c.kind === 'spell' || c.kind === 'trap') && !!(c.legendary || c.rarity === 'LGD');
+export const stKindLabel = c => ((c && isLegendaryST(c)) ? 'LEGENDARY ' : '') + (isTrap(c) ? 'TRAP' : 'SPELL');
+export const binderGroup = c => {
+  if (isMon(c) && (c.rarity === 'MYT' || c.mythical)) return 0;
+  if (isLegendaryST(c) || (isMon(c) && (c.rarity === 'LGD' || c.legendary))) return 1;
+  if (isMon(c)) return 2;
+  return 3;
+};
+export const BINDER_GROUPS = ['Mythicals', 'Legendaries', 'Doremon', 'Spells & Traps'];
+export const setCards = (s) => DB.cards.filter(c => (c.kind === 'mon' && c.set === s) || ((c.kind === 'spell' || c.kind === 'trap') && (c.homeSet === s || c.pack === s || (!c.pack && !c.homeSet && s === 'WW')))).sort((a, b) => binderGroup(a) - binderGroup(b) || a.num - b.num);
 /** reprint-safe identity: every printing has its own card id (set_mon), the doremon itself is c.mon */
 export const nameKey = c => c.mon || c.id;
 /** spells/traps a set's packs can contain: the base supplies, plus (T2 only) the set's own new ones at 3x weight */
@@ -245,6 +254,7 @@ export class Battle {
     // Nov 2: the player going second starts with 1 extra card and its first doremon can attack the turn it is played
     if (Battle.SECOND.extra) this.draw(1 - first, true); this.sides[1 - first].quickStart = Battle.SECOND.quick;
     this.humanSide = null; this.pendingAura = null; this.pendingDuel = null;
+    this.field = null; this.hungAI = false;
     this.events.push({ e: 'turn', side: first }); this.log(`${this.sides[first].name} goes first.`);
   }
   static shuffle(d, rng) { if (d.length < 2) return; for (let i = d.length - 1; i > 0; i--) { const j = rng.int(i + 1); [d[i], d[j]] = [d[j], d[i]]; } }
@@ -452,6 +462,11 @@ export class Battle {
     const O = this.sides[o];
     if (to == null) { this.events.push({ e: 'direct', side: o }); this.log(`${a.card.name} attacks ${O.name} directly! (-1 life)`); this.loseLife(o); return; }
     const dmon = O.mons[to]; if (!dmon) { this.log('Duel fizzles — no target.'); return; }
+    if (this.field && this.field.id === 'sandstorm' && o === this.field.side && this.rng.chance(0.3)) {
+      this.events.push({ e: 'miss', side: o, slot: to });
+      this.log(`${a.card.name}'s attack missed ${dmon.card.name}!`);
+      return;
+    }
     const [dmg, ef] = Battle.damage(a, dmon);
     const note = ef === 0 ? ' It has no effect...' : ef > 1 ? " It's super effective!" : ef < 1 ? " It's not very effective." : '';
     this.log(`${a.card.name} uses ${a.card.move} (${a.card.moveType}) on ${dmon.card.name} for ${dmg}.${note}`);
@@ -502,7 +517,8 @@ export class Battle {
       }
       if (eff(trap, 'stall') > 0) { this.sides[me].stalled = true; this.log(`${a.card.name}'s attack is blocked and ${this.sides[me].name} is stalled for the rest of the turn.`); return; }
       if (eff(trap, 'block') > 0) { this.log(`${a.card.name}'s attack is blocked!`); this.hurt(me, f, eff(trap, 'recoil'), 1, 'is pricked by thorns'); return; }
-      this.trapHit(trap, me, f, 0);
+      if (effS(trap, 'field') === 'sandstorm' || trap.id === 'st_sandstorm') { this.startSandstorm(o); }
+      else this.trapHit(trap, me, f, 0);
       // multi-target traps (Twin Growl / Double Glare / Toxic Spray): also the attacker's strongest teammate
       if (eff(trap, 'atk2') || eff(trap, 'def2') || effS(trap, 'status2')) for (const j of Battle.strongest(this.sides[me], 1, f)) this.trapHit(trap, me, j, 1);
       if (a.status === 'par' || a.status === 'slp' || a.status === 'frz') { this.log(`${a.card.name} can't attack!`); return; }
@@ -511,6 +527,11 @@ export class Battle {
     if (t == null) { this.events.push({ e: 'direct', side: o }); this.log(`${a.card.name} attacks ${O.name} directly! (-1 life)`); this.loseLife(o); return; }
     const hit = (slot, tag) => {
       const d = O.mons[slot]; if (!d) return false;
+      if (this.field && this.field.id === 'sandstorm' && o === this.field.side && this.rng.chance(0.3)) {
+        this.events.push({ e: 'miss', side: o, slot });
+        this.log(`${a.card.name}'s attack missed ${d.card.name}!`);
+        return false;
+      }
       const [dmg, ef] = Battle.damage(a, d);
       const note = ef === 0 ? ' It has no effect...' : ef > 1 ? " It's super effective!" : ef < 1 ? " It's not very effective." : '';
       this.log(`${a.card.name} uses ${a.card.move} (${a.card.moveType})${tag} on ${d.card.name} (${d.card.types.join('/')}) for ${dmg}.${note}`);
@@ -548,7 +569,62 @@ export class Battle {
     if (this.over) return;
     if (!hasAnyMonLeft(this.sides[0]) && !hasAnyMonLeft(this.sides[1])) { const a = this.sides[0].life, b = this.sides[1].life; this.finish(a === b ? null : a > b ? 0 : 1); }
   }
+  sandImmune(m) { return !!(m && (m.card.types || []).some(t => t === 'Ground' || t === 'Steel' || t === 'Rock')); }
+  startSandstorm(side) {
+    this.field = { id: 'sandstorm', side, turnsLeft: 3 };
+    this.events.push({ e: 'field', id: 'sandstorm', side, turns: 3 });
+    this.log(`${this.sides[side].name}'s Sandstorm kicks up! It lasts 3 turns.`);
+  }
+  tickField() {
+    if (!this.field || this.over) return;
+    const f = this.field;
+    if (f.id === 'sandstorm') {
+      this.log('Sandstorm rages!');
+      for (let s = 0; s < 2; s++) for (let i = 0; i < 6; i++) {
+        const m = this.sides[s].mons[i]; if (!m || this.sandImmune(m)) continue;
+        this.hurt(s, i, 20, 1, 'is scratched by sand');
+        this.events.push({ e: 'sand', side: s, slot: i, dmg: 20 });
+        if (this.over) return;
+      }
+    }
+    f.turnsLeft--;
+    this.events.push({ e: 'fieldTick', id: f.id, left: f.turnsLeft });
+    if (f.turnsLeft <= 0) { this.log(f.id === 'sandstorm' ? 'The sandstorm faded.' : 'The field effect faded.'); this.field = null; }
+  }
+  /** Auto-pick a leftover aura or Duel so a turn can never stall on a missing target. */
+  autoResolvePending() {
+    if (this.pendingAura) {
+      const p = this.pendingAura;
+      const tgtSide = (p.tgtSide != null) ? p.tgtSide : p.side;
+      const src = this.sides[p.side].mons[p.slot];
+      const pool = this.sides[tgtSide].mons
+        .map((m, i) => (m && targetable(m) && !(tgtSide === p.side && i === p.slot) && (!src || m.uid !== src.uid) ? i : -1)).filter(i => i >= 0);
+      if (pool.length) { this.log('Aura target auto-chosen.'); resolveAura(this, pool[0]); }
+      else { this.pendingAura = null; this.log('Aura fizzles — no target.'); }
+    }
+    if (this.pendingDuel) {
+      const d = this.pendingDuel, me = d.atkSide, o = d.defSide;
+      const foes = this.sides[me].mons.map((m, i) => [i, m]).filter(x => x[1]);
+      if (!foes.length) { this.pendingDuel = null; this.log('Duel fizzles — no attacker.'); }
+      else {
+        const from2 = foes.sort((a, b) => BattleAI.monValue(b[1].card) - BattleAI.monValue(a[1].card))[0][0];
+        const targets = this.sides[o].mons.map((m, i) => [i, m]).filter(x => x[1] && targetable(x[1]));
+        const to2 = targets.length ? targets.sort((a, b) => a[1].hp - b[1].hp)[0][0] : null;
+        this.log('Duel target auto-chosen.');
+        this.resolveDuel(from2, to2);
+      }
+    }
+  }
+  /** Watchdog / throw recovery: log the hang, clear stuck picks, end the AI's turn. Never leaves the match frozen. */
+  forceEndAITurn(reason) {
+    this.hungAI = true;
+    this.log('ERROR: ' + (reason || 'AI failed to act in time') + ' — turn ended.');
+    this.events.push({ e: 'ai_hang', reason: reason || 'timeout' });
+    this.pendingAura = null; this.pendingDuel = null;
+    if (!this.over && this.current === 1) this.endTurn();
+  }
   endTurn() {
+    this.autoResolvePending();
     const me = this.current, S = this.sides[me];
     for (let i = 0; i < 6; i++) {
       const m = S.mons[i]; if (!m) continue;
@@ -560,6 +636,8 @@ export class Battle {
       }
       if (this.over) return;
     }
+    if (this.over) return;
+    this.tickField();
     if (this.over) return;
     this.turnNumber++;
     if (this.turnNumber > Battle.turnCap) { const a = this.sides[0].life, b = this.sides[1].life; this.finish(a === b ? null : a > b ? 0 : 1); return; }
@@ -661,9 +739,22 @@ export const BattleAI = {
   chooseFirst() { return true; },
   simulate(b, maxActions = 4000) {
     let n = 0;
+    const prevHuman = b.humanSide;
+    b.humanSide = null;   // never stall on a human aura / Duel pick in a sim
     BattleAI.openingMulligans(b);
-    while (!b.over && n < maxActions) { const a = BattleAI.next(b); if (!b.apply(a)) b.apply({ t: 'end' }); n++; }
-    if (!b.over) b.finish(null);
+    try {
+      while (!b.over && n < maxActions) {
+        b.autoResolvePending();
+        if (b.over) break;
+        const a = BattleAI.next(b);
+        if (!b.apply(a)) b.apply({ t: 'end' });
+        n++;
+      }
+    } catch (err) {
+      b.forceEndAITurn('AI exception: ' + ((err && err.message) || err));
+    }
+    if (!b.over) { b.hungAI = true; b.log('ERROR: AI sim hit the action cap — match called a draw.'); b.finish(null); }
+    b.humanSide = prevHuman;
     return b.winner;
   },
 };
@@ -964,8 +1055,9 @@ export class Game {
     s.nextOpp = k; return k;
   }
   /** won: true/false/null(draw). The AI opponent is paid exactly what the player would be paid in its place. */
-  recordResult(won, league, k, splitKOs = 0, played = []) {
+  recordResult(won, league, k, splitKOs = 0, played = [], voided = false) {
     const s = this.s; s.stats.played ??= {}; for (const id of played) inc(s.stats.played, id);
+    if (voided) { this.save(); return [0, 0]; }
     if (league && k != null && s.ai[k]) { const P = s.ai[k]; P.games = (P.games || 0) + 1; }
     if (league) this.quest('play'); if (won && league) this.quest('win'); if (won && !league) this.quest('friendly'); if (splitKOs) this.quest('splitko', splitKOs); s.splitKOs = (s.splitKOs || 0) + splitKOs; const st = s.stats.battles[league ? 'ranked' : 'friendly']; let bucks = 0, d = 0;
     if (won != null) {
@@ -1285,6 +1377,11 @@ export class Game {
     return m ? { m, opp: m.p[0] === ME ? m.p[1] : m.p[0], round: ['Quarter-final', 'Semi-final', 'Final'][ri] || 'Round ' + (ri + 1) } : null;
   }
   /** record one game of the player's best-of-3 (won null = draw, replay) */
+  /** Void a hung AI match: leave the Bo3 game unplayed so it can be replayed. Does not count as a loss. */
+  tourVoid() {
+    const tm = this.tourMatch(); if (!tm) return null;
+    this.save(); return tm.m;
+  }
   tourGame(won) {
     const tm = this.tourMatch(); if (!tm || won == null) return null; const m = tm.m, me = m.p[0] === ME ? 0 : 1;
     m.w[won ? me : 1 - me]++; if (won) this.quest('tourgame');

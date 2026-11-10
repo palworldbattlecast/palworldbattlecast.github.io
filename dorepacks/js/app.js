@@ -1,6 +1,6 @@
 import * as E from './engine.js';
 import { Audio, TITLES } from './audio.js';
-const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, setCards, isMon, isSpell, isTrap, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel, seasonOfDay, daysLeftInSeason, seasonFeatured, seasonMat, matColors, SEASON_DAYS, SEASON_PLAN, trainerSprite, SEASON_REWARDS, targetable, passiveInfo, resolveAura, beginPassive } = E;
+const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, setCards, isMon, isSpell, isTrap, isLegendaryST, stKindLabel, binderGroup, BINDER_GROUPS, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel, seasonOfDay, daysLeftInSeason, seasonFeatured, seasonMat, matColors, SEASON_DAYS, SEASON_PLAN, trainerSprite, SEASON_REWARDS, targetable, passiveInfo, resolveAura, beginPassive } = E;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('en-US');
@@ -66,7 +66,7 @@ function goldCoin(mon, size = 54) {
   return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffe9a0,#d4a017 55%,#8a6a10);box-shadow:inset 0 0 0 3px #f5d76e,0 2px 6px #0008">${sprite(mon, Math.round(size * 0.7))}</span>`;
 }
 
-const rar = r => `<span class="rar" style="background:${RCOL[r] || '#888'}">${r === 'ITEM' ? 'ITEM' : r}</span>`;
+const rar = (r, c) => { const lab = (c && isLegendaryST(c)) ? 'LGD' : (r === 'ITEM' ? 'ITEM' : r); const col = (c && isLegendaryST(c)) ? RCOL.LGD : (RCOL[lab] || RCOL[r] || '#888'); return `<span class="rar" style="background:${col}">${lab}</span>`; };
 
 // ---------- state ----------
 const params = new URLSearchParams(location.search);
@@ -137,11 +137,13 @@ function packsView() {
 }
 function binderView() {
   const set = UI.binderSet, list = setCards(set), s = G.s;
-  const mons = list.filter(isMon), items = list.filter(c => !isMon(c));
+  const mons = list.filter(isMon), items = list.filter(c => !isMon(c)), lgdst = list.filter(isLegendaryST);
   const have = list.filter(c => s.owned[c.id] > 0).length;
-  return `<div class="page-head"><div><h1>Collection</h1><div class="sub">Doremon and supplies, filed under each set</div></div></div><div class="seg set-tabs">${SETS.map(k => `<button class="${set === k ? 'on' : ''}" data-a="bset" data-v="${k}" title="${esc(SET_NAMES[k])}"><b>${SET_SHORT[k] || k}</b><span class="set-full">${esc(SET_NAMES[k])}</span></button>`).join('')}</div>
-   <div class="sub">${have}/${list.length} collected · ${mons.length} doremon · ${items.length} spells/traps · tap a card to inspect</div>
-   <div class="binder-grid">${list.map(c => `<div class="cell ${s.owned[c.id] > 0 ? '' : 'missing'}" data-a="inspect" data-v="${c.id}">${cardImg(c.id)}${s.owned[c.id] > 0 ? `<span class="cnt">×${s.owned[c.id]}</span>` : ''}</div>`).join('')}</div>`;
+  const groups = BINDER_GROUPS.map((title, g) => [title, list.filter(c => binderGroup(c) === g)]).filter(([, cs]) => cs.length);
+  const cell = c => `<div class="cell ${s.owned[c.id] > 0 ? '' : 'missing'}" data-a="inspect" data-v="${c.id}">${cardImg(c.id)}${s.owned[c.id] > 0 ? `<span class="cnt">×${s.owned[c.id]}</span>` : ''}</div>`;
+  return `<div class="page-head"><div><h1>Collection</h1><div class="sub">Doremon and supplies, filed under each set · Legendaries include legendary spells and traps</div></div></div><div class="seg set-tabs">${SETS.map(k => `<button class="${set === k ? 'on' : ''}" data-a="bset" data-v="${k}" title="${esc(SET_NAMES[k])}"><b>${SET_SHORT[k] || k}</b><span class="set-full">${esc(SET_NAMES[k])}</span></button>`).join('')}</div>
+   <div class="sub">${have}/${list.length} collected · ${mons.length} doremon · ${lgdst.length} legendary spell/trap · ${items.length - lgdst.length} spells/traps · tap a card to inspect</div>
+   ${groups.map(([title, cs]) => `<div class="binder-sec"><div class="binder-sec-h">${esc(title)}</div><div class="binder-grid">${cs.map(cell).join('')}</div></div>`).join('')}`;
 }
 function deckCounts(d) { const m = {}; for (const id of d) m[id] = (m[id] || 0) + 1; return m; }
 function decksView() {
@@ -154,7 +156,7 @@ function decksView() {
    <div class="small" style="margin:6px 0;color:${probs.length || !owns ? '#ff9b9b' : '#7dfc9f'}">${probs.length ? probs.map(esc).join('<br>') : owns ? 'Deck is legal ✓' : 'You no longer own every card in this deck.'}</div>
    <div class="row"><button class="btn sm p grow" data-a="autoBuild">Auto-build</button><button class="btn sm k grow" data-a="clearDeck">Clear</button></div></div>
   <div class="sub">In deck — tap to remove</div>
-  <div class="list panel" style="padding:4px 12px">${ids.length ? ids.map(id => { const c = card(id); return `<div class="it" data-a="rm" data-v="${id}">${isMon(c) ? sprite(spriteId(c), 30) : '<span style="width:30px;text-align:center">✨</span>'}<div class="grow">${esc(c.name)} ${rar(c.rarity)}</div><b>×${cnt[id]}</b></div>`; }).join('') : '<div class="small" style="padding:10px 0">Empty deck.</div>'}</div>
+  <div class="list panel" style="padding:4px 12px">${ids.length ? ids.map(id => { const c = card(id); return `<div class="it" data-a="rm" data-v="${id}">${isMon(c) ? sprite(spriteId(c), 30) : '<span style="width:30px;text-align:center">✨</span>'}<div class="grow">${esc(c.name)} ${rar(c.rarity, c)}</div><b>×${cnt[id]}</b></div>`; }).join('') : '<div class="small" style="padding:10px 0">Empty deck.</div>'}</div>
   <div class="sub">Your cards — tap to add</div>
   <div class="grid3">${pool.map(id => { const left = s.owned[id] - (cnt[id] || 0); return `<div class="cell" data-a="add" data-v="${id}" style="opacity:${left > 0 ? 1 : .4}">${cardImg(id)}<span class="cnt">${left}/${s.owned[id]}</span></div>`; }).join('')}</div>`;
 }
@@ -286,7 +288,7 @@ function profileView() {
 }
 function tradesView() {
   const s = G.s;
-  if (UI.counter) { const o = s.offers.find(x => x.id === UI.counter); if (o) { const opts = G.counterOptions(o); return `<h1>Counter</h1><div class="sub">Ask for a different card in exchange for your ${esc(card(o.want).name)} (${money(G.value(o.want))}).</div><div class="panel list" style="padding:4px 12px">${opts.map(id => `<div class="it" data-a="doCounter" data-v="${id}">${sprite(spriteId(card(id)), 30)}<div class="grow">${esc(card(id).name)} ${rar(card(id).rarity)}</div><b>${money(G.value(id))}</b></div>`).join('') || '<div class="small">Nothing they can spare.</div>'}</div><button class="btn k" data-a="cancelCounter">Cancel</button>`; } UI.counter = null; }
+  if (UI.counter) { const o = s.offers.find(x => x.id === UI.counter); if (o) { const opts = G.counterOptions(o); return `<h1>Counter</h1><div class="sub">Ask for a different card in exchange for your ${esc(card(o.want).name)} (${money(G.value(o.want))}).</div><div class="panel list" style="padding:4px 12px">${opts.map(id => `<div class="it" data-a="doCounter" data-v="${id}">${sprite(spriteId(card(id)), 30)}<div class="grow">${esc(card(id).name)} ${rar(card(id).rarity, card(id))}</div><b>${money(G.value(id))}</b></div>`).join('') || '<div class="small">Nothing they can spare.</div>'}</div><button class="btn k" data-a="cancelCounter">Cancel</button>`; } UI.counter = null; }
   return `<h1>Trades</h1><div class="sub">AI players send new offers every league day (every 2 hours).</div>` + (s.offers.length ? s.offers.map(o => { const p = s.ai.find(a => a.id === o.aiId); return `<div class="panel"><div class="row">${sprite(p.avatar, 34)}<b class="grow">${esc(p.name)}</b><span class="small">${esc(o.note)}</span></div>
    <div class="row" style="margin:10px 0;align-items:flex-start"><div class="grow" style="text-align:center"><div class="small">You get</div>${cardImg(o.give)}<b>${money(G.value(o.give))}</b></div><div style="align-self:center;font-size:24px">⇄</div><div class="grow" style="text-align:center"><div class="small">You give</div>${cardImg(o.want)}<b>${money(G.value(o.want))}</b></div></div>
    <div class="row"><button class="btn g sm grow" data-a="accept" data-v="${o.id}">Accept</button><button class="btn sm grow" data-a="counter" data-v="${o.id}" ${o.countered ? 'disabled' : ''}>Counter</button><button class="btn r sm grow" data-a="decline" data-v="${o.id}">Decline</button></div></div>`; }).join('') : '<div class="panel small">No offers right now. Play a battle to advance the day — AIs who want your cards will reach out.</div>');
@@ -295,8 +297,8 @@ function shopView() {
   const s = G.s, t = UI.shopTab;
   let body = '';
   if (t === 'packs') body = SETS.map(set => { const r = Packs.rule(set); return `<div class="panel row"><img src="${IMG['cards/pack_' + set.toLowerCase()]}" style="width:60px" alt=""><div class="grow"><b>${r.name}</b><div class="small">You have ${s.packs[set] || 0}</div></div><button class="btn y sm" data-a="buyPack" data-v="${set}" ${s.money >= r.price ? '' : 'disabled'}>${money(r.price)}</button></div>`; }).join('');
-  if (t === 'singles' || t === 'supplies') { const list = t === 'singles' ? DB.cards.filter(isMon).sort((a, b) => G.value(b.id) - G.value(a.id)) : DB.cards.filter(c => isSpell(c) || isTrap(c)); body = `<div class="panel list" style="padding:4px 12px">${list.map(c => `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow" data-a="inspect" data-v="${c.id}">${esc(c.name)} ${rar(c.rarity)}<div class="small">own ${s.owned[c.id] || 0}</div></div><button class="btn sm" data-a="buySingle" data-v="${c.id}" ${s.money >= G.buyPrice(c.id) ? '' : 'disabled'}>${money(G.buyPrice(c.id))}</button></div>`).join('')}</div>`; }
-  if (t === 'sell') { const list = Object.keys(s.owned).filter(id => G.sellableCount(id) > 0).sort((a, b) => G.sellPrice(b) - G.sellPrice(a)); body = `<button class="btn p" style="width:100%;margin-bottom:10px" data-a="sellDupes">Sell all dupes (keeps 3 of each)</button><div class="panel list" style="padding:4px 12px">${list.map(id => { const c = card(id); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow">${esc(c.name)} ${rar(c.rarity)}<div class="small">${G.sellableCount(id)} spare</div></div><button class="btn g sm" data-a="sell" data-v="${id}">+${money(G.sellPrice(id))}</button></div>`; }).join('') || '<div class="small" style="padding:8px 0">Nothing spare to sell (you keep 1 of each doremon and what your decks use).</div>'}</div>`; }
+  if (t === 'singles' || t === 'supplies') { const list = t === 'singles' ? DB.cards.filter(isMon).sort((a, b) => G.value(b.id) - G.value(a.id)) : DB.cards.filter(c => isSpell(c) || isTrap(c)); body = `<div class="panel list" style="padding:4px 12px">${list.map(c => `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow" data-a="inspect" data-v="${c.id}">${esc(c.name)} ${rar(c.rarity, c)}<div class="small">own ${s.owned[c.id] || 0}</div></div><button class="btn sm" data-a="buySingle" data-v="${c.id}" ${s.money >= G.buyPrice(c.id) ? '' : 'disabled'}>${money(G.buyPrice(c.id))}</button></div>`).join('')}</div>`; }
+  if (t === 'sell') { const list = Object.keys(s.owned).filter(id => G.sellableCount(id) > 0).sort((a, b) => G.sellPrice(b) - G.sellPrice(a)); body = `<button class="btn p" style="width:100%;margin-bottom:10px" data-a="sellDupes">Sell all dupes (keeps 3 of each)</button><div class="panel list" style="padding:4px 12px">${list.map(id => { const c = card(id); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow">${esc(c.name)} ${rar(c.rarity, c)}<div class="small">${G.sellableCount(id)} spare</div></div><button class="btn g sm" data-a="sell" data-v="${id}">+${money(G.sellPrice(id))}</button></div>`; }).join('') || '<div class="small" style="padding:8px 0">Nothing spare to sell (you keep 1 of each doremon and what your decks use).</div>'}</div>`; }
   return `<h1>Shop</h1><div class="seg">${[['packs', 'Packs'], ['singles', 'Singles'], ['supplies', 'Supplies'], ['sell', 'Sell']].map(([k, n]) => `<button class="${t === k ? 'on' : ''}" data-a="shopTab" data-v="${k}">${n}</button>`).join('')}</div>${body}`;
 }
 function spark(h) { if (!h || h.length < 2) return ''; const mn = Math.min(...h), mx = Math.max(...h), rg = mx - mn || 1; const pts = h.map((v, i) => `${(i / (h.length - 1) * 70).toFixed(1)},${(22 - (v - mn) / rg * 20).toFixed(1)}`).join(' '); const up = h[h.length - 1] >= h[0]; return `<svg class="spark" viewBox="0 0 70 24"><polyline points="${pts}" fill="none" stroke="${up ? '#40c773' : '#f25252'}" stroke-width="2"/></svg>`; }
@@ -304,13 +306,13 @@ function marketView() {
   const ids = Object.keys(G.s.market).sort((a, b) => G.value(b) - G.value(a)); const top = G.topCard;
   return `<h1>Market</h1><div class="sub">Day ${G.s.day} · prices move with supply (packs opened) and demand (buys, trades, AI wants)</div>
   ${top ? `<div class="panel row">${sprite(spriteId(card(top)), 56)}<div class="grow"><div class="pix" style="color:var(--yellow)">TOP CARD</div><div class="title" style="font-size:22px">${esc(card(top).name)}</div><b>${money(G.value(top))}</b></div></div>` : ''}
-  <div class="panel list" style="padding:4px 12px">${ids.map(id => { const c = card(id), ch = G.change(id); return `<div class="it" data-a="inspect" data-v="${id}">${sprite(spriteId(c), 28)}<div class="grow" style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</div>${rar(c.rarity)}</div>${spark(G.s.market[id].history)}<div style="text-align:right;width:76px"><b>${money(G.value(id))}</b><div class="small" style="color:${ch > 0 ? '#40c773' : ch < 0 ? '#f25252' : 'var(--dim)'}">${ch > 0 ? '+' : ''}${(ch * 100).toFixed(1)}%</div></div></div>`; }).join('')}</div>`;
+  <div class="panel list" style="padding:4px 12px">${ids.map(id => { const c = card(id), ch = G.change(id); return `<div class="it" data-a="inspect" data-v="${id}">${sprite(spriteId(c), 28)}<div class="grow" style="min-width:0"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</div>${rar(c.rarity, c)}</div>${spark(G.s.market[id].history)}<div style="text-align:right;width:76px"><b>${money(G.value(id))}</b><div class="small" style="color:${ch > 0 ? '#40c773' : ch < 0 ? '#f25252' : 'var(--dim)'}">${ch > 0 ? '+' : ''}${(ch * 100).toFixed(1)}%</div></div></div>`; }).join('')}</div>`;
 }
 function ends(l) { const d = l.endDay - G.s.day; return d <= 1 ? `ends in ${clock(G.msToNextDay())}` : `ends in ${d} days (~${Math.round(((d - 1) * 120 + G.msToNextDay() / 60000))} min)`; }
 function auctionView() {
   const s = G.s, t = UI.aTab || 'browse'; let body = '';
   const who = w => w === E.ME ? 'You' : esc(s.ai[w].name);
-  const row = (l, btn) => { const c = card(l.card); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 34) : '✨'}<div class="grow" data-a="inspect" data-v="${c.id}"><b>${esc(c.name)}</b> ${rar(c.rarity)}<div class="small">${l.kind === 'auction' ? '🔨 auction' : '🏷 fixed price'} · by ${who(l.seller)} · ${ends(l)} · value ${money(G.value(l.card))}</div>
+  const row = (l, btn) => { const c = card(l.card); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 34) : '✨'}<div class="grow" data-a="inspect" data-v="${c.id}"><b>${esc(c.name)}</b> ${rar(c.rarity, c)}<div class="small">${l.kind === 'auction' ? '🔨 auction' : '🏷 fixed price'} · by ${who(l.seller)} · ${ends(l)} · value ${money(G.value(l.card))}</div>
     <div class="small">${l.kind === 'auction' ? (l.high ? `high bid <b style="color:#fff">${money(l.high.amt)}</b> by ${who(l.high.who)} · ${l.bids} bid(s)` : `start ${money(l.price)} · no bids`) : `price <b style="color:#fff">${money(l.price)}</b>`}</div></div>${btn}</div>`; };
   if (t === 'browse') { const ls = s.auctions.filter(l => l.seller !== E.ME).sort((a, b) => a.endDay - b.endDay);
     body = `<div class="panel list" style="padding:4px 12px">${ls.map(l => row(l, l.kind === 'auction' ? (l.high?.who === E.ME ? '<span class="rar" style="background:var(--green)">LEADING</span>' : `<button class="btn y sm" data-a="bid" data-v="${l.id}" ${s.money >= G.minBid(l) - (l.high?.who === E.ME ? l.high.amt : 0) ? '' : 'disabled'}>Bid ${money(G.minBid(l))}</button>`) : `<button class="btn g sm" data-a="buyNow" data-v="${l.id}" ${s.money >= l.price ? '' : 'disabled'}>Buy ${money(l.price)}</button>`)).join('') || '<div class="small" style="padding:8px 0">No listings right now. AIs list spare cards as days pass.</div>'}</div>`; }
@@ -321,7 +323,7 @@ function auctionView() {
     body = `<div class="seg">${[['auction', 'Auction'], ['fixed', 'Fixed price']].map(([k, n]) => `<button class="${kind === k ? 'on' : ''}" data-a="lKind" data-v="${k}">${n}</button>`).join('')}</div>
     <div class="seg">${[1, 2, 3, 5].map(d => `<button class="${days === d ? 'on' : ''}" data-a="lDays" data-v="${d}">${d} day${d > 1 ? 's' : ''}</button>`).join('')}</div>
     <div class="small" style="margin-bottom:6px">${kind === 'auction' ? 'Set a starting price; highest bid when the timer ends wins. Bids are held in escrow.' : 'First buyer at your price gets it.'} Shop sell price shown for comparison.</div>
-    <div class="panel list" style="padding:4px 12px">${list.map(id => { const c = card(id); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow">${esc(c.name)} ${rar(c.rarity)}<div class="small">${G.sellableCount(id)} spare · value ${money(G.value(id))} · shop pays ${money(G.sellPrice(id))}</div></div><button class="btn y sm" data-a="listCard" data-v="${id}">List</button></div>`; }).join('') || '<div class="small" style="padding:8px 0">Nothing spare to list.</div>'}</div>`; }
+    <div class="panel list" style="padding:4px 12px">${list.map(id => { const c = card(id); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 30) : '✨'}<div class="grow">${esc(c.name)} ${rar(c.rarity, c)}<div class="small">${G.sellableCount(id)} spare · value ${money(G.value(id))} · shop pays ${money(G.sellPrice(id))}</div></div><button class="btn y sm" data-a="listCard" data-v="${id}">List</button></div>`; }).join('') || '<div class="small" style="padding:8px 0">Nothing spare to list.</div>'}</div>`; }
   if (t === 'history') body = `<div class="panel list" style="padding:4px 12px">${s.auctionLog.map(x => `<div class="it small"><span>Day ${x.day}</span><span class="grow" style="color:#fff">${esc(card(x.card).name)}</span><span>${who(x.seller)} → ${who(x.buyer)}</span><b style="color:#7dfc9f">${money(x.price)}</b></div>`).join('') || '<div class="small" style="padding:8px 0">No sales yet.</div>'}</div>`;
   return `<h1>Auction House</h1><div class="sub">Day ${s.day} · you ${money(s.money)} · timers count league days · next day in ${clock(G.msToNextDay())}</div>
   <div class="seg">${[['browse', 'Browse'], ['mine', 'Mine'], ['sell', 'List a card'], ['history', 'Sold']].map(([k, n]) => `<button class="${t === k ? 'on' : ''}" data-a="aTab" data-v="${k}">${n}</button>`).join('')}</div>${body}
@@ -410,7 +412,7 @@ function renderOverlay() {
     else if (o.phase === 0.5) d.innerHTML = `<div class="pix" style="color:var(--yellow);margin-bottom:18px;visibility:hidden">.</div><div class="pack ripping"><img class="packart" src="${art}" alt=""><img class="packart top" src="${art}" alt=""><div class="burst"></div></div><div class="small" style="margin-top:14px;visibility:hidden">.</div>`;
     else if (o.phase === 1) { const c = o.cards[o.i], chase = Rarity.isChase(c.rarity), flipped = o.flipped;
       d.innerHTML = `<div class="pix" style="margin-bottom:12px">CARD ${o.i + 1} / 7</div><div class="reveal"><div class="flip ${flipped && !o.anim ? '' : 'back'} ${flipped && chase ? 'glow' : ''}" id="pflip" style="border-radius:6%/4.3%">${cardImg(c.id)}${flipped && Rarity.rank(c.rarity) >= 3 ? '<div class="holo"></div>' : ''}<img class="cardimg bk" src="${IMG['cards/card_back']}" alt=""></div></div>
-      <div style="height:64px;margin-top:14px;text-align:center">${flipped ? `<div class="title" style="font-size:26px;color:${RCOL[c.rarity]}">${esc(c.name)}</div><div>${rar(c.rarity)} ${o.fresh.has(c.id) ? '<span class="rar" style="background:var(--green)">NEW!</span>' : ''}</div>` : '<div class="small">Tap to flip</div>'}</div>
+      <div style="height:64px;margin-top:14px;text-align:center">${flipped ? `<div class="title" style="font-size:26px;color:${RCOL[c.rarity]}">${esc(c.name)}</div><div>${rar(c.rarity, c)} ${o.fresh.has(c.id) ? '<span class="rar" style="background:var(--green)">NEW!</span>' : ''}</div>` : '<div class="small">Tap to flip</div>'}</div>
       <button class="btn k sm" data-a="skipPack" style="margin-top:6px">Skip to summary</button>`; }
     else d.innerHTML = `<h1>${Packs.rule(o.set).name}</h1><div class="grid3" style="width:100%;max-width:420px;margin:8px 0 14px">${o.cards.map(c => `<div class="cell" style="position:relative">${cardImg(c.id)}${Rarity.rank(c.rarity) >= 3 ? '<div class="holo"></div>' : ''}${o.fresh.has(c.id) ? '<span class="badge">NEW</span>' : ''}</div>`).join('')}</div>
       <div class="row" style="width:100%;max-width:420px">${G.s.packs[o.set] > 0 ? `<button class="btn y grow" data-a="open" data-v="${o.set}">Open another (${G.s.packs[o.set]})</button>` : ''}<button class="btn grow" data-a="closeOv">Done</button></div>`;
@@ -419,14 +421,14 @@ function renderOverlay() {
     if (o.live || o.battle) {   // battle view: big card + readable text panel, no tilt/flip
       const stg = m ? [m.atk ? `Attack ${m.atk > 0 ? '+' : ''}${m.atk}` : '', m.def ? `Defense ${m.def > 0 ? '+' : ''}${m.def}` : '', m.status !== 'none' ? STATUS[m.status].join(' ') : ''].filter(Boolean).join(' · ') : '';
       d.innerHTML = `<div class="insp"><div class="inspc">${cardImg(c.id)}${Rarity.rank(c.rarity) >= 3 ? '<div class="holo"></div>' : ''}</div>
-        <div class="inspt"><div class="title" style="font-size:24px;color:${RCOL[c.rarity] || '#fff'}">${esc(c.name)} ${rar(c.rarity)}</div>
+        <div class="inspt"><div class="title" style="font-size:24px;color:${(isLegendaryST(c) ? RCOL.LGD : RCOL[c.rarity]) || '#fff'}">${esc(c.name)} ${rar(c.rarity, c)}</div>
         ${isMon(c) ? `<div class="kv"><span>Type</span><b>${c.types.join(' / ')}</b></div><div class="kv"><span>HP</span><b>${m ? `${m.hp} / ${c.hp}` : c.hp}</b></div><div class="kv"><span>Move</span><b>${esc(c.move)} · ${c.dmg}${isDouble(c) ? '×2' : ''} dmg (${c.moveType})</b></div>${c.split ? `<div class="kv"><span>Split</span><b style="color:#7ee0ff">${isDouble(c) ? 'Double hit: strikes the same target twice' : 'Hits up to 2 different targets'}</b></div>` : ''}${m && m.protected ? '<div class="kv"><span>Shield</span><b style="color:#7ee0ff">🛡 Protected — can\'t be targeted</b></div>' : ''}${stg ? `<div class="kv"><span>Now</span><b style="color:#ffb84d">${esc(stg)}</b></div>` : ''}${o.live ? `<div class="kv"><span>Side</span><b>${o.live.side === 0 ? 'Yours' : 'Opponent'}</b></div>` : ''}`
-          : `<div class="kv"><span>Kind</span><b>${isTrap(c) ? 'Trap' : 'Spell'}</b></div><div class="txt">${esc(c.text || '')}</div>`}
+          : `<div class="kv"><span>Kind</span><b>${stKindLabel(c)}</b></div><div class="txt">${esc(c.text || '')}</div>`}
         </div></div><button class="btn" data-a="closeOv" style="margin-top:12px;min-width:160px">Close</button>`;
       document.body.appendChild(d); return;
     }
     d.innerHTML = `<div class="reveal" id="tilt" style="width:74vw;max-width:320px"><div class="flip ${o.back ? 'back' : ''}" id="tiltc">${cardImg(c.id)}${Rarity.rank(c.rarity) >= 3 && !o.back ? '<div class="holo"></div>' : ''}<img class="cardimg bk" src="${IMG['cards/card_back']}" alt=""></div></div>
-      <div style="text-align:center;margin-top:12px"><div class="title" style="font-size:24px">${esc(c.name)}</div><div class="small">${rar(c.rarity)} · ${c.set} #${c.num} · owned ${owned} · value ${money(G.value(c.id))}${isMon(c) ? ` · ${c.types.join('/')} · HP ${c.hp} · ${esc(c.move)} ${c.dmg}${isDouble(c) ? '×2' : ''} (${c.moveType})${isSpread(c) ? ' · split: 2 targets' : ''}` : c.text ? ' · ' + esc(c.text) : ''}</div></div>
+      <div style="text-align:center;margin-top:12px"><div class="title" style="font-size:24px">${esc(c.name)}</div><div class="small">${rar(c.rarity, c)} · ${c.set} #${c.num} · owned ${owned} · value ${money(G.value(c.id))}${isMon(c) ? ` · ${c.types.join('/')} · HP ${c.hp} · ${esc(c.move)} ${c.dmg}${isDouble(c) ? '×2' : ''} (${c.moveType})${isSpread(c) ? ' · split: 2 targets' : ''}` : c.text ? ' · ' + esc(c.text) : ''}</div></div>
       <div class="row" style="margin-top:12px"><button class="btn k sm" data-a="flipInspect">Flip</button><button class="btn sm" data-a="closeOv">Close</button></div>`;
   } else if (o.kind === 'result') {
     d.innerHTML = `<div class="logo" style="font-size:52px;color:${o.won ? 'var(--yellow)' : o.won === false ? 'var(--red)' : '#fff'}">${o.won ? 'VICTORY!' : o.won === false ? 'DEFEAT' : 'DRAW'}</div>
@@ -462,7 +464,7 @@ function showAchievements() {
 function startBattle(v) { UI.overlay = { kind: 'coin', v, phase: 'call', result: G.rng.int(2) ? 'heads' : 'tails' }; render(); }
 function coinCall(call) {
   const o = UI.overlay; o.call = call; o.won = call === o.result; o.phase = 'spin'; sfx('coin'); renderOverlay();
-  setTimeout(() => { if (UI.overlay !== o) return; o.phase = o.won ? 'choose' : 'ai'; sfx(o.won ? 'coinWin' : 'coinLose'); renderOverlay(); }, SNAP ? 0 : 1700);
+  setTimeout(() => { if (UI.overlay !== o) return; o.phase = o.won ? 'choose' : 'ai'; if (!o.won) o.aiFirst = BattleAI.chooseFirst(); sfx(o.won ? 'coinWin' : 'coinLose'); renderOverlay(); }, SNAP ? 0 : 1700);
 }
 function coinHTML(o) {
   const face = (cls, label, icon) => `<div class="cf ${cls}"><div class="ci">${icon}</div><div class="cl">${label}</div></div>`;
@@ -474,7 +476,7 @@ function coinHTML(o) {
   if (o.phase === 'call') body = `<div class="title" style="font-size:24px;margin-bottom:10px">Call it!</div><div class="row" style="width:100%;max-width:340px"><button class="btn y grow" data-a="coinCall" data-v="heads">Heads</button><button class="btn p grow" data-a="coinCall" data-v="tails">Tails</button></div>`;
   else if (o.phase === 'spin') body = `<div class="small">You called ${o.call.toUpperCase()}…</div>`;
   else if (o.phase === 'choose') body = `<div class="title" style="font-size:24px;color:var(--yellow)">${o.result.toUpperCase()}! You won the toss</div><div class="small" style="margin:4px 0 10px">Choose who goes first</div><div class="row" style="width:100%;max-width:340px"><button class="btn y grow" data-a="coinGo" data-v="0">Go first</button><button class="btn k grow" data-a="coinGo" data-v="1">Go second</button></div>`;
-  else body = `<div class="title" style="font-size:24px;color:#ff9b9b">${o.result.toUpperCase()} — you lost the toss</div><div class="small" style="margin:4px 0 10px">${esc(opp)} chooses to go first.</div><button class="btn y" style="width:100%;max-width:340px" data-a="coinGo" data-v="1">Start battle</button>`;
+  else { const aiFirst = o.aiFirst !== false; body = `<div class="title" style="font-size:24px;color:#ff9b9b">${o.result.toUpperCase()} — you lost the toss</div><div class="small" style="margin:4px 0 10px">${esc(opp)} chooses to go ${aiFirst ? 'first' : 'second'}.</div><button class="btn y" style="width:100%;max-width:340px" data-a="coinGo" data-v="${aiFirst ? 1 : 0}">Start battle</button>`; }
   return `<div class="pix" style="color:var(--yellow);margin-bottom:14px">${what} · COIN TOSS · vs ${esc(opp)}</div>${coin}<div style="text-align:center;margin-top:18px;width:100%;display:flex;flex-direction:column;align-items:center">${body}</div>
   ${o.phase === 'call' ? '<button class="btn k sm" style="margin-top:14px" data-a="closeOv">Cancel</button>' : ''}`;
 }
@@ -539,8 +541,11 @@ function battleView() {
   const hearts = (side, n) => `<span class="hearts" aria-label="${n} of ${Battle.startLife} hearts left">${Array.from({ length: Battle.startLife }, (_, i) => `<i class="ht ${i < n ? 'on' : i < prev[side] ? 'lost' : ''}">${HEART}</i>`).join('')}<b class="hn">${n}</b></span>`;
   B.prevLife = [me.life, op.life];
   let hint = '';
-  if (B.spec) hint = b.over ? `🏆 ${esc(b.winner == null ? 'Draw' : b.winner === 0 ? B.spec.na : B.spec.nb)} wins!` : `Turn ${b.turnNumber} · ${esc(b.current === 0 ? B.spec.na : B.spec.nb)} to move`; else if (!my) hint = b.over ? '' : `${esc(o.name)} is thinking…`;
-  else if (B.sel?.kind === 'auraPick') { const p = b.pendingAura; const inf = p && b.sides[p.side].mons[p.slot]; hint = `Aura — tap one ${p && p.tgtSide !== 0 ? 'opposing' : 'allied'} doremon for ${esc(inf?.card.name || 'aura')}`; }
+  if (B.spec) hint = b.over ? `🏆 ${esc(b.winner == null ? 'Draw' : b.winner === 0 ? B.spec.na : B.spec.nb)} wins!` : `Turn ${b.turnNumber} · ${esc(b.current === 0 ? B.spec.na : B.spec.nb)} to move`;
+  else if (B.sel?.kind === 'auraPick' || (b.pendingAura && b.humanSide === b.pendingAura.side)) { const p = b.pendingAura; const inf = p && b.sides[p.side].mons[p.slot]; hint = `Aura — tap one ${p && p.tgtSide !== 0 ? 'opposing' : 'allied'} doremon for ${esc(inf?.card.name || 'aura')}`; }
+  else if (B.sel?.kind === 'duelFrom' || (b.pendingDuel && !B.sel)) hint = 'Duel! Tap which enemy attacks';
+  else if (B.sel?.kind === 'duelTo') hint = 'Duel — tap which of YOUR doremon is attacked';
+  else if (!my) hint = b.over ? '' : `${esc(o.name)} is thinking…`;
   else if (B.sel?.kind === 'prot2') hint = 'Double Protect — tap a 2nd ally, or Cast to shield one';
   else if (B.sel?.kind === 'hand') { const c = me.hand[B.sel.i]; hint = isMon(c) ? (me.monsPlayed ? 'Already played a doremon this turn' : 'Tap an empty slot on your mat') : isTrap(c) ? 'Tap a SPELL/TRAP slot to set it' : b.spellTargetsFoe(c) ? 'Clean Slate — tap an opposing doremon' : b.spellNeedsTarget(c) ? 'Tap one of your doremon' : ''; }
   else if (B.sel?.kind === 'fresh') hint = `Played this turn — take ${esc(me.mons[B.sel.i].card.name)} back to your hand?`;
@@ -565,9 +570,9 @@ function battleView() {
   <div class="bt">
    <div class="bhead">${sprite(o.avatar, 26)}<b class="bn">${esc(o.name)}</b>${hearts(1, op.life)}<span class="grow"></span><span class="small">✋${op.hand.length} · 🂠${op.deck.length}</span></div>
    ${stRow(1)}
-   <div class="mat op" id="matop" style="${matStyle}"><div class="lbl">DOREMON</div>${[3, 4, 5, 0, 1, 2].map(i => slotHTML(1, i)).join('')}<button class="gravepit" data-a="grave" data-v="1" title="Gravepit">🪦 ${op.discard.length}</button></div>
+   <div class="mat op${b.field && b.field.id === 'sandstorm' ? ' sandstorm' : ''}" id="matop" style="${matStyle}"><div class="lbl">DOREMON</div>${[3, 4, 5, 0, 1, 2].map(i => slotHTML(1, i)).join('')}<button class="gravepit" data-a="grave" data-v="1" title="Gravepit">🪦 ${op.discard.length}</button></div>
    <div class="prev">${hint}</div>
-   <div class="mat me" id="matme" style="${matStyle}"><div class="lbl">DOREMON</div>${[0, 1, 2, 3, 4, 5].map(i => slotHTML(0, i)).join('')}<button class="gravepit" data-a="grave" data-v="0" title="Gravepit">🪦 ${me.discard.length}</button></div>
+   <div class="mat me${b.field && b.field.id === 'sandstorm' ? ' sandstorm' : ''}" id="matme" style="${matStyle}"><div class="lbl">DOREMON</div>${[0, 1, 2, 3, 4, 5].map(i => slotHTML(0, i)).join('')}<button class="gravepit" data-a="grave" data-v="0" title="Gravepit">🪦 ${me.discard.length}</button></div>
    ${stRow(0)}
    <div class="bhead">${sprite(avA, 26)}<b class="bn">${nA}</b>${hearts(0, me.life)}<span class="grow"></span><span class="small">${B.spec ? `✋${me.hand.length} · ` : ''}🂠${me.deck.length}</span></div>
    ${bar ? bar : `<div class="hand">${me.hand.map((c, i) => { const can = my && (isMon(c) ? me.monsPlayed < 1 && monCount(me) < 6 : me.stPlayed < 2); return `<div class="hc ${B.sel?.kind === 'hand' && B.sel.i === i ? 'sel' : ''} ${can ? '' : 'dis'}" data-a="hand" data-v="${i}" data-card="${c.id}">${cardImg(c.id)}</div>`; }).join('')}</div>
@@ -599,7 +604,7 @@ function afterBattleRender() {
   const B = UI.battle; if (!B) return;
   let box = null;     // all slots share one size: measure once, then fit every sprite into the same box
   document.querySelectorAll('.slot .sp[data-sp]').forEach(el => { if (!box) box = [el.clientWidth, el.clientHeight]; el.innerHTML = fitSprite(el.dataset.sp, box[0], box[1]); });
-  for (const f of B.floats) { const el = document.getElementById(`s${f.side}${f.slot}`); if (!el) continue; const d = document.createElement('div'); d.className = 'float' + (f.heal ? ' heal' : ''); d.textContent = f.text; el.appendChild(d); if (!f.heal) el.classList.add('shake'); }
+  for (const f of B.floats) { const el = document.getElementById(`s${f.side}${f.slot}`); if (!el) continue; const d = document.createElement('div'); d.className = 'float' + (f.heal ? ' heal' : '') + (f.miss ? ' miss' : ''); d.textContent = f.text; el.appendChild(d); if (!f.heal && !f.miss) el.classList.add('shake'); }
   B.floats = [];
 }
 function drainEvents() {
@@ -616,6 +621,10 @@ function drainEvents() {
     else if (e.e === 'direct') sfx('superHit'), B.floats.push({ side: e.side, slot: 1, text: '-1 ❤️' });
     else if (e.e === 'trap') { sfx('trapSpring'); banner(`TRAP! ${e.card.name}`); flashST(e.card); }
     else if (e.e === 'aura_pick') { /* UI picks via pendingAura */ }
+    else if (e.e === 'miss') { sfx('trapSpring'); B.floats.push({ side: e.side, slot: e.slot, text: 'Missed!', miss: true }); banner('Missed!'); }
+    else if (e.e === 'sand') B.floats.push({ side: e.side, slot: e.slot, text: `-${e.dmg || 20}` });
+    else if (e.e === 'field') banner(e.id === 'sandstorm' ? 'SANDSTORM!' : 'Field effect!');
+    else if (e.e === 'ai_hang') banner('AI stalled — turn ended');
   }
 }
 function banner(t) { if (SNAP) return; const d = document.createElement('div'); d.className = 'banner'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1400); }
@@ -646,29 +655,54 @@ function checkOver() {
   else [bucks, d] = G.recordResult(won, B.league, B.k, B.b.splitKOs[0], Game.playedIds(B.b, 0));
   setTimeout(() => { sfx(won ? 'win' : 'lose'); UI.overlay = { kind: 'result', won, bucks, d, note, mode: B.mode, league: B.league, avatar: G.s.ai[B.k].avatar, ko: [B.b.sides[0].koCount, B.b.sides[1].koCount] }; render(); }, 900);
 }
+function clearAIWatch() { if (UI.aiWatch) { clearTimeout(UI.aiWatch); UI.aiWatch = null; } }
+function armAIWatch() {
+  clearAIWatch();
+  UI.aiWatch = setTimeout(() => {
+    const B = UI.battle;
+    if (!B || B.b.over || B.b.current !== 1) return;
+    if (humanCanPick(B)) return;   // waiting on a human aura / Duel pick
+    B.b.forceEndAITurn('AI failed to act within 5 seconds');
+    drainEvents(); B.busy = false; clearAIWatch(); render();
+    if (B.b.over) checkOver();
+    else if (B.b.current === 1) setTimeout(aiTurn, 300);
+  }, 5000);
+}
 function aiTurn() {
-  const B = UI.battle; if (!B || B.b.over) return;
-  if (B.b.pendingDuel) { B.busy = false; B.sel = { kind: 'duelFrom' }; banner('Duel! Tap which enemy attacks'); render(); return; }
-  if (B.b.pendingAura && B.b.humanSide === B.b.pendingAura.side) { B.busy = false; B.sel = { kind: 'auraPick' }; render(); return; }
-  if (B.b.pendingAura) { const p = autoPickAura(B.b); if (p) resolveAura(B.b, p.tgtSlot); }
-  if (B.b.current !== 1) { B.busy = false; render(); return; }
+  const B = UI.battle; if (!B || B.b.over) { clearAIWatch(); return; }
+  if (B.b.pendingDuel) { clearAIWatch(); B.busy = false; B.sel = { kind: 'duelFrom' }; banner('Duel! Tap which enemy attacks'); render(); return; }
+  if (B.b.pendingAura && B.b.humanSide === B.b.pendingAura.side) { clearAIWatch(); B.busy = false; B.sel = { kind: 'auraPick' }; render(); return; }
+  if (B.b.pendingAura) { const p = autoPickAura(B.b); if (p) resolveAura(B.b, p.tgtSlot); else B.b.pendingAura = null; }
+  if (B.b.current !== 1) { clearAIWatch(); B.busy = false; render(); return; }
   B.busy = true;
-  let a = BattleAI.next(B.b);
-  if (!B.b.apply(a)) B.b.apply({ t: 'end' });
+  armAIWatch();
+  let a = { t: 'end' };
+  try {
+    a = BattleAI.next(B.b);
+    if (!B.b.apply(a)) B.b.apply({ t: 'end' });
+  } catch (err) {
+    console.error('AI turn error', err);
+    B.b.forceEndAITurn('AI exception: ' + ((err && err.message) || err));
+    a = { t: 'end' };
+  }
   drainEvents();
   if (B.b.pendingAura && B.b.humanSide !== B.b.pendingAura.side) {
     const pick = E.autoAuraTarget(B.b, B.b.pendingAura.side, B.b.pendingAura.slot);
     if (pick) resolveAura(B.b, pick.tgtSlot); else B.b.pendingAura = null;
   }
   render();
-  if (B.b.over) { B.busy = false; checkOver(); return; }
-  if (B.b.pendingDuel) { B.busy = false; B.sel = { kind: 'duelFrom' }; banner('Duel! Tap which enemy attacks'); render(); return; }
-  if (B.b.pendingAura && B.b.humanSide === B.b.pendingAura.side) { B.busy = false; B.sel = { kind: 'auraPick' }; banner('Aura — choose a target'); render(); return; }
+  if (B.b.over) { clearAIWatch(); B.busy = false; checkOver(); return; }
+  if (B.b.pendingDuel) { clearAIWatch(); B.busy = false; B.sel = { kind: 'duelFrom' }; banner('Duel! Tap which enemy attacks'); render(); return; }
+  if (B.b.pendingAura && B.b.humanSide === B.b.pendingAura.side) { clearAIWatch(); B.busy = false; B.sel = { kind: 'auraPick' }; banner('Aura — choose a target'); render(); return; }
   setTimeout(aiTurn, a && a.t === 'end' ? 300 : 650);
 }
 function autoPickAura(b) { return E.autoAuraTarget(b, b.pendingAura.side, b.pendingAura.slot); }
+function humanCanPick(B) {
+  const b = B && B.b; if (!B || !b || B.spec || b.over) return false;
+  return !!(b.pendingDuel || (b.pendingAura && b.humanSide === b.pendingAura.side) || (B.sel && (B.sel.kind === 'auraPick' || B.sel.kind === 'duelFrom' || B.sel.kind === 'duelTo')));
+}
 function tapSlot(side, i) {
-  const B = UI.battle, b = B.b; if (B.spec || b.current !== 0 || B.busy || b.over) { inspectMon(side, i); return; }
+  const B = UI.battle, b = B.b; if (B.spec || b.over || ((b.current !== 0 || B.busy) && !humanCanPick(B))) { inspectMon(side, i); return; }
   const me = b.sides[0], sel = B.sel;
   if (side === 0) {
     if (sel?.kind === 'hand') { const c = me.hand[sel.i];
@@ -775,7 +809,19 @@ const A = {
   direct: () => { const B = UI.battle; act({ t: 'attack', from: B.sel.i, to: null }); },
   endTurn: () => { const B = UI.battle; B.sel = null; if (act({ t: 'end' }) && !B.b.over) setTimeout(aiTurn, 500); },
   log: () => { UI.overlay = { kind: 'log', lines: UI.battle.lines }; renderOverlay(); },
-  forfeit: () => { const B = UI.battle; if (B.b.over) return; if (!confirm('Forfeit this match? It counts as a loss.')) return; B.b.finish(1); drainEvents(); checkOver(); },
+  forfeit: () => {
+    const B = UI.battle; if (B.b.over) return;
+    const hung = !!B.b.hungAI;
+    if (!confirm(hung ? 'The AI got stuck. Quit without taking a loss?' : 'Forfeit this match? It counts as a loss.')) return;
+    if (hung) {
+      if (B.mode === 'tour') G.tourVoid();
+      else G.recordResult(null, B.league, B.k, 0, [], true);
+      B.b.over = true; B.b.winner = null;
+      UI.overlay = { kind: 'result', won: null, voided: true, bucks: 0, d: 0, note: 'Match voided — the AI got stuck. This does not count as a loss.', mode: B.mode, league: B.league, avatar: G.s.ai[B.k].avatar, ko: [B.b.sides[0].koCount, B.b.sides[1].koCount] };
+      render(); return;
+    }
+    B.b.finish(1); drainEvents(); checkOver();
+  },
   leaveSpec: () => { const B = UI.battle; if (B?.spec) { clearTimeout(B.spec.timer); settleSpec(B); } UI.battle = null; UI.overlay = null; UI.tab = 'more'; UI.more = 'spectate'; render(); },
   specSpeed: v => { UI.battle.spec.speed = +v; render(); specTick(); },
   specPause: () => { const S = UI.battle.spec; S.paused = !S.paused; render(); specTick(); },
@@ -830,6 +876,7 @@ function demo() {
   for (let i = 0; i < 6; i++) { g.s.packs.RA = (g.s.packs.RA || 0) + 1; g.openPack('RA'); }
   g.s.owned.pr_ursacoon_flame_punch = 1;
   g.s.owned.fl_seraphink = 1; g.s.owned.ww_badbulb = 2; g.s.owned.t2_peaflora = 1; g.s.owned.t2_blizzbear = 1; g.s.packs = { WW: 3, FL: 2, T2: 4, HT: 2, RA: 3 }; g.s.owned.cv_rampagoone = 1; g.s.owned.ht_goldgulp = 1; g.s.owned.ht_skoldin = 1; g.s.owned.st_revive = 1; g.s.owned.st_sandstorm = 1; g.s.owned.st_double_protect = 1; g.s.owned.st_duel = 1; g.s.owned.st_soothing_wave = 1; g.s.owned.st_roar = 1; g.s.owned.ht_emodoom = 1;
+  g.s.owned.ra_clawdle = 1; g.s.owned.ra_thornhare = 1; g.s.owned.ra_pinchaw = 1; g.s.owned.ra_wickling = 1; g.s.owned.ra_leafzard = 1; g.s.owned.ra_sweuw = 1; g.s.owned.ra_indeezle = 1; g.s.owned.ra_petalmoth = 1; g.s.owned.t2_rocketbee = 1; g.s.owned.ht_owldrul = 1; g.s.owned.ht_phioice = 1; g.s.owned.ht_lunarpent = 1;
   for (let i = 0; i < 4; i++) { g.recordResult(i % 3 !== 2, true, g.nextLeagueOpponent()); g.skipDay(); }
   g.newAchievements = [];
   g.s.decks[1] = DeckRules.autoBuild(g.s.owned, g.rng); g.s.deckNames[1] = 'Deck 2';
@@ -972,6 +1019,21 @@ function demo() {
     case 'binder_ra': UI.tab = 'binder'; UI.binderSet = 'RA'; break;
     case 'v21_tabs': case 'v22_tabs': UI.tab = 'binder'; UI.binderSet = 'RA'; break;
     case 'v21_packs': case 'v22_packs': UI.tab = 'packs'; break;
+    case 'card_sandstorm': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_sandstorm', back: false, battle: true }; break;
+    case 'card_revive': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_revive', back: false, battle: true }; break;
+    case 'card_clawdle': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'ra_clawdle', back: false }; break;
+    case 'card_wickling': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'ra_wickling', back: false }; break;
+    case 'card_owldrul': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'ht_owldrul', back: false }; break;
+    case 'coinflip_ai': UI.tab = 'battle'; UI.overlay = { kind: 'coin', v: 'L' + g.nextLeagueOpponent(), phase: 'ai', result: 'tails', call: 'heads', won: false, aiFirst: BattleAI.chooseFirst() }; break;
+    case 'sandstorm': case 'sandstorm_miss': {
+      const f = Array(20).fill(card('ww_snarlpup'));
+      const b = new Battle(f, 'You', f, g.s.ai[2].name, 77n, 0);
+      const put = (sd, sl, id, o) => { b.sides[sd].mons[sl] = Object.assign(E.newMon(card(id)), { ready: true }, o || {}); };
+      put(0, 0, 'ra_clawdle'); put(0, 1, 'ww_snarlpup'); put(0, 2, 't2_rocketbee');
+      put(1, 0, 'fl_swirlgon'); put(1, 1, 'ww_gruugy', { hp: 80 }); put(1, 2, 'ww_hootuft');
+      b.startSandstorm(0);
+      UI.battle = { b, k: 2, league: true, sel: { kind: 'mon', i: 1 }, ei: b.events.length, busy: false, floats: SNAP === 'sandstorm_miss' ? [{ side: 0, slot: 1, text: 'Missed!', miss: true }] : [], lines: b.events.filter(e => e.e === 'log').map(e => e.text) };
+      break; }
   }
   G.newAchievements = [];
 }
@@ -984,7 +1046,7 @@ function demo() {
     if (G.s._v20Welcome) { delete G.s._v20Welcome; G.toast = 'Update gift: 3 free packs of every set are in Packs!'; G.save(); }
     if (G.s._raWelcome) { delete G.s._raWelcome; G.toast = 'Rivals & Allies — 3 free packs ready in Packs!'; G.save(); }
   if (!SNAP && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=23').then(reg => {
+      navigator.serviceWorker.register('sw.js?v=24').then(reg => {
         // When a new SW is waiting, activate it and reload so HT / balance updates aren't stuck behind an old PWA cache.
         const kick = () => { try { reg.waiting && reg.waiting.postMessage('skipWaiting'); } catch (_) {} };
         if (reg.waiting) kick();
