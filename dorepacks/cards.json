@@ -2954,7 +2954,7 @@
       "effect": {
         "revive": 100
       },
-      "text": "Return one knocked-out doremon from your discard to an empty slot with 100 HP. Limit 1 per deck.",
+      "text": "Return one knocked-out doremon from your discard to an empty slot with 100 HP.",
       "price": 800,
       "legendary": true,
       "mythical": false,
@@ -3031,7 +3031,7 @@
         "field": "sandstorm",
         "turns": 3
       },
-      "text": "For 3 turns: at the end of each turn, every doremon that is not Ground, Steel, or Rock takes 20 damage. Attacks against your doremon have a 30% chance to miss. Limit 1 per deck.",
+      "text": "For 3 turns: at the end of each turn, every doremon that is not Ground, Steel, or Rock takes 20 damage. Attacks against your doremon have a 30% chance to miss.",
       "price": 700,
       "legendary": true,
       "mythical": false,
@@ -3083,7 +3083,7 @@
         "def": -2,
         "recoil": 10
       },
-      "text": "When an enemy attacks, the attacker gets DEF -2 and takes 10 damage (sinks into the pit).",
+      "text": "When an enemy attacks, the attacker gets DEF -2 and takes 10 damage.",
       "price": 200,
       "legendary": false,
       "mythical": false,
@@ -3363,7 +3363,7 @@
       "passive": {
         "allyAtk": 1
       },
-      "text": "AURA — choose one other allied doremon: ATK +1 while Mesby is in play."
+      "text": "AURA \u2014 choose one other allied doremon: ATK +1 while Mesby is in play."
     },
     {
       "id": "ra_sweuw",
@@ -3386,7 +3386,7 @@
       "passive": {
         "allyDef": 1
       },
-      "text": "AURA — choose one other allied doremon: DEF +1 while Sweuw is in play."
+      "text": "AURA \u2014 choose one other allied doremon: DEF +1 while Sweuw is in play."
     },
     {
       "id": "ra_indeezle",
@@ -3451,7 +3451,7 @@
       "passive": {
         "foeAtk": -1
       },
-      "text": "AURA — choose one opposing doremon: ATK −1 while Dustwidow is in play."
+      "text": "AURA \u2014 choose one opposing doremon: ATK \u22121 while Dustwidow is in play."
     },
     {
       "id": "ra_rampagoone",
@@ -3494,7 +3494,7 @@
       "passive": {
         "foeAtk": -1
       },
-      "text": "AURA — choose one opposing doremon: ATK −1 while Twinbloom is in play."
+      "text": "AURA \u2014 choose one opposing doremon: ATK \u22121 while Twinbloom is in play."
     },
     {
       "id": "ra_mossfang",
@@ -3518,7 +3518,7 @@
       "passive": {
         "foeDef": -1
       },
-      "text": "AURA — choose one opposing doremon: DEF −1 while Mossfang is in play."
+      "text": "AURA \u2014 choose one opposing doremon: DEF \u22121 while Mossfang is in play."
     },
     {
       "id": "ra_fluffram",
@@ -3541,7 +3541,7 @@
       "passive": {
         "allyDef": 1
       },
-      "text": "AURA — choose one other allied doremon: DEF +1 while Fluffram is in play."
+      "text": "AURA \u2014 choose one other allied doremon: DEF +1 while Fluffram is in play."
     },
     {
       "id": "ra_brutality",
