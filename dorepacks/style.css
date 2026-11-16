@@ -54,11 +54,11 @@ h1{font-family:Lilita;font-weight:400;color:var(--yellow);font-size:30px;margin:
 .pack .burst{position:absolute;left:50%;top:18%;width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 60px 40px #fff8;transform:translate(-50%,-50%);animation:burst .7s ease-out forwards}
 @keyframes burst{0%{opacity:0}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(6)}}
 @keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-2deg)}75%{transform:rotate(2deg)}}
-.reveal{width:68vw;max-width:290px;perspective:900px}
+.reveal{width:68vw;max-width:290px;perspective:1200px;touch-action:none}
 .flip{transition:transform .5s;transform-style:preserve-3d;position:relative}
 .flip.back{transform:rotateY(180deg)}
 .flip img{backface-visibility:hidden}.flip .bk{position:absolute;inset:0;transform:rotateY(180deg)}
-.holo{position:absolute;inset:0;border-radius:6%/4.3%;background:linear-gradient(115deg,transparent 20%,rgba(255,120,240,.35) 35%,rgba(120,220,255,.35) 50%,rgba(255,240,120,.35) 65%,transparent 80%);background-size:250% 250%;mix-blend-mode:color-dodge;animation:holo 2.4s linear infinite;pointer-events:none}
+.holo{position:absolute;inset:0;border-radius:6%/4.3%;background:linear-gradient(115deg,transparent 20%,rgba(255,120,240,.35) 35%,rgba(120,220,255,.35) 50%,rgba(255,240,120,.35) 65%,transparent 80%);background-size:250% 250%;background-position:var(--hx,50%) var(--hy,50%);mix-blend-mode:color-dodge;animation:holo 2.4s linear infinite;pointer-events:none}
 @keyframes holo{from{background-position:100% 0}to{background-position:-150% 0}}
 .glow{box-shadow:0 0 40px 6px var(--gold)}
 /* battle */
@@ -243,3 +243,6 @@ input.vol{accent-color:var(--yellow);height:28px}
 .binder-sec{margin-top:12px}
 .binder-sec-h{font-family:Lilita,sans-serif;font-size:16px;letter-spacing:.06em;color:#ffc73d;margin:4px 2px 8px;text-transform:uppercase}
 .binder-sec:nth-child(n) .binder-sec-h{/* keep */}
+
+#tilt{touch-action:none;perspective:1200px}
+#tilt .flip,#pflip{transform-style:preserve-3d;will-change:transform}

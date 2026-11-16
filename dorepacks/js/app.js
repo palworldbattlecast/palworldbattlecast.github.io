@@ -402,6 +402,69 @@ function typeGuideView() { const g = E.typeGuide(), chips = a => a.length ? a.ma
 function rulesView() { return `<h1>How to Play</h1><div class="sub">Doremonsters mat battles</div>` + RULES.map(([a, b]) => `<div class="panel"><div class="title" style="font-size:20px;color:var(--yellow)">${a}</div><div style="font-weight:500;margin-top:4px">${esc(b)}</div></div>`).join('') + typeGuideView(); }
 
 // ---------- overlays: pack opening, inspector, result ----------
+
+function bindCardFeel(root, face, opts) {
+  if (!root || !face) return;
+  opts = opts || {};
+  const isBack = () => !!(opts.back && opts.back());
+  let sx = 0, sy = 0, sc = 1, pinsc = 1, startDist = 0;
+  const pointers = new Map();
+  const holo = face.querySelector('.holo');
+  const apply = (tx, ty, x, y, s, spring) => {
+    face.style.transition = spring ? 'transform .5s cubic-bezier(.2,1.35,.3,1)' : 'none';
+    const rx = (-ty * 24).toFixed(2), ry = (tx * 24).toFixed(2);
+    face.style.transform = `translate(${x}px,${y}px) rotateX(${rx}deg) rotateY(${(isBack() ? 180 : 0) + +ry}deg) scale(${s})`;
+    if (holo) {
+      holo.style.animation = 'none';
+      holo.style.setProperty('--hx', `${50 + tx * 45}%`);
+      holo.style.setProperty('--hy', `${50 + ty * 45}%`);
+    }
+  };
+  const spring = () => {
+    apply(0, 0, 0, 0, sc, true);
+    if (holo) setTimeout(() => { if (holo) holo.style.animation = ''; }, 500);
+  };
+  root.style.touchAction = 'none';
+  const pos = ev => {
+    const r = root.getBoundingClientRect();
+    return { x: (ev.clientX - r.left) / r.width - .5, y: (ev.clientY - r.top) / r.height - .5 };
+  };
+  root.addEventListener('pointerdown', ev => {
+    if (ev.button) return;
+    pointers.set(ev.pointerId, ev);
+    try { root.setPointerCapture(ev.pointerId); } catch (e) {}
+    sx = ev.clientX; sy = ev.clientY;
+    ev.stopPropagation();
+  });
+  root.addEventListener('pointermove', ev => {
+    if (!pointers.has(ev.pointerId)) return;
+    pointers.set(ev.pointerId, ev);
+    ev.preventDefault(); ev.stopPropagation();
+    if (pointers.size >= 2) {
+      const [a, b] = [...pointers.values()];
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      if (!startDist) startDist = dist || 1;
+      pinsc = Math.max(0.85, Math.min(2.6, sc * (dist / startDist)));
+      apply(0, 0, 0, 0, pinsc, false);
+      return;
+    }
+    const p = pos(ev);
+    const tx = Math.max(-1, Math.min(1, p.x * 2)), ty = Math.max(-1, Math.min(1, p.y * 2));
+    apply(tx, ty, (ev.clientX - sx) * 0.25, (ev.clientY - sy) * 0.25, sc, false);
+  }, { passive: false });
+  const up = ev => {
+    pointers.delete(ev.pointerId);
+    if (pointers.size < 2) {
+      if (startDist) { sc = Math.max(1, Math.min(2.4, pinsc)); startDist = 0; }
+      spring();
+    }
+  };
+  root.addEventListener('pointerup', up);
+  root.addEventListener('pointercancel', up);
+  root.addEventListener('touchmove', ev => { if (ev.touches.length >= 2) ev.preventDefault(); }, { passive: false });
+  if (opts.preview) apply(0.55, -0.35, 12, -8, 1.05, false);
+}
+
 function renderOverlay() {
   document.querySelectorAll('.overlay').forEach(e => e.remove());
   const o = UI.overlay; if (!o) return;
@@ -429,6 +492,7 @@ function renderOverlay() {
     }
     d.innerHTML = `<div class="reveal" id="tilt" style="width:74vw;max-width:320px"><div class="flip ${o.back ? 'back' : ''}" id="tiltc">${cardImg(c.id)}${Rarity.rank(c.rarity) >= 3 && !o.back ? '<div class="holo"></div>' : ''}<img class="cardimg bk" src="${IMG['cards/card_back']}" alt=""></div></div>
       <div style="text-align:center;margin-top:12px"><div class="title" style="font-size:24px">${esc(c.name)}</div><div class="small">${rar(c.rarity, c)} · ${c.set} #${c.num} · owned ${owned} · value ${money(G.value(c.id))}${isMon(c) ? ` · ${c.types.join('/')} · HP ${c.hp} · ${esc(c.move)} ${c.dmg}${isDouble(c) ? '×2' : ''} (${c.moveType})${isSpread(c) ? ' · split: 2 targets' : ''}` : c.text ? ' · ' + esc(c.text) : ''}</div></div>
+      <div class="small" style="margin-top:8px;opacity:.8">Drag to tilt and move · pinch to zoom · release springs back</div>
       <div class="row" style="margin-top:12px"><button class="btn k sm" data-a="flipInspect">Flip</button><button class="btn sm" data-a="closeOv">Close</button></div>`;
   } else if (o.kind === 'result') {
     d.innerHTML = `<div class="logo" style="font-size:52px;color:${o.won ? 'var(--yellow)' : o.won === false ? 'var(--red)' : '#fff'}">${o.won ? 'VICTORY!' : o.won === false ? 'DEFEAT' : 'DRAW'}</div>
@@ -450,7 +514,8 @@ function renderOverlay() {
   document.body.appendChild(d);
   // animate the card turning over (render it face-down first, then flip on the next frame)
   if (o.kind === 'pack' && o.anim) { o.anim = false; const f = document.getElementById('pflip'); f.getBoundingClientRect(); requestAnimationFrame(() => f.classList.remove('back')); }
-  if (o.kind === 'inspect') { const t = $('#tilt'), c = $('#tiltc'); t.addEventListener('touchmove', ev => { const r = t.getBoundingClientRect(), p = ev.touches[0]; const x = (p.clientX - r.left) / r.width - .5, y = (p.clientY - r.top) / r.height - .5; c.style.transform = `${o.back ? 'rotateY(180deg) ' : ''}rotateX(${-y * 22}deg) rotateY(${x * 22}deg)`; ev.preventDefault(); }, { passive: false }); t.addEventListener('touchend', () => { c.style.transform = ''; }); }
+  if (o.kind === 'inspect') bindCardFeel($('#tilt'), $('#tiltc'), { back: () => !!(UI.overlay && UI.overlay.back), preview: SNAP === 'inspect_tilt' });
+  if (o.kind === 'pack' && o.phase === 1 && o.flipped) bindCardFeel(document.querySelector('.reveal'), $('#pflip'));
 }
 function showAchievements() {
   if (!G.newAchievements.length || document.querySelector('.toast')) return;
@@ -994,6 +1059,9 @@ function demo() {
       break; }
     case 'card_revive': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_revive', back: false }; break;
     case 'card_sandstorm': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_sandstorm', back: false }; break;
+    case 'card_luxbull': UI.tab = 'binder'; UI.binderSet = 'T2'; UI.overlay = { kind: 'inspect', id: 't2_luxbull', back: false }; break;
+    case 'card_sinkhole': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_sinkhole', back: false }; break;
+    case 'inspect_tilt': UI.tab = 'binder'; UI.binderSet = 'T2'; UI.overlay = { kind: 'inspect', id: 't2_luxbull', back: false }; break;
     case 'card_double_protect': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'st_double_protect', back: false }; break;
     case 'card_duel': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'st_duel', back: false }; break;
     case 'card_soothing_wave': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'st_soothing_wave', back: false }; break;
