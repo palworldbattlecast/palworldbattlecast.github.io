@@ -465,7 +465,7 @@
       "types": [
         "Rock"
       ],
-      "hp": 260,
+      "hp": 230,
       "move": "Rock Avalanche",
       "moveType": "Rock",
       "dmg": 110,
@@ -483,10 +483,10 @@
       "types": [
         "Dragon"
       ],
-      "hp": 260,
+      "hp": 320,
       "move": "Wyrm Twister",
       "moveType": "Dragon",
-      "dmg": 100,
+      "dmg": 130,
       "legendary": false,
       "mythical": false
     },
@@ -1041,10 +1041,10 @@
         "Grass",
         "Dark"
       ],
-      "hp": 300,
+      "hp": 340,
       "move": "Feint Strike",
       "moveType": "Dark",
-      "dmg": 120,
+      "dmg": 140,
       "legendary": false,
       "mythical": false
     },
@@ -1368,7 +1368,8 @@
       "legendary": false,
       "mythical": false,
       "homeSet": "WW",
-      "pack": null
+      "pack": null,
+      "effectText": "Give one doremon +2 attack"
     },
     {
       "id": "st_iron_guard",
@@ -1393,7 +1394,8 @@
       "legendary": false,
       "mythical": false,
       "homeSet": "WW",
-      "pack": null
+      "pack": null,
+      "effectText": "Give one doremon +2 defense"
     },
     {
       "id": "st_brace_up",
@@ -1418,7 +1420,8 @@
       "legendary": false,
       "mythical": false,
       "homeSet": "FL",
-      "pack": null
+      "pack": null,
+      "effectText": "Give one doremon +1 defense"
     },
     {
       "id": "st_cheer_on",
@@ -1443,7 +1446,8 @@
       "legendary": false,
       "mythical": false,
       "homeSet": "FL",
-      "pack": null
+      "pack": null,
+      "effectText": "Give all of your doremon +1 attack"
     },
     {
       "id": "st_shield_pal",
@@ -1468,7 +1472,8 @@
       "legendary": false,
       "mythical": false,
       "homeSet": "WW",
-      "pack": null
+      "pack": null,
+      "effectText": "Give all of your doremon +1 defense"
     },
     {
       "id": "st_guard_wall",
@@ -1544,7 +1549,8 @@
       "legendary": false,
       "mythical": false,
       "homeSet": "FL",
-      "pack": null
+      "pack": null,
+      "effectText": "The attacker gets \u22122 attack"
     },
     {
       "id": "st_cute_growl",
@@ -1569,7 +1575,8 @@
       "legendary": false,
       "mythical": false,
       "homeSet": "WW",
-      "pack": null
+      "pack": null,
+      "effectText": "The attacker gets \u22121 attack"
     },
     {
       "id": "st_metal_screech",
@@ -1594,7 +1601,8 @@
       "legendary": false,
       "mythical": false,
       "homeSet": "FL",
-      "pack": null
+      "pack": null,
+      "effectText": "The attacker gets \u22122 defense"
     },
     {
       "id": "st_glare_down",
@@ -1619,7 +1627,8 @@
       "legendary": false,
       "mythical": false,
       "homeSet": "FL",
-      "pack": null
+      "pack": null,
+      "effectText": "The attacker gets \u22121 defense"
     },
     {
       "id": "st_static_web",
@@ -1837,12 +1846,11 @@
       "num": 5,
       "kind": "mon",
       "types": [
-        "Dark",
-        "Flying"
+        "Dark"
       ],
       "hp": 260,
-      "move": "Gale Talon",
-      "moveType": "Flying",
+      "move": "Night Slash",
+      "moveType": "Dark",
       "dmg": 40,
       "legendary": false,
       "mythical": false,
@@ -1921,8 +1929,8 @@
         "Bug"
       ],
       "hp": 220,
-      "move": "Quake Stomp",
-      "moveType": "Ground",
+      "move": "Flame Sting",
+      "moveType": "Fire",
       "dmg": 50,
       "legendary": false,
       "mythical": false,
@@ -2266,10 +2274,10 @@
         "Grass",
         "Dark"
       ],
-      "hp": 280,
+      "hp": 240,
       "move": "Night Bite",
       "moveType": "Dark",
-      "dmg": 60,
+      "dmg": 45,
       "legendary": false,
       "mythical": false,
       "split": "double"
@@ -2458,7 +2466,8 @@
       "price": 200,
       "legendary": false,
       "mythical": false,
-      "homeSet": "T2"
+      "homeSet": "T2",
+      "effectText": "Your 2 strongest doremon each get +1 attack"
     },
     {
       "id": "st_twin_growl",
@@ -2483,7 +2492,8 @@
       "price": 160,
       "legendary": false,
       "mythical": false,
-      "homeSet": "T2"
+      "homeSet": "T2",
+      "effectText": "The attacker and its strongest teammate get \u22121 attack"
     },
     {
       "id": "st_double_glare",
@@ -2508,7 +2518,8 @@
       "price": 140,
       "legendary": false,
       "mythical": false,
-      "homeSet": "T2"
+      "homeSet": "T2",
+      "effectText": "The attacker and its strongest teammate get \u22121 defense"
     },
     {
       "id": "st_toxic_spray",
@@ -2659,10 +2670,10 @@
       "types": [
         "Dragon"
       ],
-      "hp": 280,
+      "hp": 220,
       "move": "Wyrm Pulse",
       "moveType": "Dragon",
-      "dmg": 110,
+      "dmg": 80,
       "legendary": false,
       "mythical": false
     },
@@ -2891,7 +2902,7 @@
         "Ground"
       ],
       "hp": 250,
-      "move": "Tidal Crash",
+      "move": "Bubble Stream",
       "moveType": "Water",
       "dmg": 120,
       "legendary": true,
@@ -2984,7 +2995,8 @@
       "price": 240,
       "legendary": false,
       "mythical": false,
-      "homeSet": "HT"
+      "homeSet": "HT",
+      "effectText": "Give one doremon +1 attack and +1 defense"
     },
     {
       "id": "st_clean_slate",
@@ -3009,7 +3021,8 @@
       "price": 120,
       "legendary": false,
       "mythical": false,
-      "homeSet": "HT"
+      "homeSet": "HT",
+      "effectText": "Clear all attack and defense stages on one opposing doremon"
     },
     {
       "id": "st_sandstorm",
@@ -3087,7 +3100,8 @@
       "price": 200,
       "legendary": false,
       "mythical": false,
-      "homeSet": "HT"
+      "homeSet": "HT",
+      "effectText": "The attacker gets \u22122 defense"
     },
     {
       "id": "st_rust_cloud",
@@ -3113,7 +3127,8 @@
       "price": 180,
       "legendary": false,
       "mythical": false,
-      "homeSet": "HT"
+      "homeSet": "HT",
+      "effectText": "The attacker gets \u22121 attack and \u22121 defense"
     },
     {
       "id": "st_last_stand",
@@ -3139,7 +3154,8 @@
       "price": 260,
       "legendary": false,
       "mythical": false,
-      "homeSet": "HT"
+      "homeSet": "HT",
+      "effectText": "The attacker gets \u22122 attack"
     },
     {
       "id": "ht_skoldin",
@@ -3212,8 +3228,8 @@
         "Psychic"
       ],
       "hp": 250,
-      "move": "Stone Slam",
-      "moveType": "Rock",
+      "move": "Psybeam",
+      "moveType": "Psychic",
       "dmg": 90,
       "legendary": false,
       "mythical": false,
@@ -3363,7 +3379,8 @@
       "passive": {
         "allyAtk": 1
       },
-      "text": "AURA \u2014 choose one other allied doremon: ATK +1 while Mesby is in play."
+      "text": "AURA \u2014 choose one other allied doremon: ATK +1 while Mesby is in play.",
+      "effectText": "Give one allied doremon +1 attack"
     },
     {
       "id": "ra_sweuw",
@@ -3386,7 +3403,8 @@
       "passive": {
         "allyDef": 1
       },
-      "text": "AURA \u2014 choose one other allied doremon: DEF +1 while Sweuw is in play."
+      "text": "AURA \u2014 choose one other allied doremon: DEF +1 while Sweuw is in play.",
+      "effectText": "Give one allied doremon +1 defense"
     },
     {
       "id": "ra_indeezle",
@@ -3451,7 +3469,8 @@
       "passive": {
         "foeAtk": -1
       },
-      "text": "AURA \u2014 choose one opposing doremon: ATK \u22121 while Dustwidow is in play."
+      "text": "AURA \u2014 choose one opposing doremon: ATK \u22121 while Dustwidow is in play.",
+      "effectText": "Give one opposing doremon \u22121 attack"
     },
     {
       "id": "ra_rampagoone",
@@ -3494,7 +3513,8 @@
       "passive": {
         "foeAtk": -1
       },
-      "text": "AURA \u2014 choose one opposing doremon: ATK \u22121 while Twinbloom is in play."
+      "text": "AURA \u2014 choose one opposing doremon: ATK \u22121 while Twinbloom is in play.",
+      "effectText": "Give one opposing doremon \u22121 attack"
     },
     {
       "id": "ra_mossfang",
@@ -3518,7 +3538,8 @@
       "passive": {
         "foeDef": -1
       },
-      "text": "AURA \u2014 choose one opposing doremon: DEF \u22121 while Mossfang is in play."
+      "text": "AURA \u2014 choose one opposing doremon: DEF \u22121 while Mossfang is in play.",
+      "effectText": "Give one opposing doremon \u22121 defense"
     },
     {
       "id": "ra_fluffram",
@@ -3541,7 +3562,8 @@
       "passive": {
         "allyDef": 1
       },
-      "text": "AURA \u2014 choose one other allied doremon: DEF +1 while Fluffram is in play."
+      "text": "AURA \u2014 choose one other allied doremon: DEF +1 while Fluffram is in play.",
+      "effectText": "Give one allied doremon +1 defense"
     },
     {
       "id": "ra_brutality",
@@ -3611,7 +3633,8 @@
       "text": "When an enemy attacks, the attacker gets ATK -1 before it hits.",
       "price": 90,
       "legendary": false,
-      "mythical": false
+      "mythical": false,
+      "effectText": "The attacker gets \u22121 attack"
     },
     {
       "id": "st_pink_cheer",
@@ -3636,7 +3659,8 @@
       "text": "One of your doremon gets ATK +1.",
       "price": 100,
       "legendary": false,
-      "mythical": false
+      "mythical": false,
+      "effectText": "Give one doremon +1 attack"
     },
     {
       "id": "st_cross_guard",
@@ -3761,7 +3785,8 @@
       "text": "ALL of your doremon get DEF +1.",
       "price": 220,
       "legendary": false,
-      "mythical": false
+      "mythical": false,
+      "effectText": "Give all of your doremon +1 defense"
     },
     {
       "id": "st_rival_mark",
@@ -3787,7 +3812,8 @@
       "text": "When an enemy attacks, the attacker gets DEF -1 and takes 10 damage.",
       "price": 180,
       "legendary": false,
-      "mythical": false
+      "mythical": false,
+      "effectText": "The attacker gets \u22121 defense"
     },
     {
       "id": "st_double_protect",
