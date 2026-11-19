@@ -790,6 +790,7 @@ export const DeckRules = {
     balanced: {},
   },
   autoBuild(owned, rng, pers = null) {
+    if (!rng || typeof rng.unit !== 'function') rng = new SplitMix(randomSeed());
     const fav = (pers && pers.fav) || [], style = DeckRules.STYLE[(pers && pers.style) || 'balanced'] || {};
     const mons = [];
     for (const id of Object.keys(owned).sort()) { const n = owned[id]; if (!(n > 0)) continue; const c = card(id); if (c && isMon(c)) for (let k = 0; k < Math.min(n, Rarity.copyLimit(c)); k++) {
@@ -817,6 +818,7 @@ export const DeckRules = {
   },
   /** Keep every existing card and top the deck up to size from leftover owned copies. Never removes cards. */
   complete(ids, owned, rng, pers = null) {
+    if (!rng || typeof rng.unit !== 'function') rng = new SplitMix(randomSeed());
     const deck = (ids || []).filter(id => card(id));
     if (deck.length >= this.size) return deck;
     const used = {};
@@ -934,21 +936,47 @@ export const DAY_MS = 2 * 60 * 60 * 1000, MAX_CATCHUP = 7 * 12;   // a league da
 export class Game {
   /** storage: {load():string|null, save(string)} or null */
   constructor(storage = null, seed = null) {
-    this.storage = storage; this.newAchievements = []; this.onChange = null;
+    this.storage = storage; this.newAchievements = []; this.onChange = null; this._bootLocked = false;
+    let raw = null;
+    try { raw = storage && storage.load(); } catch (e) { console.error('Dorepacks load failed', e); raw = null; }
+    if (raw == null || raw === '') {
+      this.s = freshSave(); this.rng = new SplitMix(seed ?? randomSeed()); this.newGame();
+      return;
+    }
+    // A save is already on disk — never overwrite or wipe it if parse, migrate, or boot fails.
+    this._bootLocked = true;
     let loaded = null;
-    try { const t = storage && storage.load(); if (t) loaded = JSON.parse(t); } catch (e) { loaded = null; }
-    if (loaded && loaded.ai && loaded.ai.length >= 8 && loaded.ai.length <= N_AI) {
-      this.s = Object.assign(freshSave(), loaded);
-      // freshSave() stamps gift flags true; old saves that omit them must NOT inherit that or migrate skips free packs
-      for (const k of ['_gift_ht', '_gift_v20', '_gift_ra']) if (!(k in loaded)) this.s[k] = false;
-      this.s.stats = Object.assign(freshStats(), this.s.stats || {});
-      for (const P of this.s.ai) { P.earned ??= 0; P.spent ??= 0; P.auctionsWon ??= 0; P.auctionsSold ??= 0; }
-      for (const c of DB.cards) if (isMon(c) && !this.s.market[c.id]) this.s.market[c.id] = { factor: 1, history: [Rarity.baseValue(c.rarity)] };   // new sets (T2) in old saves
-      if (!loaded.bank) this.s.bank = { initial: this.totalCash(), faucet: 0, sink: 0 };   // migrate v1 saves: start the ledger now
-      this.migrateSave();
-      this.rng = new SplitMix(BigInt.asUintN(64, BigInt(this.s.seed || '1') + BigInt(Math.floor(Date.now() / 1000))));
-      this.migrateTrainers();
-    } else { this.s = freshSave(); this.rng = new SplitMix(seed ?? randomSeed()); this.newGame(); }
+    try { loaded = JSON.parse(raw); } catch (e) { console.error('Dorepacks save parse failed', e); }
+    const usable = loaded && loaded.ai && loaded.ai.length >= 8 && loaded.ai.length <= N_AI;
+    if (usable) {
+      try {
+        this.s = Object.assign(freshSave(), loaded);
+        // freshSave() stamps gift flags true; old saves that omit them must NOT inherit that or migrate skips free packs
+        for (const k of ['_gift_ht', '_gift_v20', '_gift_ra']) if (!(k in loaded)) this.s[k] = false;
+        this.s.stats = Object.assign(freshStats(), this.s.stats || {});
+        for (const P of this.s.ai) { P.earned ??= 0; P.spent ??= 0; P.auctionsWon ??= 0; P.auctionsSold ??= 0; }
+        for (const c of DB.cards) if (isMon(c) && !this.s.market[c.id]) this.s.market[c.id] = { factor: 1, history: [Rarity.baseValue(c.rarity)] };   // new sets (T2) in old saves
+        if (!loaded.bank) this.s.bank = { initial: this.totalCash(), faucet: 0, sink: 0 };   // migrate v1 saves: start the ledger now
+        this.rng = new SplitMix(BigInt.asUintN(64, BigInt(this.s.seed || '1') + BigInt(Math.floor(Date.now() / 1000))));
+        this.migrateSave();
+        this.migrateTrainers();
+        this._bootLocked = false;
+        this.save();   // persist a successful migrate (e.g. 20 → 30) only after boot is safe
+      } catch (e) {
+        console.error('Dorepacks migrate/boot failed; existing save left untouched', e);
+        this._bootLocked = true;
+        if (!this.rng) this.rng = new SplitMix(seed ?? randomSeed());
+        if (!this.s) {
+          try { this.s = Object.assign(freshSave(), loaded || {}); }
+          catch (_) { this.s = freshSave(); }
+        }
+      }
+    } else {
+      console.error('Dorepacks save is present but not usable; leaving it untouched');
+      this.s = freshSave(); this.rng = new SplitMix(seed ?? randomSeed());
+      this.newGame();            // save() no-ops while _bootLocked
+      this._bootLocked = true;   // stay locked so the unreadable file is never overwritten
+    }
   }
   newGame() {
     const s = this.s = freshSave();
@@ -980,7 +1008,7 @@ export class Game {
     s.stats.played ??= {}; s.stats.tourWins ??= 0; s.stats.drafts ??= 0;
     for (let k = s.ai.length; k < N_AI; k++) { const P = this.addTrainer(k); s.bank.initial += P.money; }
   }
-  save() { if (this.storage) this.storage.save(JSON.stringify(this.s)); if (this.onChange) this.onChange(); }
+  save() { if (this._bootLocked) return; if (this.storage) this.storage.save(JSON.stringify(this.s)); if (this.onChange) this.onChange(); }
 
   // ---------- ledger: every Dorebuck moves through here ----------
   // faucet = the game pays someone (battle rewards, selling to the shop, achievements)
@@ -1152,50 +1180,67 @@ export class Game {
 
   migrateSave() {
     const s = this.s;
-    if (!s.trainerName) s.trainerName = 'You';
-    if (s.profilePic === undefined) s.profilePic = null;
-    if (!s.coin) s.coin = 'axerupi';
-    if (!s.seasonPics) s.seasonPics = [];
-    if (!s.seasonCoins) s.seasonCoins = [];
-    if (!s.seasonHistory) s.seasonHistory = [];
-    if (!s.matThemes) s.matThemes = [];
-    if (s.matTheme === undefined) s.matTheme = null;
-    if (s.lastSeasonEnded == null) s.lastSeasonEnded = Math.floor(Math.max(0, s.day) / SEASON_DAYS);
-    if (!s.packs) s.packs = {};
+    if (!this.rng || typeof this.rng.unit !== 'function') {
+      this.rng = new SplitMix(BigInt.asUintN(64, BigInt((s && s.seed) || '1') + BigInt(Math.floor(Date.now() / 1000))));
+    }
+    const step = (name, fn) => { try { fn(); } catch (e) { console.error('Dorepacks migrateSave: ' + name, e); } };
+    step('profile', () => {
+      if (!s.trainerName) s.trainerName = 'You';
+      if (s.profilePic === undefined) s.profilePic = null;
+      if (!s.coin) s.coin = 'axerupi';
+      if (!s.seasonPics) s.seasonPics = [];
+      if (!s.seasonCoins) s.seasonCoins = [];
+      if (!s.seasonHistory) s.seasonHistory = [];
+      if (!s.matThemes) s.matThemes = [];
+      if (s.matTheme === undefined) s.matTheme = null;
+      if (s.lastSeasonEnded == null) s.lastSeasonEnded = Math.floor(Math.max(0, s.day) / SEASON_DAYS);
+      if (!s.packs) s.packs = {};
+    });
     // v18 bug: fresh saves had packs.HT=0 (not null), so the free HT pack never landed. Grant once via flag.
-    if (!s._gift_ht) {
-      s.packs.HT = (s.packs.HT || 0) + 1;
-      s._gift_ht = true; s._htWelcome = true;
-    }
-    // v20: 3 free packs of every released set for existing saves (once)
-    if (!s._gift_v20) {
-      for (const set of SETS) s.packs[set] = (s.packs[set] || 0) + 3;
-      s._gift_v20 = true; s._v20Welcome = true;
-    }
-    if (!s._gift_ra) {
-      s.packs.RA = (s.packs.RA || 0) + 3;
-      s._gift_ra = true; s._raWelcome = true;
-    }
-    for (const set of SETS) if (s.packs[set] == null) s.packs[set] = 0;
+    step('gifts', () => {
+      if (!s._gift_ht) {
+        s.packs.HT = (s.packs.HT || 0) + 1;
+        s._gift_ht = true; s._htWelcome = true;
+      }
+      // v20: 3 free packs of every released set for existing saves (once)
+      if (!s._gift_v20) {
+        for (const set of SETS) s.packs[set] = (s.packs[set] || 0) + 3;
+        s._gift_v20 = true; s._v20Welcome = true;
+      }
+      if (!s._gift_ra) {
+        s.packs.RA = (s.packs.RA || 0) + 3;
+        s._gift_ra = true; s._raWelcome = true;
+      }
+      for (const set of SETS) if (s.packs[set] == null) s.packs[set] = 0;
+    });
     // WW SSR→LGD/MYT: clamp decks that hold 2 copies of a now-1-copy card
-    for (const d of s.decks) this.clampDeck(d);
-    for (let i = 0; i < (s.decks || []).length; i++) {
-      if (s.decks[i] && s.decks[i].length > 0) s.decks[i] = DeckRules.complete(s.decks[i], s.owned, this.rng);
-    }
-    for (const P of s.ai || []) {
-      const k = +String(P.id).replace('ai', '');
-      const spr = trainerSprite(Number.isFinite(k) ? k : 0);
-      const oldSpr = P.trainer;
-      P.trainer = spr;
-      if (!P.profilePic || P.profilePic === oldSpr || String(P.profilePic).startsWith('npc_')) P.profilePic = spr;
-      if (!P.coin) P.coin = 'axerupi';
-      if (!P.seasonPics) P.seasonPics = [];
-      if (!P.seasonCoins) P.seasonCoins = [];
-      this.clampDeck(P.deck);
-      const ki = +String(P.id).replace('ai', '');
-      if (P.deck && P.deck.length) P.deck = DeckRules.complete(P.deck, P.owned, this.rng, persOf(Number.isFinite(ki) ? ki : 0));
-      if (DeckRules.problems(P.deck).length) P.deck = DeckRules.autoBuild(P.owned, this.rng, persOf(Number.isFinite(ki) ? ki : 0));
-    }
+    step('playerDecks', () => {
+      for (const d of s.decks || []) this.clampDeck(d);
+      for (let i = 0; i < (s.decks || []).length; i++) {
+        if (s.decks[i] && s.decks[i].length > 0) {
+          try { s.decks[i] = DeckRules.complete(s.decks[i], s.owned, this.rng); }
+          catch (e) { console.error('Dorepacks migrateSave: player deck ' + i, e); }
+        }
+      }
+    });
+    step('ai', () => {
+      for (const P of s.ai || []) {
+        try {
+          const k = +String(P.id).replace('ai', '');
+          const spr = trainerSprite(Number.isFinite(k) ? k : 0);
+          const oldSpr = P.trainer;
+          P.trainer = spr;
+          if (!P.profilePic || P.profilePic === oldSpr || String(P.profilePic).startsWith('npc_')) P.profilePic = spr;
+          if (!P.coin) P.coin = 'axerupi';
+          if (!P.seasonPics) P.seasonPics = [];
+          if (!P.seasonCoins) P.seasonCoins = [];
+          this.clampDeck(P.deck);
+          const ki = Number.isFinite(k) ? k : 0;
+          if (P.deck && P.deck.length) P.deck = DeckRules.complete(P.deck, P.owned, this.rng, persOf(ki));
+          if (DeckRules.problems(P.deck).length) P.deck = DeckRules.autoBuild(P.owned, this.rng, persOf(ki));
+        } catch (e) { console.error('Dorepacks migrateSave: ai ' + (P && P.id), e); }
+      }
+    });
   }
   clampDeck(d) {
     if (!Array.isArray(d)) return;
