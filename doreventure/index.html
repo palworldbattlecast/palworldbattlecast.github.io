@@ -83,6 +83,53 @@ var lastEnd=0;document.addEventListener('touchend',function(e){var n=Date.now();
 function unzoom(){if(window.visualViewport&&visualViewport.scale>1.01){vp.content=VPC.replace('maximum-scale=1','maximum-scale=1.01');setTimeout(function(){vp.content=VPC;window.scrollTo(0,0)},30)}}
 if(window.visualViewport)visualViewport.addEventListener('resize',unzoom);
 
+// WebKit / iOS Safari: Unity's first AudioSource.Play (map music after New Game) can throw
+// InvalidStateError: AudioDestinationNode is not initialized. The old unlock created a
+// throwaway AudioContext and immediately closed it, which can re-lock Safari audio.
+// Keep a persistent unlock context, resume every gesture, and do not let this error
+// become Unity's fatal "An error occurred running the Unity content" alert.
+(function(){
+  var NativeAC=window.AudioContext||window.webkitAudioContext;
+  var ctxs=[];
+  function catchResume(ctx){try{var p=ctx.resume();if(p&&p.catch)p.catch(function(){})}catch(e){}}
+  function track(ctx){if(!ctx)return;if(ctxs.indexOf(ctx)<0)ctxs.push(ctx);if(ctx.state==='suspended')catchResume(ctx)}
+  function resumeAll(){
+    for(var i=0;i<ctxs.length;i++){
+      try{if(ctxs[i].state!=='closed'&&ctxs[i].state!=='running')catchResume(ctxs[i])}catch(e){}
+    }
+  }
+  if(NativeAC){
+    function WrappedAC(opts){
+      var ctx=(opts!==undefined)?new NativeAC(opts):new NativeAC();
+      track(ctx);return ctx;
+    }
+    WrappedAC.prototype=NativeAC.prototype;
+    try{Object.getOwnPropertyNames(NativeAC).forEach(function(k){try{WrappedAC[k]=NativeAC[k]}catch(e){}})}catch(e){}
+    if(window.AudioContext)window.AudioContext=WrappedAC;
+    if(window.webkitAudioContext)window.webkitAudioContext=WrappedAC;
+    var unlock=null;
+    function unlockAudio(){
+      try{
+        if(!unlock||unlock.state==='closed'){unlock=new NativeAC();track(unlock)}
+        resumeAll();
+      }catch(e){}
+    }
+    ['pointerdown','pointerup','touchstart','touchend','mousedown','keydown','click'].forEach(function(ev){
+      window.addEventListener(ev,unlockAudio,true);
+    });
+    window.__doreResumeAudio=resumeAll;
+    window.__doreUnlockAudio=unlockAudio;
+  }
+  function audioErr(ev){
+    var t=ev&&(ev.reason||ev.error||ev),msg=(ev&&ev.message)||'';
+    try{if(t){if(t.name)msg+=' '+t.name;if(t.message)msg+=' '+t.message;if(typeof t.toString==='function')msg+=' '+t.toString();if(t.stack)msg+=' '+t.stack}}catch(e){}
+    msg=String(msg);
+    return /AudioDestinationNode is not initialized/i.test(msg)||(/InvalidStateError/i.test(msg)&&/Audio/i.test(msg));
+  }
+  window.addEventListener('error',function(ev){if(audioErr(ev)){ev.preventDefault();ev.stopImmediatePropagation();console.warn('Doreventure: ignored WebKit audio error')}},true);
+  window.addEventListener('unhandledrejection',function(ev){if(audioErr(ev)){ev.preventDefault();ev.stopImmediatePropagation();console.warn('Doreventure: ignored WebKit audio rejection')}},true);
+})();
+
 var W=1280,H=720,app=document.getElementById('app'),scr=document.getElementById('screen'),pad=document.getElementById('pad'),dp=document.getElementById('dpad');
 var $=function(i){return document.getElementById(i)};
 var wantStart=false;
@@ -209,13 +256,14 @@ var t0=performance.now();window.__t0=t0;
 // The build ships as gzip+base64 text parts (Build/parts.json); fetch them, unzip natively, hand Unity plain blobs.
 if(typeof DecompressionStream==='undefined'){err.textContent='Please update iOS / your browser (needs Safari 16.4 or newer).';return}
 function b64(t){var s=atob(t),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u}
+function fetchText(url,tries){tries=tries||0;return fetch(url,{cache:'no-cache'}).then(function(r){if(!r.ok){if((r.status===503||r.status===502||r.status===429||r.status===500)&&tries<4)return new Promise(function(ok){setTimeout(function(){ok(fetchText(url,tries+1))},300*Math.pow(2,tries))});throw r.status}return r.text()}).catch(function(e){if(tries<4&&e!==404)return new Promise(function(ok){setTimeout(function(){ok(fetchText(url,tries+1))},300*Math.pow(2,tries))});throw e})}
 fetch('Build/parts.json',{cache:'no-cache'}).then(function(r){return r.json()}).then(function(man){
  var all=[],total=0,got=0;Object.keys(man.files).forEach(function(k){man.files[k].parts.forEach(function(n,i){all.push({k:k,i:i,n:n});});total+=man.files[k].gz});
  var bufs={};Object.keys(man.files).forEach(function(k){bufs[k]=[]});
  var q=all.slice(),running=0;
  return new Promise(function(res,rej){
   function next(){if(!q.length){if(!running)res();return}var it=q.shift();running++;
-   fetch('Build/'+it.n).then(function(r){if(!r.ok)throw r.status;return r.text()}).then(function(t){var u=b64(t);bufs[it.k][it.i]=u;got+=u.length;
+   fetchText('Build/'+it.n).then(function(t){var u=b64(t);bufs[it.k][it.i]=u;got+=u.length;
      var f=got/total*0.9;fill.style.width=Math.round(f*100)+'%';pct.textContent='Downloading… '+Math.round(got/1048576)+' / '+Math.round(total/1048576)+' MB';running--;next()}).catch(rej)}
   for(var j=0;j<4;j++)next();
  }).then(function(){pct.textContent='Unpacking…';
@@ -228,7 +276,7 @@ fetch('Build/parts.json',{cache:'no-cache'}).then(function(r){return r.json()}).
   streamingAssetsUrl:'StreamingAssets',companyName:'DefaultCompany',productName:'Doreventure',productVersion:'1.0',
   devicePixelRatio:dpr,matchWebGLToCanvasSize:true,autoSyncPersistentDataPath:true,cacheControl:function(){return 'no-store'}},function(p){fill.style.width=Math.round(90+p*10)+'%';pct.textContent='Starting… '}) 
  .then(function(u){inst=window.unityInstance=u;window.__loadMs=Math.round(performance.now()-t0);pct.textContent='Ready';document.getElementById('bar').style.display='none';tap.style.display='block';
-   ld.addEventListener('pointerup',function(){ld.style.display='none';try{var A=window.AudioContext||window.webkitAudioContext;if(A){var a=new A();a.resume();a.close()}}catch(e){}},{once:true});if(wantStart)ld.dispatchEvent(new Event('pointerup'))})
+   ld.addEventListener('pointerup',function(){ld.style.display='none';try{if(window.__doreUnlockAudio)window.__doreUnlockAudio();else if(window.__doreResumeAudio)window.__doreResumeAudio()}catch(e){}},{once:true});if(wantStart)ld.dispatchEvent(new Event('pointerup'))})
  .catch(function(m){err.textContent='Could not start: '+m})};
  document.body.appendChild(s);
 }).catch(function(e){err.textContent='Could not download the game ('+e+'). Check your connection and reload.'});
