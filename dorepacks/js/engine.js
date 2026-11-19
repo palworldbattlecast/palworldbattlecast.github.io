@@ -735,8 +735,14 @@ export const BattleAI = {
     }
     return { t: 'end' };
   },
-  /** coin-flip winner's choice. Playtests show the first player wins ~60% of decided games, so the sensible pick is to go first. */
-  chooseFirst() { return true; },
+  /** Coin-toss winner's choice: go first (true) or second (false).
+   *  Aggro prefers first, control/sustain prefer second, others lean slightly first.
+   *  `rng` should be the match RNG so the pick is reproducible and computed once. */
+  chooseFirst(rng, style) {
+    const p = style === 'aggro' ? 0.75 : (style === 'control' || style === 'sustain') ? 0.40 : 0.55;
+    if (rng && typeof rng.chance === 'function') return rng.chance(p);
+    return Math.random() < p;
+  },
   simulate(b, maxActions = 4000) {
     let n = 0;
     const prevHuman = b.humanSide;
@@ -822,7 +828,7 @@ export const AI_NAMES = [['Kai', 'zebrolt', ['Electric', 'Psychic'], 'aggro'], [
 export const persOf = k => ({ fav: AI_NAMES[k][2], style: AI_NAMES[k][3] });
 export const N_AI = AI_NAMES.length;
 /** overworld NPC/trainer sprites assigned 1:1 to AI trainers (stable by index) */
-export const TRAINER_SPRITES = ['npc_rivalboy','npc_rivalgirl','npc_tr_boy','npc_tr_lass','npc_tr_hiker','npc_tr_monk','npc_grunt','npc_brandy','npc_winston','npc_professor','npc_suitman','npc_clerk','npc_oldman','npc_oldwoman','npc_aide','npc_dorefan'];
+export const TRAINER_SPRITES = ['npc_rivalboy','npc_rivalgirl','npc_tr_hiker','npc_tr_lass','npc_gloom','npc_lilly','npc_grunt','npc_brandy','npc_towngirl','npc_winston','npc_suitman','npc_clerk','npc_kid','npc_oldwoman','npc_aide','npc_dorefan'];
 export const trainerSprite = k => TRAINER_SPRITES[k % TRAINER_SPRITES.length];
 export const SEASON_DAYS = 62;
 /** featured doremon per season: Season 1 = Egmil, then rotate through every mon species with no repeats until exhausted */
@@ -1086,7 +1092,7 @@ export class Game {
     s.lastDay = [];
     while (pool.length >= 2) {
       const a = pool.pop(), b = pool.pop();
-      // coin flip: the winner of the toss chooses, and (like the AI vs you) chooses to go first
+      // coin flip: the toss winner chooses first or second (personality-weighted)
       const rec = this.aiMatch(a, b);
       const bt = new Battle(rec.deckA.map(card), s.ai[a].name, rec.deckB.map(card), s.ai[b].name, BigInt(rec.seed), rec.first);
       const w = BattleAI.simulate(bt);
@@ -1138,8 +1144,11 @@ export class Game {
     // WW SSR→LGD/MYT: clamp decks that hold 2 copies of a now-1-copy card
     for (const d of s.decks) this.clampDeck(d);
     for (const P of s.ai || []) {
-      if (!P.trainer) { const k = +String(P.id).replace('ai', ''); P.trainer = trainerSprite(k); }
-      if (!P.profilePic) P.profilePic = P.trainer;
+      const k = +String(P.id).replace('ai', '');
+      const spr = trainerSprite(Number.isFinite(k) ? k : 0);
+      const oldSpr = P.trainer;
+      P.trainer = spr;
+      if (!P.profilePic || P.profilePic === oldSpr || String(P.profilePic).startsWith('npc_')) P.profilePic = spr;
       if (!P.coin) P.coin = 'axerupi';
       if (!P.seasonPics) P.seasonPics = [];
       if (!P.seasonCoins) P.seasonCoins = [];
@@ -1155,17 +1164,21 @@ export class Game {
       if (cnt[k] > Rarity.copyLimit(c)) d.splice(i, 1);
     }
   }
-  picOf(who) { // who = 'me' | ai index
+  picOf(who) { // who = 'me' | ai index — player's cosmetic, or an AI's walking trainer face
     if (who === 'me' || who === ME) {
       const p = this.s.profilePic; if (!p) return 'axerupi';
       if (String(p).startsWith('season:')) return seasonFeatured(+p.slice(7));
       if (String(p).startsWith('trainers/')) return p;
       return p;
     }
-    const P = this.s.ai[who]; if (!P) return 'axerupi';
-    const p = P.profilePic; if (!p) return P.trainer || trainerSprite(who);
-    if (String(p).startsWith('season:')) return seasonFeatured(+p.slice(7));
-    return p;
+    return this.faceOf(who);
+  }
+  /** AI identity art is always the Doreventure overworld walking sprite, never their favourite mon. */
+  faceOf(who) {
+    if (who === 'me' || who === ME) return this.picOf(ME);
+    const P = this.s.ai[who];
+    if (!P) return trainerSprite(0);
+    return P.trainer || trainerSprite(who);
   }
   coinOf(who) {
     const raw = (who === 'me' || who === ME) ? this.s.coin : (this.s.ai[who]?.coin || 'axerupi');
@@ -1256,7 +1269,7 @@ export class Game {
   availableOwned(k) { return this.s.ai[k].owned; }
   /** a ready-to-play AI-vs-AI pairing (decks, seed, coin toss) */
   aiMatch(a, b) {
-    const da = this.aiDeck(a), db = this.aiDeck(b), seed = this.rng.next(), toss = this.rng.int(2), first = BattleAI.chooseFirst() ? toss : 1 - toss;
+    const da = this.aiDeck(a), db = this.aiDeck(b), seed = this.rng.next(), toss = this.rng.int(2), winnerStyle = persOf(toss === 0 ? a : b).style, first = BattleAI.chooseFirst(this.rng, winnerStyle) ? toss : 1 - toss;
     return { a, b, deckA: da.map(c => c.id), deckB: db.map(c => c.id), seed: seed.toString(), first };
   }
   /** counts the cards each side played, for trainer stats */
@@ -1299,7 +1312,7 @@ export class Game {
     const owned = who === ME ? s.owned : P.owned, played = (who === ME ? s.stats.played : P.played) || {};
     let most = null; for (const id of Object.keys(played).sort()) if (card(id) && (most == null || played[id] > played[most])) most = id;
     const w = who === ME ? s.wins : P.wins, l = who === ME ? s.losses : P.losses;
-    return { name: who === ME ? 'You' : P.name, avatar: who === ME ? 'axerupi' : P.avatar, money: this.cash(who), mr: who === ME ? s.mr : P.mr, tier: tier(who === ME ? s.mr : P.mr),
+    return { name: who === ME ? 'You' : P.name, avatar: this.faceOf(who), money: this.cash(who), mr: who === ME ? s.mr : P.mr, tier: tier(who === ME ? s.mr : P.mr),
       binder: DB.cards.filter(c => owned[c.id] > 0).length, binderTotal: DB.cards.length, copies: Object.values(owned).reduce((a, b) => a + b, 0),
       mostPlayed: most, mostPlayedN: most ? played[most] : 0, games: who === ME ? (s.stats.battles.ranked.w + s.stats.battles.ranked.l + s.stats.battles.ranked.d) : (P.games || w + l), wins: w, losses: l,
       tourWins: who === ME ? (s.stats.tourWins || 0) : (P.tourWins || 0), streak: who === ME ? s.streak : (P.streak || 0) };

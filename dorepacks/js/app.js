@@ -1,6 +1,6 @@
 import * as E from './engine.js';
 import { Audio, TITLES } from './audio.js';
-const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, setCards, isMon, isSpell, isTrap, isLegendaryST, stKindLabel, binderGroup, BINDER_GROUPS, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel, seasonOfDay, daysLeftInSeason, seasonFeatured, seasonMat, matColors, SEASON_DAYS, SEASON_PLAN, trainerSprite, SEASON_REWARDS, targetable, passiveInfo, resolveAura, beginPassive } = E;
+const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, setCards, isMon, isSpell, isTrap, isLegendaryST, stKindLabel, binderGroup, BINDER_GROUPS, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel, seasonOfDay, daysLeftInSeason, seasonFeatured, seasonMat, matColors, SEASON_DAYS, SEASON_PLAN, trainerSprite, SEASON_REWARDS, persOf, targetable, passiveInfo, resolveAura, beginPassive } = E;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('en-US');
@@ -34,7 +34,7 @@ async function loadAssets() {
   // sprite natural sizes (for integer scaling)
   // + opaque bounding box, so every doremon is trimmed of its transparent padding and centred/scaled by its real pixels
   const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
-  await Promise.all(Object.keys(IMG).filter(k => k.startsWith('sprites/')).map(k => new Promise(r => { const im = new Image(); im.onload = () => {
+  await Promise.all(Object.keys(IMG).filter(k => k.startsWith('sprites/') || k.startsWith('trainers/')).map(k => new Promise(r => { const im = new Image(); im.onload = () => {
     const w = im.naturalWidth, h = im.naturalHeight; SIZE[k] = [w, h];
     try { cv.width = w; cv.height = h; cx.clearRect(0, 0, w, h); cx.drawImage(im, 0, 0); const d = cx.getImageData(0, 0, w, h).data; let x0 = w, y0 = h, x1 = -1, y1 = -1;
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
@@ -46,22 +46,24 @@ function initDB(j) { E.initDB(j); }
 const cardImg = (id, cls = 'cardimg') => `<img class="${cls}" src="${IMG['cards/' + id] || ''}" alt="" draggable="false">`;
 // Pixel-exact sprite: trimmed to its opaque pixels, integer up-scale (or 1/n down-step) computed in DEVICE pixels, nearest-neighbour,
 // centred in a box of the requested size so every doremon lines up the same way.
-function fitSprite(id, bw, bh, box = true) {
-  const k0 = 'sprites/' + id, [W, H] = SIZE[k0] || [155, 273], [x, y, w, h] = BOX[k0] || [0, 0, W, H], dpr = window.devicePixelRatio || 1;
+function fitArt(k0, bw, bh, box = true) {
+  const [W, H] = SIZE[k0] || [32, 48], [x, y, w, h] = BOX[k0] || [0, 0, W, H], dpr = window.devicePixelRatio || 1;
   const r = Math.min(bw * dpr / w, bh * dpr / h), k = r >= 1 ? Math.floor(r) : 1 / Math.ceil(1 / r), u = v => (v * k / dpr) + 'px';
   const inner = `<span class="spr" style="width:${u(w)};height:${u(h)}"><img class="px" src="${IMG[k0] || ''}" style="width:${u(W)};height:${u(H)};left:-${u(x)};top:-${u(y)}" alt="" draggable="false"></span>`;
   return box ? `<span class="sprbox" style="width:${bw}px;height:${bh}px">${inner}</span>` : inner;
 }
+function fitSprite(id, bw, bh, box = true) { return fitArt('sprites/' + id, bw, bh, box); }
 const sprite = (id, maxSide) => fitSprite(id, maxSide, maxSide);
-/** profile / trainer art: season pics & mon sprites use sprite(); trainer NPCs use IMG trainers/ */
+/** profile / trainer art: season pics & mon sprites use sprite(); trainer NPCs use trainers/ at integer nearest-neighbour scale */
 function avImg(id, size = 40) {
   if (!id) id = 'axerupi';
   if (String(id).startsWith('trainers/') || String(id).startsWith('npc_') || String(id).startsWith('trainer_') || String(id).startsWith('boy_')) {
     const k = String(id).startsWith('trainers/') ? id : 'trainers/' + id;
-    return `<img class="px" src="${IMG[k] || ''}" style="width:${size}px;height:${size}px;image-rendering:pixelated;object-fit:contain" alt="" draggable="false">`;
+    return fitArt(k, size, size);
   }
   return sprite(id, size);
 }
+const faceImg = (who, size = 40) => avImg(who === 'me' || who === E.ME ? G.picOf('me') : G.faceOf(who), size);
 function goldCoin(mon, size = 54) {
   return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffe9a0,#d4a017 55%,#8a6a10);box-shadow:inset 0 0 0 3px #f5d76e,0 2px 6px #0008">${sprite(mon, Math.round(size * 0.7))}</span>`;
 }
@@ -164,12 +166,12 @@ function battleSetupView() {
   const s = G.s, k = G.nextLeagueOpponent(), o = s.ai[k], ok = G.activeDeckValid;
   return `<h1>Battle</h1>${questsPanel(true)}${tourBanner()}<div class="sub">Deck: ${esc(s.deckNames[s.activeDeck])} ${ok ? '✓' : '<span style="color:#ff9b9b">(not legal — fix it in Decks)</span>'}</div>
   <div class="panel" style="text-align:center"><div class="pix" style="color:var(--yellow)">RANKED MATCH</div>
-   <div style="margin:10px 0">${sprite(o.avatar, 90)}</div><div class="title" style="font-size:26px">${esc(o.name)}</div>
+   <div style="margin:10px 0">${faceImg(k, 90)}</div><div class="title" style="font-size:26px">${esc(o.name)}</div>
    <div class="small">${o.mr} MR · ${tier(o.mr)} · ${o.wins}W ${o.losses}L · cash <span style="color:#7dfc9f">${money(o.money)}</span></div>
    <div class="small" style="margin:6px 0">You: ${s.mr} MR · ${tier(s.mr)} · streak ${s.streak}</div>
    <button class="btn y" style="width:100%" data-a="fight" data-v="L${k}" ${ok ? '' : 'disabled'}>Ranked Battle</button></div>
   <div class="sub">Friendly match (no MR)</div>
-  <div class="grid3">${s.ai.map((p, i) => `<button class="btn k" style="flex-direction:column;padding:8px 4px" data-a="fight" data-v="F${i}" ${ok ? '' : 'disabled'}>${sprite(p.avatar, 44)}<span style="font-size:13px">${esc(p.name)}</span><span class="small">${p.mr}</span></button>`).join('')}</div>
+  <div class="grid3">${s.ai.map((p, i) => `<button class="btn k" style="flex-direction:column;padding:8px 4px" data-a="fight" data-v="F${i}" ${ok ? '' : 'disabled'}>${faceImg(i, 44)}<span style="font-size:13px">${esc(p.name)}</span><span class="small">${p.mr}</span></button>`).join('')}</div>
   <div class="row" style="margin-top:12px"><button class="btn p grow" data-a="more" data-v="draft">🎲 Draft</button><button class="btn k grow" data-a="more" data-v="rules">How to play</button></div>`;
 }
 // ---------- Daily Adventures ----------
@@ -189,11 +191,11 @@ function tourBanner() {
 function tourView() {
   const T = G.tour, s = G.s;
   if (!T) return `<h1>Tournament</h1>${tourBanner()}<div class="panel small">Every third league day the top 8 trainers by MR play a one-day knockout: quarter-finals, semi-finals and a final, every match best of 3. The champion wins ${money(Game.TOUR_PRIZE)} and a pack from the sponsoring set. Matches you don't play by the end of the day are forfeited.</div>`;
-  const nm = w => w === E.ME ? '<b style="color:var(--yellow)">You</b>' : esc(s.ai[w].name), av = w => sprite(w === E.ME ? 'axerupi' : s.ai[w].avatar, 26);
+  const nm = w => w === E.ME ? '<b style="color:var(--yellow)">You</b>' : esc(s.ai[w].name), av = w => faceImg(w, 26);
   const tm = G.tourMatch();
   const rounds = ['Quarter-finals', 'Semi-finals', 'Final'].map((t, ri) => { const R = T.rounds[ri];
     return `<div class="sub">${t}</div><div class="panel list" style="padding:4px 12px">${R ? R.map(m => `<div class="it">${av(m.p[0])}<span class="grow" style="${m.winner === m.p[0] ? 'font-weight:800' : m.winner != null ? 'opacity:.55' : ''}">${nm(m.p[0])}</span><b>${m.w[0]} - ${m.w[1]}</b><span class="grow" style="text-align:right;${m.winner === m.p[1] ? 'font-weight:800' : m.winner != null ? 'opacity:.55' : ''}">${nm(m.p[1])}</span>${av(m.p[1])}</div>${m.forfeit ? '<div class="small">forfeited</div>' : ''}`).join('') : '<div class="small" style="padding:8px 0">Waiting for the previous round…</div>'}</div>`; }).join('');
-  const mine = tm ? (() => { const me = tm.m.p[0] === E.ME ? 0 : 1; return `<div class="panel" style="text-align:center"><div class="pix" style="color:var(--yellow)">YOUR ${tm.round.toUpperCase()} · BEST OF 3</div><div style="margin:8px 0">${sprite(s.ai[tm.opp].avatar, 70)}</div><div class="title" style="font-size:22px">${esc(s.ai[tm.opp].name)}</div><div class="small">${s.ai[tm.opp].mr} MR · series ${tm.m.w[me]}-${tm.m.w[1 - me]}</div>
+  const mine = tm ? (() => { const me = tm.m.p[0] === E.ME ? 0 : 1; return `<div class="panel" style="text-align:center"><div class="pix" style="color:var(--yellow)">YOUR ${tm.round.toUpperCase()} · BEST OF 3</div><div style="margin:8px 0">${faceImg(tm.opp, 70)}</div><div class="title" style="font-size:22px">${esc(s.ai[tm.opp].name)}</div><div class="small">${s.ai[tm.opp].mr} MR · series ${tm.m.w[me]}-${tm.m.w[1 - me]}</div>
     <button class="btn y" style="width:100%;margin-top:8px" data-a="fight" data-v="T${tm.opp}" ${G.activeDeckValid ? '' : 'disabled'}>Play game ${tm.m.w[0] + tm.m.w[1] + 1}</button><button class="btn k sm" style="margin-top:6px" data-a="tourForfeit">Withdraw</button></div>`; })() : '';
   return `<h1>Tournament</h1><div class="panel row"><img src="${IMG['cards/pack_' + T.set.toLowerCase()]}" style="width:64px;image-rendering:pixelated" alt=""><div class="grow"><div class="title" style="font-size:20px;color:var(--yellow)">${esc(SET_NAMES[T.set])} Cup</div><div class="small">League day ${T.day} · top 8 by MR · best of 3<br>Prize: ${money(Game.TOUR_PRIZE)} + a ${esc(SET_NAMES[T.set])} pack</div></div></div>
    ${T.done ? `<div class="panel row" style="border-color:var(--yellow)">${av(T.champion)}<div class="grow"><b style="color:var(--yellow)">🏆 CHAMPION</b><div>${nm(T.champion)}</div></div></div>` : ''}${mine}${rounds}<div class="small" style="margin-top:8px">Tournament games don't change MR. Matches you haven't played when the league day ends are forfeited.</div>`;
@@ -201,7 +203,7 @@ function tourView() {
 // ---------- Draft ----------
 function draftView() {
   const D = G.s.draft, s = G.s;
-  const who = w => w === E.ME ? 'You' : esc(s.ai[w].name), av = w => sprite(w === E.ME ? 'axerupi' : s.ai[w].avatar, 28);
+  const who = w => w === E.ME ? 'You' : esc(s.ai[w].name), av = w => faceImg(w, 28);
   if (!D || (D.done && UI.draftNew)) return `<h1>Draft</h1><div class="sub">You and 6 trainers draft from one shared pool of 20 booster packs, snake order (1→7, then 7→1…), 20 picks each. Then play 3 games against the drafters seated after you.</div>
     ${D?.done ? '' : ''}<div class="panel small">Entry ${money(Game.DRAFT_FEE)} · ${money(150)} per win · go 3-0 for a free pack of the drafted set. Draft cards are played with, not kept. Every drafted deck has at least 8 doremon.</div>
     ${SETS.map(k => `<div class="panel row"><img src="${IMG['cards/pack_' + k.toLowerCase()]}" style="width:48px;image-rendering:pixelated" alt=""><b class="grow">${esc(SET_NAMES[k])}</b><button class="btn y sm" data-a="draftStart" data-v="${k}" ${s.money >= Game.DRAFT_FEE ? '' : 'disabled'}>Draft ${money(Game.DRAFT_FEE)}</button></div>`).join('')}`;
@@ -366,7 +368,7 @@ function achView() {
 const RULES = [
   ['Goal', 'Each player starts with 5 life ❤️. Every time one of your doremon is knocked out you lose 1 life. Get your opponent to 0 life to win.'],
   ['Setup', 'Decks are exactly 20 cards with at least 8 doremon (max 10 spells/traps). Copies: at most 2 of any card, and only 1 of a Legendary or Mythical. Shuffle and draw 5 (your opening hand always has a doremon).'],
-  ['Coin toss', 'Before every match you call heads or tails. Call it right and you choose to go first or second; call it wrong and your opponent chooses (the AI always goes first). AI vs AI league matches use a coin toss too.'],
+  ['Coin toss', 'Before every match you call heads or tails. Call it right and you choose to go first or second; call it wrong and your opponent chooses first or second. AI vs AI league matches use a coin toss too.'],
   ['Going second', 'To make up for not moving first, the first doremon the second player puts down gets a QUICK START: it can attack on the turn it is played. In 20,000 simulated games this brings going first to about 50%.'],
   ['Mulligan', 'After the coin toss you see your opening hand and may mulligan once for free: the whole hand goes back, the deck is shuffled and you draw the same number of cards again (still guaranteed a doremon). The AI mulligans hands with fewer than 2 doremon or no spells/traps.'],
   ['Move effects', 'Some moves have a side effect printed on the card, e.g. "30% chance to poison". It rolls when the move hits and the target survives without a status already.'],
@@ -486,7 +488,8 @@ function renderOverlay() {
       d.innerHTML = `<div class="insp"><div class="inspc">${cardImg(c.id)}${Rarity.rank(c.rarity) >= 3 ? '<div class="holo"></div>' : ''}</div>
         <div class="inspt"><div class="title" style="font-size:24px;color:${(isLegendaryST(c) ? RCOL.LGD : RCOL[c.rarity]) || '#fff'}">${esc(c.name)} ${rar(c.rarity, c)}</div>
         ${isMon(c) ? `<div class="kv"><span>Type</span><b>${c.types.join(' / ')}</b></div><div class="kv"><span>HP</span><b>${m ? `${m.hp} / ${c.hp}` : c.hp}</b></div><div class="kv"><span>Move</span><b>${esc(c.move)} · ${c.dmg}${isDouble(c) ? '×2' : ''} dmg (${c.moveType})</b></div>${c.split ? `<div class="kv"><span>Split</span><b style="color:#7ee0ff">${isDouble(c) ? 'Double hit: strikes the same target twice' : 'Hits up to 2 different targets'}</b></div>` : ''}${m && m.protected ? '<div class="kv"><span>Shield</span><b style="color:#7ee0ff">🛡 Protected — can\'t be targeted</b></div>' : ''}${stg ? `<div class="kv"><span>Now</span><b style="color:#ffb84d">${esc(stg)}</b></div>` : ''}${o.live ? `<div class="kv"><span>Side</span><b>${o.live.side === 0 ? 'Yours' : 'Opponent'}</b></div>` : ''}`
-          : `<div class="kv"><span>Kind</span><b>${stKindLabel(c)}</b></div><div class="txt">${esc(c.text || '')}</div>`}
+          : `<div class="kv"><span>Kind</span><b>${stKindLabel(c)}</b></div>${c.effectText ? `<div class="txt"><b>Effect:</b> ${esc(c.effectText)}</div>` : ''}<div class="txt">${esc(c.text || '')}</div>`}
+          ${isMon(c) && c.effectText ? `<div class="txt"><b>Effect:</b> ${esc(c.effectText)}</div>` : ''}
         </div></div><button class="btn" data-a="closeOv" style="margin-top:12px;min-width:160px">Close</button>`;
       document.body.appendChild(d); return;
     }
@@ -496,7 +499,7 @@ function renderOverlay() {
       <div class="row" style="margin-top:12px"><button class="btn k sm" data-a="flipInspect">Flip</button><button class="btn sm" data-a="closeOv">Close</button></div>`;
   } else if (o.kind === 'result') {
     d.innerHTML = `<div class="logo" style="font-size:52px;color:${o.won ? 'var(--yellow)' : o.won === false ? 'var(--red)' : '#fff'}">${o.won ? 'VICTORY!' : o.won === false ? 'DEFEAT' : 'DRAW'}</div>
-      <div style="margin:10px 0">${sprite(o.won ? 'axerupi' : o.avatar, 100)}</div>
+      <div style="margin:10px 0">${avImg(o.won ? G.picOf('me') : (o.avatar || 'axerupi'), 100)}</div>
       <div class="panel" style="text-align:center;width:100%;max-width:360px">${o.note ? `<div style="font-size:18px;font-weight:800;color:var(--yellow)">${esc(o.note)}</div>` : `<div style="font-size:20px;color:#7dfc9f">+${money(o.bucks)}</div>`}${o.league ? `<div style="margin-top:4px">MR ${o.d >= 0 ? '+' : ''}${o.d} → <b style="color:var(--yellow)">${G.s.mr}</b> (${tier(G.s.mr)})</div>` : `<div class="small">${{ tour: 'Tournament game · no MR', draft: 'Draft game · no MR' }[o.mode] || 'Friendly match'}</div>`}<div class="small" style="margin-top:4px">KOs: you ${o.ko[0]} · them ${o.ko[1]}</div></div>
       <button class="btn y" data-a="leaveBattle" style="width:100%;max-width:360px">Continue</button>`;
   } else if (o.kind === 'mulligan') { d.innerHTML = mulliganHTML();
@@ -525,11 +528,11 @@ function showAchievements() {
 }
 
 // ---------- battle ----------
-// coin toss before every match: call it; win → you choose first/second, lose → the AI chooses (it goes first: ~60% win rate in playtests)
+// coin toss before every match: call it; win → you choose first/second, lose → the AI chooses first or second
 function startBattle(v) { UI.overlay = { kind: 'coin', v, phase: 'call', result: G.rng.int(2) ? 'heads' : 'tails' }; render(); }
 function coinCall(call) {
   const o = UI.overlay; o.call = call; o.won = call === o.result; o.phase = 'spin'; sfx('coin'); renderOverlay();
-  setTimeout(() => { if (UI.overlay !== o) return; o.phase = o.won ? 'choose' : 'ai'; if (!o.won) o.aiFirst = BattleAI.chooseFirst(); sfx(o.won ? 'coinWin' : 'coinLose'); renderOverlay(); }, SNAP ? 0 : 1700);
+  setTimeout(() => { if (UI.overlay !== o) return; o.phase = o.won ? 'choose' : 'ai'; if (!o.won) { const k = +String(o.v).slice(1); o.aiFirst = BattleAI.chooseFirst(G.rng, persOf(k).style); } sfx(o.won ? 'coinWin' : 'coinLose'); renderOverlay(); }, SNAP ? 0 : 1700);
 }
 function coinHTML(o) {
   const face = (cls, label, icon) => `<div class="cf ${cls}"><div class="ci">${icon}</div><div class="cl">${label}</div></div>`;
@@ -601,7 +604,7 @@ function stRow(side) {
 }
 function battleView() {
   const B = UI.battle, b = B.b, me = b.sides[0], op = b.sides[1], o = B.spec ? { name: B.spec.nb, avatar: B.spec.ab } : G.s.ai[B.k], my = !B.spec && b.current === 0 && !b.over && !B.busy;
-  const nA = B.spec ? esc(B.spec.na) : 'You', avA = B.spec ? B.spec.aa : 'axerupi';
+  const nA = B.spec ? esc(B.spec.na) : 'You', avA = B.spec ? B.spec.aa : G.picOf('me'), avB = B.spec ? B.spec.ab : G.faceOf(B.k);
   const prev = B.prevLife || [me.life, op.life];
   const hearts = (side, n) => `<span class="hearts" aria-label="${n} of ${Battle.startLife} hearts left">${Array.from({ length: Battle.startLife }, (_, i) => `<i class="ht ${i < n ? 'on' : i < prev[side] ? 'lost' : ''}">${HEART}</i>`).join('')}<b class="hn">${n}</b></span>`;
   B.prevLife = [me.life, op.life];
@@ -633,13 +636,13 @@ function battleView() {
    <div class="panel log" style="max-height:92px;overflow:auto;margin:4px 0 calc(var(--sb) + 6px);font-size:13px;padding:6px 10px;flex:none">${B.lines.slice(-8).reverse().map(l => `<div>${esc(l)}</div>`).join('')}</div>` : null;
   return `${top}
   <div class="bt">
-   <div class="bhead">${sprite(o.avatar, 26)}<b class="bn">${esc(o.name)}</b>${hearts(1, op.life)}<span class="grow"></span><span class="small">✋${op.hand.length} · 🂠${op.deck.length}</span></div>
+   <div class="bhead">${avImg(avB, 26)}<b class="bn">${esc(o.name)}</b>${hearts(1, op.life)}<span class="grow"></span><span class="small">✋${op.hand.length} · 🂠${op.deck.length}</span></div>
    ${stRow(1)}
    <div class="mat op${b.field && b.field.id === 'sandstorm' ? ' sandstorm' : ''}" id="matop" style="${matStyle}"><div class="lbl">DOREMON</div>${[3, 4, 5, 0, 1, 2].map(i => slotHTML(1, i)).join('')}<button class="gravepit" data-a="grave" data-v="1" title="Gravepit">🪦 ${op.discard.length}</button></div>
    <div class="prev">${hint}</div>
    <div class="mat me${b.field && b.field.id === 'sandstorm' ? ' sandstorm' : ''}" id="matme" style="${matStyle}"><div class="lbl">DOREMON</div>${[0, 1, 2, 3, 4, 5].map(i => slotHTML(0, i)).join('')}<button class="gravepit" data-a="grave" data-v="0" title="Gravepit">🪦 ${me.discard.length}</button></div>
    ${stRow(0)}
-   <div class="bhead">${sprite(avA, 26)}<b class="bn">${nA}</b>${hearts(0, me.life)}<span class="grow"></span><span class="small">${B.spec ? `✋${me.hand.length} · ` : ''}🂠${me.deck.length}</span></div>
+   <div class="bhead">${avImg(avA, 26)}<b class="bn">${nA}</b>${hearts(0, me.life)}<span class="grow"></span><span class="small">${B.spec ? `✋${me.hand.length} · ` : ''}🂠${me.deck.length}</span></div>
    ${bar ? bar : `<div class="hand">${me.hand.map((c, i) => { const can = my && (isMon(c) ? me.monsPlayed < 1 && monCount(me) < 6 : me.stPlayed < 2); return `<div class="hc ${B.sel?.kind === 'hand' && B.sel.i === i ? 'sel' : ''} ${can ? '' : 'dis'}" data-a="hand" data-v="${i}" data-card="${c.id}">${cardImg(c.id)}</div>`; }).join('')}</div>
    <div class="bbar">${infoBtn}${castBtn}${backBtn}${oneBtn}${directBtn}<span class="grow"></span><button class="btn y" data-a="endTurn" ${my ? '' : 'disabled'}>End turn</button></div>`}
   </div>`;
@@ -718,7 +721,7 @@ function checkOver() {
   if (B.mode === 'tour') { const m = G.tourGame(won); if (m) { const me = m.p[0] === E.ME ? 0 : 1; note = won == null ? 'Draw — replay this game' : m.winner == null ? `Series ${m.w[me]}-${m.w[1 - me]}` : m.winner === E.ME ? `You win the series ${m.w[me]}-${m.w[1 - me]}!${G.s.tour.champion === E.ME ? ' 🏆 CHAMPION!' : ''}` : `Knocked out ${m.w[me]}-${m.w[1 - me]}`; } }
   else if (B.mode === 'draft') { const D = G.draftResult(won); if (D) { const ww = D.games.filter(Boolean).length; note = D.done ? `Draft finished ${ww}-${D.games.length - ww} · +${money(D.reward.cash)}${D.reward.pack ? ' + a pack' : ''}` : `Draft record ${ww}-${D.games.length - ww}`; } else note = 'Draw — replay this game'; }
   else [bucks, d] = G.recordResult(won, B.league, B.k, B.b.splitKOs[0], Game.playedIds(B.b, 0));
-  setTimeout(() => { sfx(won ? 'win' : 'lose'); UI.overlay = { kind: 'result', won, bucks, d, note, mode: B.mode, league: B.league, avatar: G.s.ai[B.k].avatar, ko: [B.b.sides[0].koCount, B.b.sides[1].koCount] }; render(); }, 900);
+  setTimeout(() => { sfx(won ? 'win' : 'lose'); UI.overlay = { kind: 'result', won, bucks, d, note, mode: B.mode, league: B.league, avatar: G.faceOf(B.k), ko: [B.b.sides[0].koCount, B.b.sides[1].koCount] }; render(); }, 900);
 }
 function clearAIWatch() { if (UI.aiWatch) { clearTimeout(UI.aiWatch); UI.aiWatch = null; } }
 function armAIWatch() {
@@ -882,7 +885,7 @@ const A = {
       if (B.mode === 'tour') G.tourVoid();
       else G.recordResult(null, B.league, B.k, 0, [], true);
       B.b.over = true; B.b.winner = null;
-      UI.overlay = { kind: 'result', won: null, voided: true, bucks: 0, d: 0, note: 'Match voided — the AI got stuck. This does not count as a loss.', mode: B.mode, league: B.league, avatar: G.s.ai[B.k].avatar, ko: [B.b.sides[0].koCount, B.b.sides[1].koCount] };
+      UI.overlay = { kind: 'result', won: null, voided: true, bucks: 0, d: 0, note: 'Match voided — the AI got stuck. This does not count as a loss.', mode: B.mode, league: B.league, avatar: G.faceOf(B.k), ko: [B.b.sides[0].koCount, B.b.sides[1].koCount] };
       render(); return;
     }
     B.b.finish(1); drainEvents(); checkOver();
@@ -1089,10 +1092,31 @@ function demo() {
     case 'v21_packs': case 'v22_packs': UI.tab = 'packs'; break;
     case 'card_sandstorm': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_sandstorm', back: false, battle: true }; break;
     case 'card_revive': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'st_revive', back: false, battle: true }; break;
+    case 'card_haxpion': UI.tab = 'binder'; UI.binderSet = 'FL'; UI.overlay = { kind: 'inspect', id: 'fl_haxpion', back: false }; break;
+    case 'card_frapion': UI.tab = 'binder'; UI.binderSet = 'T2'; UI.overlay = { kind: 'inspect', id: 't2_frapion', back: false }; break;
+    case 'card_nightpurr': UI.tab = 'binder'; UI.binderSet = 'T2'; UI.overlay = { kind: 'inspect', id: 't2_nightpurr', back: false }; break;
+    case 'card_pinchaw': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'ra_pinchaw', back: false }; break;
+    case 'card_sligx': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'ht_sligx', back: false }; break;
+    case 'card_sliggy': UI.tab = 'binder'; UI.binderSet = 'WW'; UI.overlay = { kind: 'inspect', id: 'ww_sliggy', back: false }; break;
+    case 'card_goldgulp': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'ht_goldgulp', back: false }; break;
+    case 'card_rocketbee': UI.tab = 'binder'; UI.binderSet = 'T2'; UI.overlay = { kind: 'inspect', id: 't2_rocketbee', back: false }; break;
+    case 'card_rokbru': UI.tab = 'binder'; UI.binderSet = 'WW'; UI.overlay = { kind: 'inspect', id: 'ww_rokbru', back: false }; break;
+    case 'card_mesby': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'ra_mesby', back: false }; break;
+    case 'card_power_up': UI.tab = 'binder'; UI.binderSet = 'WW'; UI.overlay = { kind: 'inspect', id: 'st_power_up', back: false, battle: true }; break;
+    case 'coral_win': {
+      g.s.day = 3; while (!g.isTourDay(g.s.day)) g.s.day++;
+      const T = g.tour; T.done = true; T.champion = 13;
+      UI.tab = 'more'; UI.more = 'tour'; break; }
+    case 'winston': {
+      const w = 9; UI.tab = 'battle';
+      // show ranked setup vs Prof. Winston
+      const orig = g.nextLeagueOpponent;
+      g.s.nextOpp = w;
+      UI.tab = 'battle'; break; }
     case 'card_clawdle': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'ra_clawdle', back: false }; break;
     case 'card_wickling': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'ra_wickling', back: false }; break;
     case 'card_owldrul': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'ht_owldrul', back: false }; break;
-    case 'coinflip_ai': UI.tab = 'battle'; UI.overlay = { kind: 'coin', v: 'L' + g.nextLeagueOpponent(), phase: 'ai', result: 'tails', call: 'heads', won: false, aiFirst: BattleAI.chooseFirst() }; break;
+    case 'coinflip_ai': UI.tab = 'battle'; UI.overlay = { kind: 'coin', v: 'L' + g.nextLeagueOpponent(), phase: 'ai', result: 'tails', call: 'heads', won: false, aiFirst: BattleAI.chooseFirst(g.rng, persOf(g.nextLeagueOpponent()).style) }; break;
     case 'sandstorm': case 'sandstorm_miss': {
       const f = Array(20).fill(card('ww_snarlpup'));
       const b = new Battle(f, 'You', f, g.s.ai[2].name, 77n, 0);
