@@ -767,13 +767,13 @@ export const BattleAI = {
 
 // ---------- decks ----------
 export const DeckRules = {
-  size: 20, minMons: 8, maxSupplies: 10,
+  size: 30, minMons: 12, maxSupplies: 15,
   problems(ids) {
     const p = []; const cards = ids.map(card).filter(Boolean);
-    if (cards.length !== 20) p.push(`A deck needs exactly 20 cards (has ${cards.length}).`);
+    if (cards.length !== this.size) p.push(`A deck needs exactly ${this.size} cards (has ${cards.length}).`);
     const mons = cards.filter(isMon).length;
-    if (mons < 8) p.push(`At least 8 doremon cards (has ${mons}).`);
-    if (cards.length - mons > 10) p.push('At most 10 spell/trap cards.');
+    if (mons < this.minMons) p.push(`At least ${this.minMons} doremon cards (has ${mons}).`);
+    if (cards.length - mons > this.maxSupplies) p.push(`At most ${this.maxSupplies} spell/trap cards.`);
     // copy limit counts by doremon NAME across printings (like real TCGs): 2 total, 1 if any printing in the deck is Legendary/Mythical
     const cnt = {}, lim = {}, nm = {}; for (const c of cards) { const k = nameKey(c); cnt[k] = (cnt[k] || 0) + 1; lim[k] = Math.min(lim[k] ?? 9, Rarity.copyLimit(c)); nm[k] = c.name; }
     for (const k in cnt) if (cnt[k] > lim[k]) p.push(`Too many ${nm[k]} (max ${lim[k]}${DB.cards.filter(c => nameKey(c) === k).length > 1 ? ', all printings together' : ''}).`);
@@ -800,11 +800,11 @@ export const DeckRules = {
     const sup = [];
     for (const id of Object.keys(owned).sort()) { const n = owned[id]; if (!(n > 0)) continue; const c = card(id); if (c && !isMon(c)) for (let k = 0; k < Math.min(n, Rarity.copyLimit(c)); k++) sup.push([c, (DeckRules.pref[id] ?? 20) + (style[id] || 0) - k * 12 + rng.unit() * (pers ? 10 : 3)]); }
     sup.sort((a, b) => b[1] - a[1]);
-    const nSup = Math.min(7, sup.length);
+    const nSup = Math.min(11, this.maxSupplies, sup.length);
     let deck = sup.slice(0, nSup).map(x => x[0].id);
     const used = {}, lim = {}, byType = {};   // name-based limit across printings
     const pool = mons.slice();
-    while (deck.length < 20 && pool.length) {
+    while (deck.length < this.size && pool.length) {
       // greedy with a variety penalty: -14 per doremon already picked that attacks with the same type (only when a personality is set)
       let bi = -1, bv = -Infinity;
       for (let i = 0; i < pool.length; i++) { const [c, v] = pool[i]; const k = nameKey(c); const L = Math.min(lim[k] ?? 9, Rarity.copyLimit(c)); if ((used[k] || 0) >= L) continue;
@@ -812,7 +812,41 @@ export const DeckRules = {
       if (bi < 0) break;
       const [c] = pool.splice(bi, 1)[0]; const k = nameKey(c); used[k] = (used[k] || 0) + 1; lim[k] = Math.min(lim[k] ?? 9, Rarity.copyLimit(c)); byType[c.moveType] = (byType[c.moveType] || 0) + 1; deck.push(c.id);
     }
-    if (deck.length < 20) deck = deck.concat(sup.slice(nSup, nSup + Math.min(20 - deck.length, 10 - nSup)).map(x => x[0].id));
+    if (deck.length < this.size) deck = deck.concat(sup.slice(nSup, nSup + Math.min(this.size - deck.length, this.maxSupplies - nSup)).map(x => x[0].id));
+    return deck;
+  },
+  /** Keep every existing card and top the deck up to size from leftover owned copies. Never removes cards. */
+  complete(ids, owned, rng, pers = null) {
+    const deck = (ids || []).filter(id => card(id));
+    if (deck.length >= this.size) return deck;
+    const used = {};
+    for (const id of deck) used[id] = (used[id] || 0) + 1;
+    const left = {};
+    for (const id of Object.keys(owned || {})) {
+      const n = (owned[id] || 0) - (used[id] || 0);
+      if (n > 0) left[id] = n;
+    }
+    const extra = this.autoBuild(left, rng, pers);
+    const mons = deck.filter(id => isMon(card(id))).length;
+    let sups = deck.length - mons;
+    const cnt = {}, lim = {};
+    for (const id of deck) {
+      const c = card(id); const k = nameKey(c);
+      cnt[k] = (cnt[k] || 0) + 1; lim[k] = Math.min(lim[k] ?? 9, Rarity.copyLimit(c));
+    }
+    for (const id of extra) {
+      if (deck.length >= this.size) break;
+      const c = card(id); if (!c) continue;
+      const k = nameKey(c); const L = Math.min(lim[k] ?? 9, Rarity.copyLimit(c));
+      if ((cnt[k] || 0) >= L) continue;
+      if (isMon(c)) {
+        /* ok */
+      } else {
+        if (sups >= this.maxSupplies) continue;
+        sups++;
+      }
+      deck.push(id); cnt[k] = (cnt[k] || 0) + 1; lim[k] = L;
+    }
     return deck;
   },
 };
@@ -849,8 +883,8 @@ export const SEASON_REWARDS = [
 ];
 export const STARTER = ['ww_snarlpup', 'ww_acornix', 'ww_zapwing', 'ww_spydo', 'ww_gruugy', 'ww_hootuft'];
 // Phase 3 starter buff: 1 Zapwing -> Giggleti, 1 Hootuft -> Embertail, Potion -> Super Potion, Cute Growl -> Menace
-const STARTER_MONS = ['ww_snarlpup', 'ww_snarlpup', 'ww_acornix', 'ww_acornix', 'ww_giggleti', 'ww_zapwing', 'ww_spydo', 'ww_spydo', 'ww_gruugy', 'ww_gruugy', 'ww_embertail', 'ww_hootuft'];
-const STARTER_SUP = ['st_potion', 'st_super_potion', 'st_super_potion', 'st_power_up', 'st_guard_wall', 'st_menace', 'st_static_web', 'st_full_heal'];
+const STARTER_MONS = ['ww_snarlpup', 'ww_snarlpup', 'ww_acornix', 'ww_acornix', 'ww_giggleti', 'ww_zapwing', 'ww_spydo', 'ww_spydo', 'ww_gruugy', 'ww_gruugy', 'ww_embertail', 'ww_hootuft', 'ww_munchwag', 'ww_panpurr', 'ww_grimpkin', 'ww_teddimple', 'ww_catergar', 'ww_sprigchimp'];
+const STARTER_SUP = ['st_potion', 'st_super_potion', 'st_super_potion', 'st_power_up', 'st_guard_wall', 'st_menace', 'st_static_web', 'st_full_heal', 'st_iron_guard', 'st_soothing_song', 'st_antidote', 'st_shield_pal'];
 export const STARTER_DECK = STARTER_MONS.concat(STARTER_SUP);
 const uuid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const inc = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
@@ -861,7 +895,7 @@ export const ACHIEVEMENTS = [
   ['first_ssr', 'Starter Legend', 'Pull a First Adventures Legendary or Mythical', { FL: 1 }, 0], ['first_lgd', 'Fallen No More', 'Pull a Legendary', { FL: 1 }, 0],
   ['mythic', 'Myth Made Real', 'Pull the Mythical', { FL: 2 }, 0], ['ww_half', 'Half a Breeze', 'Collect 15 First Adventures cards', { WW: 1 }, 0],
   ['ww_all', 'Whirlwind Master', 'Complete First Adventures (30/30)', { FL: 2 }, 0], ['fl_half', 'Legend Hunter', 'Collect 15 Fallen Legends cards', { FL: 1 }, 0],
-  ['fl_all', 'Keeper of Legends', 'Complete Fallen Legends (30/30)', { FL: 3 }, 0], ['first_deck', 'Deck Builder', 'Build your own legal 20-card deck', { WW: 1 }, 0],
+  ['fl_all', 'Keeper of Legends', 'Complete Fallen Legends (30/30)', { FL: 3 }, 0], ['first_deck', 'Deck Builder', 'Build your own legal 30-card deck', { WW: 1 }, 0],
   ['first_win', 'First Victory', 'Win a mat battle', { WW: 1 }, 0], ['wins_10', 'Mat Veteran', 'Win 10 battles', { FL: 1 }, 0],
   ['streak_5', 'On Fire', 'Win 5 battles in a row', { FL: 1 }, 0], ['silver', 'Silver League', 'Reach 1050 MR', { WW: 1 }, 0],
   ['gold', 'Gold League', 'Reach 1150 MR', { FL: 1 }, 500], ['platinum', 'Platinum League', 'Reach 1250 MR', { FL: 2 }, 0],
@@ -1145,6 +1179,9 @@ export class Game {
     for (const set of SETS) if (s.packs[set] == null) s.packs[set] = 0;
     // WW SSR→LGD/MYT: clamp decks that hold 2 copies of a now-1-copy card
     for (const d of s.decks) this.clampDeck(d);
+    for (let i = 0; i < (s.decks || []).length; i++) {
+      if (s.decks[i] && s.decks[i].length > 0) s.decks[i] = DeckRules.complete(s.decks[i], s.owned, this.rng);
+    }
     for (const P of s.ai || []) {
       const k = +String(P.id).replace('ai', '');
       const spr = trainerSprite(Number.isFinite(k) ? k : 0);
@@ -1155,6 +1192,9 @@ export class Game {
       if (!P.seasonPics) P.seasonPics = [];
       if (!P.seasonCoins) P.seasonCoins = [];
       this.clampDeck(P.deck);
+      const ki = +String(P.id).replace('ai', '');
+      if (P.deck && P.deck.length) P.deck = DeckRules.complete(P.deck, P.owned, this.rng, persOf(Number.isFinite(ki) ? ki : 0));
+      if (DeckRules.problems(P.deck).length) P.deck = DeckRules.autoBuild(P.owned, this.rng, persOf(Number.isFinite(ki) ? ki : 0));
     }
   }
   clampDeck(d) {
@@ -1410,7 +1450,7 @@ export class Game {
   }
 
   // ---------- Draft: you + 6 trainers, a shared pool, snake picks ----------
-  static DRAFT_FEE = 300; static DRAFT_SEATS = 7; static DRAFT_PICKS = 20; static DRAFT_GAMES = 3;
+  static DRAFT_FEE = 300; static DRAFT_SEATS = 7; static DRAFT_PICKS = 30; static DRAFT_GAMES = 3;
   /** seat order of every pick: round 1 seats 0..n-1, round 2 back n-1..0, ... */
   static snakeOrder(n, rounds) { const o = []; for (let r = 0; r < rounds; r++) for (let i = 0; i < n; i++) o.push(r % 2 === 0 ? i : n - 1 - i); return o; }
   startDraft(set) {
@@ -1425,7 +1465,7 @@ export class Game {
   }
   draftSeat() { const D = this.s.draft; return D.seats.indexOf(ME); }
   /** must this seat take a doremon now to reach 8? */
-  draftNeedsMon(seat) { const D = this.s.draft, have = D.picks[seat].filter(id => isMon(card(id))).length, left = Game.DRAFT_PICKS - D.picks[seat].length; return have + left <= 8 && have < 8; }
+  draftNeedsMon(seat) { const D = this.s.draft, have = D.picks[seat].filter(id => isMon(card(id))).length, left = Game.DRAFT_PICKS - D.picks[seat].length; return have + left <= DeckRules.minMons && have < DeckRules.minMons; }
   draftLegal(seat, id) { const D = this.s.draft; return D.pool.includes(id) && (!this.draftNeedsMon(seat) || isMon(card(id)) || !D.pool.some(x => isMon(card(x)))); }
   draftRun() {
     const D = this.s.draft;

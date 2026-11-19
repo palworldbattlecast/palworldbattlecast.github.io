@@ -345,3 +345,5 @@ h1{font-size:36px;margin:4px 0 4px;letter-spacing:.01em}
 .bubbles.big.few{grid-template-columns:1fr;max-width:520px}
 .bubbles.big.few .bubble{min-height:168px}
 .hero .pack-row{max-width:none;flex:1 1 auto;overflow:visible;flex-wrap:nowrap}
+
+.hub-back{position:sticky;top:0;z-index:8;display:inline-flex;align-items:center;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}

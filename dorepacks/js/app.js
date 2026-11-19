@@ -83,6 +83,7 @@ const rar = (r, c) => { const lab = (c && isLegendaryST(c)) ? 'LGD' : (r === 'IT
 // ---------- state ----------
 const params = new URLSearchParams(location.search);
 const SNAP = params.get('snap'), DEBUG = params.has('debug');
+
 // ---------- real-time league days ----------
 const clock = ms => { const t = Math.ceil(ms / 1000); const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60; return h ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`; };
 function dayText() { const sn = seasonOfDay(G.s.day); return `<span>📅 Day <b>${G.s.day}</b> · Season <b>${sn}</b></span><span class="grow"></span><span>next day in <b class="cd">${clock(G.msToNextDay())}</b></span>`; }
@@ -299,15 +300,23 @@ function deckCounts(d) { const m = {}; for (const id of d) m[id] = (m[id] || 0) 
 function decksView() {
   const s = G.s, d = s.decks[UI.deck], probs = DeckRules.problems(d), owns = G.ownsDeck(d), cnt = deckCounts(d);
   const ids = Object.keys(cnt).sort((a, b) => (isMon(card(b)) - isMon(card(a))) || card(a).set.localeCompare(card(b).set) || card(a).num - card(b).num);
-  const pool = Object.keys(s.owned).filter(id => s.owned[id] > 0 && card(id)).sort((a, b) => (isMon(card(b)) - isMon(card(a))) || Rarity.rank(card(b).rarity) - Rarity.rank(card(a).rarity) || card(a).name.localeCompare(card(b).name));
+  const kind = UI.deckKind || 'all';
+  const pool = Object.keys(s.owned).filter(id => {
+    if (!(s.owned[id] > 0 && card(id))) return false;
+    const c = card(id);
+    if (kind === 'mon') return isMon(c);
+    if (kind === 'st') return isSpell(c) || isTrap(c);
+    return true;
+  }).sort((a, b) => (isMon(card(b)) - isMon(card(a))) || Rarity.rank(card(b).rarity) - Rarity.rank(card(a).rarity) || card(a).name.localeCompare(card(b).name));
+  const kindBar = `<div class="seg">${[['all','All cards'],['mon','Doremon'],['st','Spells & Traps']].map(([k,n]) => `<button class="${kind===k?'on':''}" data-a="deckKind" data-v="${k}">${n}</button>`).join('')}</div>`;
   return `<h1>Decks</h1><div class="seg">${s.decks.map((_, i) => `<button class="${UI.deck === i ? 'on' : ''}" data-a="deck" data-v="${i}">${esc(s.deckNames[i])}${s.activeDeck === i ? ' ★' : ''}</button>`).join('')}</div>
-  <div class="panel"><div class="row"><div class="grow"><b>${d.length}/20</b> cards · ${d.map(card).filter(isMon).length} doremon</div>
+  <div class="panel"><div class="row"><div class="grow"><b>${d.length}/${DeckRules.size}</b> cards · ${d.map(card).filter(isMon).length} doremon · ${d.map(card).filter(c => !isMon(c)).length} spell/trap</div>
    ${s.activeDeck === UI.deck ? '<span class="chip" style="background:var(--green)">Active</span>' : `<button class="btn sm g" data-a="setActive">Use</button>`}</div>
    <div class="small" style="margin:6px 0;color:${probs.length || !owns ? '#ff9b9b' : '#7dfc9f'}">${probs.length ? probs.map(esc).join('<br>') : owns ? 'Deck is legal ✓' : 'You no longer own every card in this deck.'}</div>
    <div class="row"><button class="btn sm p grow" data-a="autoBuild">Auto-build</button><button class="btn sm k grow" data-a="clearDeck">Clear</button></div></div>
   <div class="sub">In deck — tap to remove</div>
   <div class="list panel" style="padding:4px 12px">${ids.length ? ids.map(id => { const c = card(id); return `<div class="it" data-a="rm" data-v="${id}">${isMon(c) ? sprite(spriteId(c), 30) : '<span style="width:30px;text-align:center">✨</span>'}<div class="grow">${esc(c.name)} ${rar(c.rarity, c)}</div><b>×${cnt[id]}</b></div>`; }).join('') : '<div class="small" style="padding:10px 0">Empty deck.</div>'}</div>
-  <div class="sub">Your cards — tap to add</div>
+  ${kindBar}<div class="sub">Your cards — tap to add</div>
   <div class="grid3">${pool.map(id => { const left = s.owned[id] - (cnt[id] || 0); return `<div class="cell" data-a="add" data-v="${id}" style="opacity:${left > 0 ? 1 : .4}">${cardImg(id)}<span class="cnt">${left}/${s.owned[id]}</span></div>`; }).join('')}</div>`;
 }
 function battleSetupView() {
@@ -354,12 +363,12 @@ function tourView() {
 function draftView() {
   const D = G.s.draft, s = G.s;
   const who = w => w === E.ME ? meName() : esc(s.ai[w].name), av = w => faceImg(w, 28);
-  if (!D || (D.done && UI.draftNew)) return `<h1>Draft</h1><div class="sub">You and 6 trainers draft from one shared pool of 20 booster packs, snake order (1→7, then 7→1…), 20 picks each. Then play 3 games against the drafters seated after you.</div>
-    ${D?.done ? '' : ''}<div class="panel small">Entry ${money(Game.DRAFT_FEE)} · ${money(150)} per win · go 3-0 for a free pack of the drafted set. Draft cards are played with, not kept. Every drafted deck has at least 8 doremon.</div>
+  if (!D || (D.done && UI.draftNew)) return `<h1>Draft</h1><div class="sub">You and 6 trainers draft from one shared pool of 30 booster packs, snake order (1→7, then 7→1…), 30 picks each. Then play 3 games against the drafters seated after you.</div>
+    ${D?.done ? '' : ''}<div class="panel small">Entry ${money(Game.DRAFT_FEE)} · ${money(150)} per win · go 3-0 for a free pack of the drafted set. Draft cards are played with, not kept. Every drafted deck has at least 12 doremon.</div>
     ${SETS.map(k => `<div class="panel row"><img src="${IMG['cards/pack_' + k.toLowerCase()]}" style="width:48px;image-rendering:pixelated" alt=""><b class="grow">${esc(SET_NAMES[k])}</b><button class="btn y sm" data-a="draftStart" data-v="${k}" ${s.money >= Game.DRAFT_FEE ? '' : 'disabled'}>Draft ${money(Game.DRAFT_FEE)}</button></div>`).join('')}`;
   const me = G.draftSeat(), mine = D.picks[me], mons = mine.filter(id => isMon(card(id))).length;
   const seats = `<div class="row wrap" style="gap:4px;margin-bottom:6px">${D.seats.map((w, i) => `<span class="chip" style="${D.order[D.pick] === i && G.draftPicking ? 'background:var(--yellow);color:#000' : w === E.ME ? 'border:1px solid var(--yellow)' : ''}">${i + 1}. ${who(w)} ${D.picks[i].length}</span>`).join('')}</div>`;
-  const myPicks = `<div class="sub">Your picks (${mine.length}/20 · ${mons} doremon)</div><div class="row wrap" style="gap:4px">${mine.map(id => isMon(card(id)) ? `<span data-a="inspect" data-v="${id}">${sprite(spriteId(card(id)), 30)}</span>` : '<span style="font-size:22px">✨</span>').join('') || '<span class="small">None yet.</span>'}</div>`;
+  const myPicks = `<div class="sub">Your picks (${mine.length}/${Game.DRAFT_PICKS} · ${mons} doremon)</div><div class="row wrap" style="gap:4px">${mine.map(id => isMon(card(id)) ? `<span data-a="inspect" data-v="${id}">${sprite(spriteId(card(id)), 30)}</span>` : '<span style="font-size:22px">✨</span>').join('') || '<span class="small">None yet.</span>'}</div>`;
   if (G.draftPicking) {
     const cnt = deckCounts(D.pool), ids = Object.keys(cnt).sort((a, b) => (isMon(card(b)) - isMon(card(a))) || Rarity.rank(card(b).rarity) - Rarity.rank(card(a).rarity) || card(a).name.localeCompare(card(b).name));
     const need = G.draftNeedsMon(me);
@@ -427,7 +436,7 @@ function profileView() {
   return `<div class="menu-page">${hubBack()}<h1>Profile</h1><div class="sub">Your name is used everywhere, including battle</div>
   <div class="panel" id="profiletab"><div class="row" style="gap:14px;align-items:center">${avImg(G.picOf('me'), 72)}${goldCoin(G.coinOf('me'), 64)}<div class="grow"><b>${esc(name)}</b><div class="small">${money(s.money)} · LP ${s.mr} · ${tier(s.mr)}</div></div></div></div>
   <div class="panel"><div class="title" style="font-size:18px;color:var(--yellow)">Trainer name</div>
-    <div class="row" style="margin-top:8px"><input class="nm" id="trainerName" maxlength="16" value="${esc(name)}" placeholder="Your name"><button class="btn y sm" data-a="setName">Save</button></div>
+    <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><input class="nm" id="trainerName" maxlength="16" value="${esc(name)}" placeholder="Your name"><button class="btn y sm" data-a="setName">Save</button><button class="btn k sm" data-a="tab" data-v="home">‹ Back</button></div>
   </div>
   <div class="panel"><div class="title" style="font-size:18px;color:var(--yellow)">Profile pic</div>
     <div class="small" style="margin:6px 0">In-game walking sprites</div>
@@ -524,7 +533,7 @@ function achView() {
 }
 const RULES = [
   ['Goal', 'Each player starts with 5 life ❤️. Every time one of your doremon is knocked out you lose 1 life. Get your opponent to 0 life to win.'],
-  ['Setup', 'Decks are exactly 20 cards with at least 8 doremon (max 10 spells/traps). Copies: at most 2 of any card, and only 1 of a Legendary or Mythical. Shuffle and draw 5 (your opening hand always has a doremon).'],
+  ['Setup', 'Decks are exactly 30 cards with at least 12 doremon (max 15 spells/traps). Copies: at most 2 of any card, and only 1 of a Legendary or Mythical. Shuffle and draw 5 (your opening hand always has a doremon).'],
   ['Coin toss', 'Before every match you call heads or tails. Call it right and you choose to go first or second; call it wrong and your opponent chooses first or second. AI vs AI league matches use a coin toss too.'],
   ['Going second', 'To make up for not moving first, the first doremon the second player puts down gets a QUICK START: it can attack on the turn it is played. In 20,000 simulated games this brings going first to about 50%.'],
   ['Mulligan', 'After the coin toss you see your opening hand and may mulligan once for free: the whole hand goes back, the deck is shuffled and you draw the same number of cards again (still guaranteed a doremon). The AI mulligans hands with fewer than 2 doremon or no spells/traps.'],
@@ -542,7 +551,7 @@ const RULES = [
   ['Status', 'Poison: −20 HP at the end of its owner\'s turn. Burn: −10 HP each turn and half damage. Paralysis: can\'t attack for one turn. Sleep: can\'t attack; 50% to wake each turn, always wakes by the 2nd. Confusion: 50% to hit itself for 30 instead, lasts 2 turns.'],
   ['Rewards', 'Friendly win $150 (loss $30). Ranked win $300 + $25 per win streak (loss $60) and MR. A win is always worth at least +15 MR plus a streak bonus (+2 per win in a row, up to +8); a loss costs Elo points (less against a lower-rated trainer, never more than 24). Every league day everyone above 1000 MR gives back 2% of the excess. Tiers: Bronze, Silver 1050, Gold 1150, Platinum 1250, Diamond 1400, Master 1550.'],
   ['Tournaments', 'Every third league day the top 8 by MR play a best-of-3 knockout sponsored by one set (rotating). Champion: $2,000 and a pack of that set. No MR changes. Unplayed matches are forfeited when the day ends.'],
-  ['Draft', 'Pay $300 to draft with 6 trainers from a shared pool of 20 packs in snake order, 20 picks each (at least 8 doremon guaranteed). Play 3 games with your draft deck: $150 per win, 3-0 earns a pack. Draft cards are not kept.'],
+  ['Draft', 'Pay $300 to draft with 6 trainers from a shared pool of 30 packs in snake order, 30 picks each (at least 12 doremon guaranteed). Play 3 games with your draft deck: $150 per win, 3-0 earns a pack. Draft cards are not kept.'],
   ['Daily Adventures', 'Three small quests every league day. Each one completed pays a random booster pack.'],
   ['Packs', 'Every pack has 7 cards: 2 Commons, a Common-or-spell/trap slot (30% spell/trap), 1 guaranteed spell/trap, then 3 doremon slots where Uncommons, Rares and the chase cards live. Cheaper spells/traps drop more often. Pity guarantees a chase card if you go long enough without one.'],
   ['Dupes & selling', 'You always keep 3 copies of every card (2 for a deck + 1 spare to trade). Only copies beyond 3 count as dupes: those show up in Sell and get sold by Sell all dupes. Cards in your decks are never sold. The AIs follow the same rule.'],
@@ -1061,7 +1070,12 @@ function navInput(which) {
 }
 document.addEventListener('keydown', ev => {
   if (document.getElementById('intro')) return;
-  if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA')) return;
+  const typing = ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA');
+  // Escape always leaves a menu (including the name field). B is Back only when not typing a name.
+  if (typing) {
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.target.blur(); goBack(); }
+    return;
+  }
   const map = { ArrowLeft:'L', ArrowRight:'R', ArrowUp:'U', ArrowDown:'D', Enter:'A', ' ':'A', a:'A', A:'A', Escape:'B', Backspace:'B', b:'B', B:'B' };
   const w = map[ev.key];
   if (!w) return;
@@ -1110,7 +1124,8 @@ const A = {
   autoBuild: () => { G.s.decks[UI.deck] = DeckRules.autoBuild(G.s.owned, G.rng); G.checkAchievements(); G.save(); render(); },
   clearDeck: () => { G.s.decks[UI.deck] = []; G.save(); render(); },
   rm: v => { const d = G.s.decks[UI.deck], i = d.lastIndexOf(v); if (i >= 0) d.splice(i, 1); G.save(); render(); },
-  add: v => { const d = G.s.decks[UI.deck], n = d.filter(x => x === v).length, c = card(v); if (d.length >= 20 || n >= (G.s.owned[v] || 0) || n >= Rarity.copyLimit(c)) return; d.push(v); G.checkAchievements(); G.save(); const sc = $('#main').scrollTop; render(); $('#main').scrollTop = sc; },
+  deckKind: v => { UI.deckKind = v || 'all'; const sc = $('#main').scrollTop; render(); $('#main').scrollTop = sc; },
+  add: v => { const d = G.s.decks[UI.deck], n = d.filter(x => x === v).length, c = card(v); if (d.length >= DeckRules.size || n >= (G.s.owned[v] || 0) || n >= Rarity.copyLimit(c)) return; d.push(v); G.checkAchievements(); G.save(); const sc = $('#main').scrollTop; render(); $('#main').scrollTop = sc; },
   more: v => { UI.more = v || null; UI.trainer = null; UI.tab = 'more'; UI.counter = null; render(); $('#main').scrollTop = 0; },
   shopTab: v => { UI.shopTab = v; render(); },
   buySingle: v => { const sc = $('#main').scrollTop; sfx(G.buySingle(v) ? 'buy' : 'click'); render(); $('#main').scrollTop = sc; },
@@ -1297,6 +1312,7 @@ function demo() {
     case 'sub_ach': UI.tab = 'records'; UI.sub = 'ach'; break;
     case 'sub_league': UI.tab = 'records'; UI.sub = 'league'; break;
     case 'sub_decks': UI.tab = 'binder'; UI.sub = 'decks'; break;
+    case 'sub_decks_st': UI.tab = 'binder'; UI.sub = 'decks'; UI.deckKind = 'st'; break;
     case 'sub_cards': UI.tab = 'binder'; UI.sub = 'cards'; break;
     case 'intro': case 'intro_mid': case 'intro_logo': UI.tab = 'home'; UI.sub = null; break;
 
