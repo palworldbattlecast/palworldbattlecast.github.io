@@ -892,7 +892,7 @@ export function mrDelta(me, opp, won, streakAfter = 0) {
 
 const freshStats = () => ({ pulls: {}, bestPull: null, packsBought: {}, battles: { ranked: { w: 0, l: 0, d: 0 }, friendly: { w: 0, l: 0, d: 0 } }, earned: {}, spent: {}, auctionsWon: 0, auctionsSold: 0, listings: 0, bids: 0, cardsBought: 0, cardsPulled: 0 });
 const freshSave = () => ({ version: 4, oppHistory: [], nextOpp: null, money: 1500, owned: {}, packs: { WW: 3, FL: 3, T2: 3, HT: 3, RA: 3 }, matTheme: null, matThemes: [], _gift_ht: true, _gift_v20: true, _gift_ra: true, pity: {}, packsOpened: {}, decks: [[], [], []], deckNames: ['Deck 1', 'Deck 2', 'Deck 3'], activeDeck: 0,
-  mr: 1000, bestMr: 1000, wins: 0, losses: 0, streak: 0, bestStreak: 0, leagueWins: 0, cardsSold: 0, singlesBought: 0, trades: 0, achievements: [], profilePic: null, coin: 'axerupi', seasonPics: [], seasonCoins: [], seasonHistory: [], lastSeasonEnded: 0, ai: [], offers: [], market: {}, day: 0, recent: [], seed: '0', pulledRarities: [],
+  mr: 1000, bestMr: 1000, wins: 0, losses: 0, streak: 0, bestStreak: 0, leagueWins: 0, cardsSold: 0, singlesBought: 0, trades: 0, achievements: [], trainerName: 'You', profilePic: null, coin: 'axerupi', seasonPics: [], seasonCoins: [], seasonHistory: [], lastSeasonEnded: 0, ai: [], offers: [], market: {}, day: 0, recent: [], seed: '0', pulledRarities: [],
   stats: freshStats(), bank: { initial: 0, faucet: 0, sink: 0 }, auctions: [], auctionLog: [], nextId: 1, lastDay: [] });
 export const ME = -1;   // "who" id for the player in the ledger / auctions; AIs are 0..7
 
@@ -977,7 +977,8 @@ export class Game {
   ledgerBalanced() { const b = this.s.bank; return Math.abs(this.totalCash() - (b.initial + b.faucet - b.sink)) < 1e-6; }
   committed(who) { return this.s.auctions.filter(l => l.high && l.high.who === who).reduce((a, l) => a + l.high.amt, 0); }
   ownedOf(who) { return who === ME ? this.s.owned : this.s.ai[who].owned; }
-  nameOf(who) { return who === ME ? 'You' : this.s.ai[who].name; }
+  nameOf(who) { return who === ME ? (this.s.trainerName || 'You') : this.s.ai[who].name; }
+  setTrainerName(n) { const v = String(n || '').trim().slice(0, 16); this.s.trainerName = v || 'You'; this.save(); return this.s.trainerName; }
 
   openPack(set) {
     const s = this.s; if (!(s.packs[set] > 0)) return null;
@@ -1076,7 +1077,7 @@ export class Game {
         if (won) { s.ai[k].losses++; s.leagueWins++; this.earn(k, 60, 'league'); } else { s.ai[k].wins++; this.earn(k, 300, 'league'); }
         bucks = won ? 300 + Math.max(0, s.streak - 1) * 25 : 60;
         s.oppHistory = [k].concat((s.oppHistory || []).filter(x => x !== k)).slice(0, 4); s.nextOpp = null;
-        s.recent.unshift({ id: uuid(), a: 'You', b: s.ai[k].name, winner: won ? 'You' : s.ai[k].name, mrChange: d });
+        s.recent.unshift({ id: uuid(), a: this.nameOf(ME), b: s.ai[k].name, winner: won ? this.nameOf(ME) : s.ai[k].name, mrChange: d });
       } else bucks = won ? 150 : 30;
     } else { bucks = 40; st.d++; }
     this.earn(ME, bucks, league ? 'ranked battles' : 'friendly battles');
@@ -1117,6 +1118,7 @@ export class Game {
 
   migrateSave() {
     const s = this.s;
+    if (!s.trainerName) s.trainerName = 'You';
     if (s.profilePic === undefined) s.profilePic = null;
     if (!s.coin) s.coin = 'axerupi';
     if (!s.seasonPics) s.seasonPics = [];
@@ -1212,7 +1214,7 @@ export class Game {
   }
   resolveSeason(n) {
     const s = this.s, feat = seasonFeatured(n);
-    const rows = [{ k: 'me', name: 'You', mr: s.mr }, ...s.ai.map((p, k) => ({ k, name: p.name, mr: p.mr }))]
+    const rows = [{ k: 'me', name: this.nameOf(ME), mr: s.mr }, ...s.ai.map((p, k) => ({ k, name: p.name, mr: p.mr }))]
       .sort((a, b) => b.mr - a.mr || String(a.name).localeCompare(b.name));
     const top8 = rows.slice(0, 8);
     const packSet = SETS[SETS.length - 1];
@@ -1312,7 +1314,7 @@ export class Game {
     const owned = who === ME ? s.owned : P.owned, played = (who === ME ? s.stats.played : P.played) || {};
     let most = null; for (const id of Object.keys(played).sort()) if (card(id) && (most == null || played[id] > played[most])) most = id;
     const w = who === ME ? s.wins : P.wins, l = who === ME ? s.losses : P.losses;
-    return { name: who === ME ? 'You' : P.name, avatar: this.faceOf(who), money: this.cash(who), mr: who === ME ? s.mr : P.mr, tier: tier(who === ME ? s.mr : P.mr),
+    return { name: this.nameOf(who), avatar: this.faceOf(who), money: this.cash(who), mr: who === ME ? s.mr : P.mr, tier: tier(who === ME ? s.mr : P.mr),
       binder: DB.cards.filter(c => owned[c.id] > 0).length, binderTotal: DB.cards.length, copies: Object.values(owned).reduce((a, b) => a + b, 0),
       mostPlayed: most, mostPlayedN: most ? played[most] : 0, games: who === ME ? (s.stats.battles.ranked.w + s.stats.battles.ranked.l + s.stats.battles.ranked.d) : (P.games || w + l), wins: w, losses: l,
       tourWins: who === ME ? (s.stats.tourWins || 0) : (P.tourWins || 0), streak: who === ME ? s.streak : (P.streak || 0) };
@@ -1653,7 +1655,7 @@ export class Game {
   }
   get leaderboard() {
     const r = this.s.ai.map((p, k) => ({ name: p.name, mr: p.mr, me: false, avatar: this.picOf(k), mon: p.avatar, trainer: p.trainer || trainerSprite(k), w: p.wins, l: p.losses, cash: p.money, escrow: this.committed(k), k }));
-    r.push({ name: 'You', mr: this.s.mr, me: true, avatar: this.picOf('me'), mon: 'axerupi', trainer: null, w: this.s.wins, l: this.s.losses, cash: this.s.money, escrow: this.committed(ME), k: ME });
+    r.push({ name: this.nameOf(ME), mr: this.s.mr, me: true, avatar: this.picOf('me'), mon: 'axerupi', trainer: this.s.profilePic, w: this.s.wins, l: this.s.losses, cash: this.s.money, escrow: this.committed(ME), k: ME });
     return r.sort((a, b) => b.mr - a.mr);
   }
 }

@@ -465,7 +465,7 @@
       "types": [
         "Rock"
       ],
-      "hp": 230,
+      "hp": 270,
       "move": "Rock Avalanche",
       "moveType": "Rock",
       "dmg": 110,
@@ -483,10 +483,10 @@
       "types": [
         "Dragon"
       ],
-      "hp": 320,
+      "hp": 305,
       "move": "Wyrm Twister",
       "moveType": "Dragon",
-      "dmg": 130,
+      "dmg": 125,
       "legendary": false,
       "mythical": false
     },
@@ -501,7 +501,7 @@
       "types": [
         "Grass"
       ],
-      "hp": 260,
+      "hp": 280,
       "move": "Frenzy Plant",
       "moveType": "Grass",
       "dmg": 120,
@@ -519,10 +519,10 @@
       "types": [
         "Electric"
       ],
-      "hp": 260,
+      "hp": 280,
       "move": "Thunderclap",
       "moveType": "Electric",
-      "dmg": 110,
+      "dmg": 120,
       "legendary": true,
       "mythical": false,
       "fx": "par",
@@ -539,7 +539,7 @@
       "types": [
         "Ground"
       ],
-      "hp": 260,
+      "hp": 280,
       "move": "Quake Stomp",
       "moveType": "Ground",
       "dmg": 120,
@@ -557,7 +557,7 @@
       "types": [
         "Fire"
       ],
-      "hp": 250,
+      "hp": 280,
       "move": "Magma Burst",
       "moveType": "Fire",
       "dmg": 120,
@@ -813,7 +813,7 @@
       "hp": 280,
       "move": "Shock Bolt",
       "moveType": "Electric",
-      "dmg": 170,
+      "dmg": 125,
       "legendary": false,
       "mythical": false,
       "fx": "par",
@@ -834,7 +834,7 @@
       "hp": 300,
       "move": "Sweep Kick",
       "moveType": "Fighting",
-      "dmg": 120,
+      "dmg": 125,
       "legendary": false,
       "mythical": false
     },
@@ -850,10 +850,10 @@
         "Fire",
         "Poison"
       ],
-      "hp": 280,
+      "hp": 290,
       "move": "Acid Splash",
       "moveType": "Poison",
-      "dmg": 160,
+      "dmg": 130,
       "legendary": false,
       "mythical": false,
       "fx": "psn",
@@ -873,7 +873,7 @@
       "hp": 300,
       "move": "Tide Crash",
       "moveType": "Water",
-      "dmg": 140,
+      "dmg": 125,
       "legendary": false,
       "mythical": false
     },
@@ -911,7 +911,7 @@
       "hp": 300,
       "move": "Rock Avalanche",
       "moveType": "Rock",
-      "dmg": 140,
+      "dmg": 125,
       "legendary": false,
       "mythical": false
     },
@@ -945,7 +945,7 @@
       "types": [
         "Rock"
       ],
-      "hp": 280,
+      "hp": 290,
       "move": "Shard Burst",
       "moveType": "Rock",
       "dmg": 130,
@@ -1041,10 +1041,10 @@
         "Grass",
         "Dark"
       ],
-      "hp": 340,
+      "hp": 300,
       "move": "Feint Strike",
       "moveType": "Dark",
-      "dmg": 140,
+      "dmg": 125,
       "legendary": false,
       "mythical": false
     },
@@ -1060,10 +1060,10 @@
         "Flying",
         "Fighting"
       ],
-      "hp": 260,
+      "hp": 275,
       "move": "Rising Uppercut",
       "moveType": "Fighting",
-      "dmg": 100,
+      "dmg": 110,
       "legendary": false,
       "mythical": false
     },
@@ -1101,7 +1101,7 @@
       "hp": 300,
       "move": "Crush Kick",
       "moveType": "Fighting",
-      "dmg": 100,
+      "dmg": 110,
       "legendary": true,
       "mythical": false
     },
@@ -2274,7 +2274,7 @@
         "Grass",
         "Dark"
       ],
-      "hp": 240,
+      "hp": 250,
       "move": "Night Bite",
       "moveType": "Dark",
       "dmg": 45,
@@ -2882,10 +2882,10 @@
         "Dark",
         "Steel"
       ],
-      "hp": 240,
+      "hp": 270,
       "move": "Night Bite",
       "moveType": "Dark",
-      "dmg": 100,
+      "dmg": 110,
       "legendary": false,
       "mythical": false
     },
@@ -2901,7 +2901,7 @@
         "Water",
         "Ground"
       ],
-      "hp": 250,
+      "hp": 280,
       "move": "Bubble Stream",
       "moveType": "Water",
       "dmg": 120,
@@ -2920,10 +2920,10 @@
         "Normal",
         "Steel"
       ],
-      "hp": 250,
+      "hp": 275,
       "move": "Iron Smash",
       "moveType": "Steel",
-      "dmg": 110,
+      "dmg": 115,
       "legendary": false,
       "mythical": false
     },
@@ -2939,7 +2939,7 @@
         "Normal",
         "Dark"
       ],
-      "hp": 250,
+      "hp": 285,
       "move": "Chaos Ball",
       "moveType": "Dark",
       "dmg": 130,
@@ -3440,8 +3440,8 @@
         "Grass"
       ],
       "hp": 270,
-      "move": "Swarm Buzz",
-      "moveType": "Bug",
+      "move": "Petal Swarm",
+      "moveType": "Grass",
       "dmg": 90,
       "legendary": false,
       "mythical": false,
@@ -3459,7 +3459,7 @@
         "Bug",
         "Steel"
       ],
-      "hp": 280,
+      "hp": 285,
       "move": "Steel Scatter",
       "moveType": "Steel",
       "dmg": 100,
@@ -3484,7 +3484,7 @@
         "Dragon",
         "Steel"
       ],
-      "hp": 290,
+      "hp": 295,
       "move": "Iron Smash",
       "moveType": "Steel",
       "dmg": 120,
@@ -3503,7 +3503,7 @@
       "types": [
         "Dark"
       ],
-      "hp": 290,
+      "hp": 300,
       "move": "Night Bite",
       "moveType": "Dark",
       "dmg": 110,
@@ -3528,7 +3528,7 @@
         "Grass",
         "Dark"
       ],
-      "hp": 290,
+      "hp": 300,
       "move": "Vine Lash",
       "moveType": "Grass",
       "dmg": 110,
@@ -3879,16 +3879,16 @@
       ],
       "hp": 280,
       "move": "Flame Punch",
-      "moveType": "Fire",
+      "moveType": "Fighting",
       "dmg": 80,
-      "fx": "brn",
-      "fxChance": 10,
       "legendary": false,
       "mythical": false,
       "promo": true,
       "actionArt": true,
       "actionArtTarget": "panpurr",
-      "text": "ACTION ART PROMO: Ursacoon lands Flame Punch on Panpurr. 10% burn."
+      "text": "10% chance to Burn.",
+      "fx": "brn",
+      "fxChance": 10
     }
   ],
   "chart": {

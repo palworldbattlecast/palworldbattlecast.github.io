@@ -1,10 +1,12 @@
 import * as E from './engine.js';
 import { Audio, TITLES } from './audio.js';
+import { runIntro } from './intro.js';
+import { startHomeScene, stopHomeScene } from './home.js';
 const { Game, TIERS, MR, SETS, SET_NAMES, isDouble, isSpread, DB, card, inSet, setCards, isMon, isSpell, isTrap, isLegendaryST, stKindLabel, binderGroup, BINDER_GROUPS, spriteId, Rarity, Packs, Battle, BattleAI, DeckRules, ACHIEVEMENTS, STATUS, tier, effectiveness, canAttack, monCount, tapOwnMonSel, seasonOfDay, daysLeftInSeason, seasonFeatured, seasonMat, matColors, SEASON_DAYS, SEASON_PLAN, trainerSprite, SEASON_REWARDS, persOf, targetable, passiveInfo, resolveAura, beginPassive } = E;
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = n => '$' + Math.round(n).toLocaleString('en-US');
-const IMG = {}, SIZE = {}, BOX = {};
+const IMG = {}, SIZE = {}, BOX = {}; window.IMG = IMG;
 const VERB = { plays: 'play', uses: 'use', sets: 'set', loses: 'lose', reveals: 'reveal', goes: 'go', wins: 'win', attacks: 'attack' };
 const fixG = t => t.replace(/\bYou (plays|uses|sets|loses|reveals|goes|wins|attacks)\b/g, (m, v) => 'You ' + VERB[v]);
 const HEART = '<svg viewBox="0 0 24 22"><path d="M12 21.3 10.5 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.5 11.5z"/></svg>';
@@ -27,6 +29,14 @@ async function loadAssets() {
     for (const k in j) { const v = j[k]; IMG[k] = URL.createObjectURL(new Blob([b64ToBytes(v.slice(1))], { type: v[0] === 'w' ? 'image/webp' : 'image/png' })); }
     if (msg) msg.textContent = `LOADING ${Object.keys(IMG).length}`;
   }));
+  try {
+    const intro = await (await fetch('assets/intro.json')).json();
+    for (const k in intro) {
+      const v = intro[k];
+      IMG[k] = URL.createObjectURL(new Blob([b64ToBytes(v.slice(1))], { type: v[0] === 'w' ? 'image/webp' : 'image/png' }));
+    }
+    if (msg) msg.textContent = `LOADING ${Object.keys(IMG).length}`;
+  } catch (e) { console.warn('intro bundle missing', e); }
   for (const [fam, f] of [['Lilita', 'LilitaOne-Regular'], ['Pixel', 'PressStart2P-Regular']]) {
     const b = b64ToBytes(await (await fetch(`assets/${f}.b64`)).text());
     const ff = new FontFace(fam, b.buffer); await ff.load(); document.fonts.add(ff);
@@ -91,6 +101,7 @@ function tickDays() {
     }
   }
   const el = document.getElementById('dayline'); if (el) el.innerHTML = dayText();
+  const tc = document.getElementById('tourcd'); if (tc && !tourOpen()) tc.innerHTML = 'Reopens in <span class="cd">' + clock(msToNextTour()) + '</span>';
 }
 function dayDone(n, away) { if (UI.battle || UI.overlay) return; banner(away ? `${n} league days passed` : `League day ${G.s.day}`); const sc = $('#main')?.scrollTop; render(); if ($('#main') && sc) $('#main').scrollTop = sc; }
 setInterval(tickDays, 1000);
@@ -98,7 +109,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) tick
 const AU = new Audio(SNAP ? null : localStorage);
 const sfx = n => AU.play(n);
 AU.onTrack = () => { const el = document.getElementById('nowplaying'); if (el) el.textContent = AU.nowPlaying || '—'; };
-let G, UI = { tab: 'packs', binderSet: 'WW', deck: 0, more: null, shopTab: 'packs', overlay: null, battle: null };
+let G, UI = { tab: 'home', sub: null, focus: 0, binderSet: 'WW', deck: 0, more: null, shopTab: 'singles', mktTab: 'auction', recTab: 'stats', overlay: null, battle: null };
 function storage() { return SNAP ? null : { load: () => localStorage.getItem(SAVE_KEY), save: t => { try { localStorage.setItem(SAVE_KEY, t); } catch (e) {} } }; }
 
 // ---------- render ----------
@@ -107,24 +118,161 @@ function render() {
   AU.music(UI.battle ? 'battle' : 'menu');
   if (UI.battle) { app.innerHTML = battleView(); afterBattleRender(); renderOverlay(); return; }
   const s = G.s;
-  const tabs = [['packs', '🎴', 'Packs'], ['binder', '📒', 'Collection'], ['decks', '🃏', 'Decks'], ['league', '🏆', 'League'], ['profile', '👤', 'Profile'], ['more', '⚙️', 'More']];
-  app.innerHTML = `<div class="top"><div class="brand">DOREPACKS</div>
-    <span class="chip" style="color:#7dfc9f">${money(s.money)}</span>${SETS.map(k => `<span class="chip" title="${esc(SET_NAMES[k])} packs">${SETICON[k]} ${s.packs[k] || 0}</span>`).join('')}<span class="chip" style="color:var(--yellow)">${s.mr}</span></div>
+  const home = UI.tab === 'home';
+  app.innerHTML = `<div class="top${home?' home-top':''}">${home ? '' : '<div class="brand">DorepacksTCG</div>'}<span class="grow"></span>
+    <span class="chip" style="color:#ffd21f">${money(s.money)}</span><span class="chip">LP ${s.mr}</span></div>
     <div class="dayline" id="dayline">${dayText()}</div>
-    <div class="main" id="main">${screen()}</div>
-    <div class="tabs">${tabs.map(([k, i, t]) => `<button class="${UI.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}"><span class="i">${i}</span>${t}</button>`).join('')}</div>`;
+    <div class="stage">
+      <canvas id="homescene" class="homescene" aria-hidden="true"></canvas>
+      <div class="main ${home?'is-home':''}" id="main">${screen()}</div>
+    </div>`;
   renderOverlay(); showAchievements();
+  bindHomeAndFocus();
 }
+function meName() { return esc(G.nameOf(E.ME)); }
+function hubBack() { return `<button class="btn k sm hub-back" data-a="${UI.sub ? 'sub' : 'tab'}" data-v="${UI.sub ? '' : 'home'}">‹ Back</button>`; }
+function artPack(set='WW', h=76) {
+  const k = 'cards/pack_' + String(set).toLowerCase();
+  const [W, H] = SIZE[k] || [84, 128];
+  const w = Math.max(8, Math.round(h * (W / H)));
+  return fitArt(k, w, h);
+}
+function artCard(id, h=78) {
+  const k = 'cards/' + id;
+  const [W, H] = SIZE[k] || [60, 84];
+  const w = Math.max(8, Math.round(h * (W / H)));
+  return fitArt(k, w, h);
+}
+function artMon(id, s=64) { return fitSprite(id, s, s); }
+function artTrainer(id, s=64) { return avImg(id, s); }
+function bubble(v, art, name, desc, extra='', act='sub') {
+  const off = extra.includes('disabled');
+  return `<button class="bubble${off?' off':''}" data-a="${act}" data-v="${v}" ${off?'disabled':''}><span class="bshine"></span><span class="ba">${art}</span><span class="bn">${name}</span><span class="bd">${desc}</span></button>`;
+}
+function hero(action, body, extra='') {
+  const [a, v] = action;
+  return `<button class="hero" data-a="${a}" data-v="${v}" ${extra}><span class="bshine"></span>${body}</button>`;
+}
+function msToNextTour(now=Date.now()) {
+  const d = G.s.day; let n = 0;
+  const open = G.isTourDay(d) && G.tour && !G.tour.done;
+  if (open) return 0;
+  if (G.isTourDay(d) && G.tour && G.tour.done) n = 3;
+  else { while (!G.isTourDay(d + n)) n++; }
+  if (n <= 0) return G.msToNextDay(now);
+  return (n - 1) * E.DAY_MS + G.msToNextDay(now);
+}
+function tourOpen() { return G.isTourDay(G.s.day) && G.tour && !G.tour.done; }
 function screen() {
   switch (UI.tab) {
-    case 'packs': return packsView(); case 'binder': return binderView(); case 'decks': return decksView();
-    case 'battle': return battleSetupView(); case 'league': return leagueView(); case 'profile': return profileView();
-    case 'more': return moreView();
+    case 'home': return homeView();
+    case 'battle': return battleHub();
+    case 'shop': return shopHub();
+    case 'binder': case 'collection': return collectionHub();
+    case 'records': return recordsHub();
+    case 'profile': return profileView();
+    case 'settings': return settingsView();
+    case 'packs': return packsView(); case 'decks': return decksView();
+    case 'league': return leagueView(); case 'more': return moreView();
   }
+}
+function homeView() {
+  const k = G.nextLeagueOpponent();
+  const pic = G.picOf('me');
+  return `<div class="home">
+    <div class="home-fg">
+      <div class="home-logo">DorepacksTCG</div>
+      <div class="home-sub">Trading Card Game</div>
+      <div class="bubbles home-bubbles" id="menububbles">
+        ${bubble('battle', artTrainer(G.faceOf(k), 72), 'Battle', 'Ranked, casual, draft and more', '', 'tab')}
+        ${bubble('shop', artPack('WW', 86), 'Shop', 'Packs, market, quick sell, trade', '', 'tab')}
+        ${bubble('binder', artCard('ww_axerupi', 86), 'Collection', 'All cards and decks by set', '', 'tab')}
+        ${bubble('records', artTrainer('npc_winston', 72), 'Records', 'Stats, trainers, achievements', '', 'tab')}
+        ${bubble('profile', artTrainer(pic, 72), 'Profile', 'Name, pic and coins', '', 'tab')}
+        ${bubble('settings', artTrainer('npc_clerk', 72), 'Settings', 'Sounds and new game', '', 'tab')}
+      </div>
+      <div class="home-hint">A Select · B Back · D-Pad Move</div>
+    </div>
+  </div>`;
+}
+function battleHub() {
+  if (UI.sub === 'ranked') return `<div class="menu-page">${hubBack()}${battleSetupView()}</div>`;
+  if (UI.sub === 'casual') return `<div class="menu-page">${hubBack()}${battleSetupView()}</div>`;
+  if (UI.sub === 'draft') return `<div class="menu-page">${hubBack()}${draftView()}</div>`;
+  if (UI.sub === 'spectate') return `<div class="menu-page">${hubBack()}${spectateView()}</div>`;
+  if (UI.sub === 'tour') return `<div class="menu-page">${hubBack()}${tourView()}</div>`;
+  if (UI.sub === 'quests') return `<div class="menu-page">${hubBack()}<h1>Daily Adventures</h1>${questsPanel(false)}</div>`;
+  const open = tourOpen(), left = msToNextTour();
+  const tourDesc = open ? 'Open now — play your bracket' : `Reopens in <span class="cd">${clock(left)}</span>`;
+  const s = G.s, k = G.nextLeagueOpponent(), o = s.ai[k];
+  return `<div class="menu-page">${hubBack()}
+    <h1>Battle</h1>
+    ${hero(['sub','ranked'], `<span class="ha">${artTrainer(G.picOf('me'), 108)}</span><span class="hb"><span class="ht">RANKED</span><span class="hn">${esc(tier(s.mr))} · ${s.mr} MR</span><span class="hd">${meName()} · streak ${s.streak} · next ${esc(o.name)}</span></span>`)}
+    <div class="bubbles big">
+      ${bubble('ranked', artTrainer(G.picOf('me'), 72), 'Ranked', 'Climb MR in the Dore League')}
+      ${bubble('casual', faceImg(0, 72), 'Casual', 'Friendly match · no MR')}
+      ${bubble('draft', artPack('FL', 86), 'Draft', money(Game.DRAFT_FEE)+' entry · 3 games')}
+      ${bubble('spectate', artTrainer('npc_towngirl', 72), 'Spectate', 'Watch live trainer matches')}
+      ${bubble('tour', artMon('goldgulp', 72), 'Tournament', `<span id="tourcd">${tourDesc}</span>`, open ? '' : 'disabled')}
+      ${bubble('quests', artMon('solpuff', 72), 'Adventures', 'Daily quests for free packs')}
+    </div></div>`;
+}
+function shopHub() {
+  if (UI.sub === 'packs') return `<div class="menu-page">${hubBack()}${packsView()}</div>`;
+  if (UI.sub === 'marketplace') return `<div class="menu-page">${hubBack()}${marketplaceView()}</div>`;
+  if (UI.sub === 'quicksell') { UI.shopTab = UI.shopTab || 'singles'; return `<div class="menu-page">${hubBack()}${shopView()}</div>`; }
+  if (UI.sub === 'trade') return `<div class="menu-page">${hubBack()}${tradesView()}</div>`;
+  const packsOwned = SETS.reduce((n, set) => n + (G.s.packs[set] || 0), 0);
+  return `<div class="menu-page">${hubBack()}
+    <h1>Shop</h1>
+    ${hero(['sub','packs'], `<span class="ha pack-row">${SETS.slice(0,3).map(set => artPack(set, 88)).join('')}</span><span class="hb"><span class="ht">PACKS</span><span class="hn">Rip a booster</span><span class="hd">You have ${packsOwned} pack${packsOwned===1?'':'s'} · ${money(G.s.money)}</span></span>`)}
+    <div class="bubbles big">
+      ${bubble('packs', artPack('WW', 90), 'Packs', 'Buy and open booster packs')}
+      ${bubble('marketplace', artCard('ht_goldgulp', 86), 'Marketplace', 'Bid, sell, price projections')}
+      ${bubble('quicksell', goldCoin(G.coinOf('me'), 64), 'Quick Sell', 'Sell cards or all dupes')}
+      ${bubble('trade', artTrainer('npc_aide', 72), 'Trade', (G.s.offers.length? G.s.offers.length+' offer(s)':'Offer or accept trades'))}
+    </div></div>`;
+}
+function marketplaceView() {
+  const t = UI.mktTab || 'auction';
+  return `<h1>Marketplace</h1><div class="seg">${[['auction','Bid & sell'],['market','Price projections']].map(([k,n]) => `<button class="${t===k?'on':''}" data-a="mktTab" data-v="${k}">${n}</button>`).join('')}</div>` + (t==='market' ? marketView() : auctionView());
+}
+function collectionHub() {
+  if (UI.sub === 'decks') return `<div class="menu-page">${hubBack()}${decksView()}</div>`;
+  if (UI.sub === 'cards') return `<div class="menu-page">${hubBack()}${binderView()}</div>`;
+  const owned = Object.keys(G.s.owned || {}).filter(id => (G.s.owned[id] || 0) > 0 && card(id) && isMon(card(id)));
+  const feat = owned[0] || 'ww_axerupi';
+  const total = E.DB.cards.filter(isMon).length;
+  return `<div class="menu-page">${hubBack()}
+    <h1>Collection</h1>
+    ${hero(['sub','cards'], `<span class="ha">${artCard(feat, 110)}</span><span class="hb"><span class="ht">BINDER</span><span class="hn">All cards</span><span class="hd">${owned.length} / ${total} doremon owned</span></span>`)}
+    <div class="bubbles big few">
+      ${bubble('cards', artCard(feat, 90), 'All cards', 'Binder by set')}
+      ${bubble('decks', fitArt('cards/card_back', 64, 90), 'Decks', 'Build and name your decks')}
+    </div></div>`;
+}
+function recordsHub() {
+  if (UI.sub === 'stats') return hubBack() + statsView();
+  if (UI.sub === 'trainers') return hubBack() + trainersView();
+  if (UI.sub === 'ach') return hubBack() + achView();
+  if (UI.sub === 'league') return hubBack() + leagueView();
+  const s = G.s, w = s.wins||0, l = s.losses||0, wr = w+l ? Math.round(w/(w+l)*100)+'%' : '—';
+  return `<div class="menu-page">${hubBack()}
+    <h1>Records</h1>
+    ${hero(['sub','league'], `<span class="ha">${artTrainer(G.picOf('me'), 96)}</span><span class="hb"><span class="ht">SEASON ${seasonOfDay(s.day)}</span><span class="hn">${s.mr} LP · ${tier(s.mr)}</span><span class="hd">${wr} win rate · ${w+l} matches · ${daysLeftInSeason(s.day)} days left</span></span>`)}
+    <div class="bubbles big">
+      ${bubble('stats', artCard('fl_haxpion', 86), 'All stats', 'Season, pulls, market, streaks')}
+      ${bubble('trainers', artTrainer('npc_winston', 72), 'Trainer profiles', 'Verified cards for every trainer')}
+      ${bubble('ach', artMon('seraphink', 72), 'Achievements', `${(s.achievements||[]).length}/${ACHIEVEMENTS.length} unlocked`)}
+      ${bubble('league', artTrainer('npc_oldwoman', 72), 'Season board', 'Leaderboard and season rewards')}
+    </div></div>`;
+}
+function settingsView() {
+  return `<div class="menu-page">${hubBack()}<h1>Settings</h1><div class="sub">Sounds and game data</div>` + audioPanel() + newGameBtn() + `<div class="small" style="margin-top:8px;text-align:center">Progress is saved on this device.</div></div>`;
 }
 function packsView() {
   const s = G.s;
-  return `<div class="page-head"><div><h1>Packs</h1><div class="sub">Rip packs · chase Legendaries & Mythicals</div></div><button class="btn y sm" data-a="tab" data-v="battle">⚔️ Battle</button></div><div class="pack-grid">` + SETS.map(set => {
+  return `<div class="page-head"><div><h1>Packs</h1><div class="sub">Rip packs · chase Legendaries & Mythicals</div></div></div><div class="pack-grid">` + SETS.map(set => {
     const r = Packs.rule(set), pity = s.pity[set] || 0;
     const chase = inSet(set).filter(c => Rarity.isChase(c.rarity));
     const flip = UI.packBack === set;
@@ -164,15 +312,17 @@ function decksView() {
 }
 function battleSetupView() {
   const s = G.s, k = G.nextLeagueOpponent(), o = s.ai[k], ok = G.activeDeckValid;
-  return `<h1>Battle</h1>${questsPanel(true)}${tourBanner()}<div class="sub">Deck: ${esc(s.deckNames[s.activeDeck])} ${ok ? '✓' : '<span style="color:#ff9b9b">(not legal — fix it in Decks)</span>'}</div>
+  const legal = `<div class="sub">Deck: ${esc(s.deckNames[s.activeDeck])} ${ok ? '✓' : '<span style="color:#ff9b9b">(not legal — fix it in Decks)</span>'}</div>`;
+  if (UI.sub === 'casual') {
+    return `<h1>Casual</h1>${legal}<div class="sub">Friendly match (no MR)</div>
+  <div class="grid3">${s.ai.map((p, i) => `<button class="btn k" style="flex-direction:column;padding:8px 4px" data-a="fight" data-v="F${i}" ${ok ? '' : 'disabled'}>${faceImg(i, 44)}<span style="font-size:13px">${esc(p.name)}</span><span class="small">${p.mr}</span></button>`).join('')}</div>`;
+  }
+  return `<h1>Ranked</h1>${legal}
   <div class="panel" style="text-align:center"><div class="pix" style="color:var(--yellow)">RANKED MATCH</div>
    <div style="margin:10px 0">${faceImg(k, 90)}</div><div class="title" style="font-size:26px">${esc(o.name)}</div>
    <div class="small">${o.mr} MR · ${tier(o.mr)} · ${o.wins}W ${o.losses}L · cash <span style="color:#7dfc9f">${money(o.money)}</span></div>
-   <div class="small" style="margin:6px 0">You: ${s.mr} MR · ${tier(s.mr)} · streak ${s.streak}</div>
-   <button class="btn y" style="width:100%" data-a="fight" data-v="L${k}" ${ok ? '' : 'disabled'}>Ranked Battle</button></div>
-  <div class="sub">Friendly match (no MR)</div>
-  <div class="grid3">${s.ai.map((p, i) => `<button class="btn k" style="flex-direction:column;padding:8px 4px" data-a="fight" data-v="F${i}" ${ok ? '' : 'disabled'}>${faceImg(i, 44)}<span style="font-size:13px">${esc(p.name)}</span><span class="small">${p.mr}</span></button>`).join('')}</div>
-  <div class="row" style="margin-top:12px"><button class="btn p grow" data-a="more" data-v="draft">🎲 Draft</button><button class="btn k grow" data-a="more" data-v="rules">How to play</button></div>`;
+   <div class="small" style="margin:6px 0">${meName()}: ${s.mr} MR · ${tier(s.mr)} · streak ${s.streak}</div>
+   <button class="btn y" style="width:100%" data-a="fight" data-v="L${k}" ${ok ? '' : 'disabled'}>Ranked Battle</button></div>`;
 }
 // ---------- Daily Adventures ----------
 function questsPanel(compact) {
@@ -191,7 +341,7 @@ function tourBanner() {
 function tourView() {
   const T = G.tour, s = G.s;
   if (!T) return `<h1>Tournament</h1>${tourBanner()}<div class="panel small">Every third league day the top 8 trainers by MR play a one-day knockout: quarter-finals, semi-finals and a final, every match best of 3. The champion wins ${money(Game.TOUR_PRIZE)} and a pack from the sponsoring set. Matches you don't play by the end of the day are forfeited.</div>`;
-  const nm = w => w === E.ME ? '<b style="color:var(--yellow)">You</b>' : esc(s.ai[w].name), av = w => faceImg(w, 26);
+  const nm = w => w === E.ME ? `<b style="color:var(--yellow)">${meName()}</b>` : esc(s.ai[w].name), av = w => faceImg(w, 26);
   const tm = G.tourMatch();
   const rounds = ['Quarter-finals', 'Semi-finals', 'Final'].map((t, ri) => { const R = T.rounds[ri];
     return `<div class="sub">${t}</div><div class="panel list" style="padding:4px 12px">${R ? R.map(m => `<div class="it">${av(m.p[0])}<span class="grow" style="${m.winner === m.p[0] ? 'font-weight:800' : m.winner != null ? 'opacity:.55' : ''}">${nm(m.p[0])}</span><b>${m.w[0]} - ${m.w[1]}</b><span class="grow" style="text-align:right;${m.winner === m.p[1] ? 'font-weight:800' : m.winner != null ? 'opacity:.55' : ''}">${nm(m.p[1])}</span>${av(m.p[1])}</div>${m.forfeit ? '<div class="small">forfeited</div>' : ''}`).join('') : '<div class="small" style="padding:8px 0">Waiting for the previous round…</div>'}</div>`; }).join('');
@@ -203,7 +353,7 @@ function tourView() {
 // ---------- Draft ----------
 function draftView() {
   const D = G.s.draft, s = G.s;
-  const who = w => w === E.ME ? 'You' : esc(s.ai[w].name), av = w => faceImg(w, 28);
+  const who = w => w === E.ME ? meName() : esc(s.ai[w].name), av = w => faceImg(w, 28);
   if (!D || (D.done && UI.draftNew)) return `<h1>Draft</h1><div class="sub">You and 6 trainers draft from one shared pool of 20 booster packs, snake order (1→7, then 7→1…), 20 picks each. Then play 3 games against the drafters seated after you.</div>
     ${D?.done ? '' : ''}<div class="panel small">Entry ${money(Game.DRAFT_FEE)} · ${money(150)} per win · go 3-0 for a free pack of the drafted set. Draft cards are played with, not kept. Every drafted deck has at least 8 doremon.</div>
     ${SETS.map(k => `<div class="panel row"><img src="${IMG['cards/pack_' + k.toLowerCase()]}" style="width:48px;image-rendering:pixelated" alt=""><b class="grow">${esc(SET_NAMES[k])}</b><button class="btn y sm" data-a="draftStart" data-v="${k}" ${s.money >= Game.DRAFT_FEE ? '' : 'disabled'}>Draft ${money(Game.DRAFT_FEE)}</button></div>`).join('')}`;
@@ -268,13 +418,20 @@ function leagueView() {
   <div class="sub">Recent results</div><div class="panel list" style="padding:4px 12px">${G.s.recent.slice(0, 15).map(r => `<div class="it small"><span class="grow" style="color:#fff">${esc(r.a)} vs ${esc(r.b)}</span><span>${esc(r.winner)}${r.mrChange ? ` (${r.mrChange > 0 ? '+' : ''}${r.mrChange})` : ''}</span></div>`).join('') || '<div class="it small">No matches yet</div>'}</div>`;
 }
 function profileView() {
-  const s = G.s, pics = [{ id: null, label: 'Default (Axerupi)', mon: 'axerupi' }, ...((s.seasonPics || []).map(n => ({ id: 'season:' + n, label: 'Season ' + n + ' · ' + seasonFeatured(n), mon: seasonFeatured(n) })))];
+  const s = G.s, name = s.trainerName || 'You';
+  const trainers = (E.TRAINER_SPRITES || []).slice();
+  ['npc_lilly','npc_towngirl','npc_townboy','npc_gloom','npc_kid','npc_nurse'].forEach(id => { if (!trainers.includes(id)) trainers.push(id); });
+  const curP = s.profilePic;
   const coins = [{ id: 'axerupi', label: 'Default Axerupi coin', mon: 'axerupi' }, ...((s.seasonCoins || []).map(n => ({ id: 'season:' + n, label: 'Season ' + n + ' gold · ' + seasonFeatured(n), mon: seasonFeatured(n) })))];
-  const curP = s.profilePic, curC = s.coin || 'axerupi';
-  return `<h1>Profile</h1><div class="sub">Equip a profile pic and a coin for the opening flip</div>
-  <div class="panel" id="profiletab"><div class="row" style="gap:14px;align-items:center">${avImg(G.picOf('me'), 72)}${goldCoin(G.coinOf('me'), 64)}<div class="grow"><b>Your look</b><div class="small">Shown on the league ladder and when AIs face you. Season rewards unlock new pics and gold coins.</div></div></div></div>
+  const curC = s.coin || 'axerupi';
+  return `<div class="menu-page">${hubBack()}<h1>Profile</h1><div class="sub">Your name is used everywhere, including battle</div>
+  <div class="panel" id="profiletab"><div class="row" style="gap:14px;align-items:center">${avImg(G.picOf('me'), 72)}${goldCoin(G.coinOf('me'), 64)}<div class="grow"><b>${esc(name)}</b><div class="small">${money(s.money)} · LP ${s.mr} · ${tier(s.mr)}</div></div></div></div>
+  <div class="panel"><div class="title" style="font-size:18px;color:var(--yellow)">Trainer name</div>
+    <div class="row" style="margin-top:8px"><input class="nm" id="trainerName" maxlength="16" value="${esc(name)}" placeholder="Your name"><button class="btn y sm" data-a="setName">Save</button></div>
+  </div>
   <div class="panel"><div class="title" style="font-size:18px;color:var(--yellow)">Profile pic</div>
-    ${pics.map(p => `<button class="btn ${curP === p.id || (!curP && p.id === null) ? 'y' : 'k'} sm" style="width:100%;margin:4px 0;justify-content:flex-start;gap:10px" data-a="setPic" data-v="${p.id === null ? 'default' : p.id}">${avImg(p.mon, 36)}<span class="grow" style="text-align:left">${esc(p.label)}</span>${curP === p.id || (!curP && !p.id) ? '✓' : ''}</button>`).join('') || '<div class="small">Finish a season in the top 8 to earn pics.</div>'}
+    <div class="small" style="margin:6px 0">In-game walking sprites</div>
+    <div class="picgrid">${trainers.map(id => `<button class="${(curP===id||curP==='trainers/'+id)?'on':''}" data-a="setPic" data-v="${id}">${avImg(id, 56)}</button>`).join('')}</div>
   </div>
   <div class="panel"><div class="title" style="font-size:18px;color:var(--yellow)">Coin</div>
     ${coins.map(c => `<button class="btn ${curC === c.id ? 'y' : 'k'} sm" style="width:100%;margin:4px 0;justify-content:flex-start;gap:10px" data-a="setCoin" data-v="${c.id}">${goldCoin(c.mon, 36)}<span class="grow" style="text-align:left">${esc(c.label)}</span>${curC === c.id ? '✓' : ''}</button>`).join('')}
@@ -286,7 +443,7 @@ function profileView() {
       const mat = seasonMat(m.n);
       return `<button class="btn ${on ? 'y' : 'k'} sm" style="width:100%;margin:4px 0;justify-content:flex-start;gap:10px" data-a="setMat" data-v="${m.id === null ? 'default' : m.id}"><span style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,${matColors(mat).primary},${matColors(mat).secondary});border:2px solid #fff3"></span><span class="grow" style="text-align:left">${esc(m.label)}</span>${on ? '✓' : ''}</button>`;
     }).join('') || '<div class="small">Finish a season in the top 8 to unlock mat colors.</div>')}
-  </div>`;
+  </div></div>`;
 }
 function tradesView() {
   const s = G.s;
@@ -313,7 +470,7 @@ function marketView() {
 function ends(l) { const d = l.endDay - G.s.day; return d <= 1 ? `ends in ${clock(G.msToNextDay())}` : `ends in ${d} days (~${Math.round(((d - 1) * 120 + G.msToNextDay() / 60000))} min)`; }
 function auctionView() {
   const s = G.s, t = UI.aTab || 'browse'; let body = '';
-  const who = w => w === E.ME ? 'You' : esc(s.ai[w].name);
+  const who = w => w === E.ME ? meName() : esc(s.ai[w].name);
   const row = (l, btn) => { const c = card(l.card); return `<div class="it">${isMon(c) ? sprite(spriteId(c), 34) : '✨'}<div class="grow" data-a="inspect" data-v="${c.id}"><b>${esc(c.name)}</b> ${rar(c.rarity, c)}<div class="small">${l.kind === 'auction' ? '🔨 auction' : '🏷 fixed price'} · by ${who(l.seller)} · ${ends(l)} · value ${money(G.value(l.card))}</div>
     <div class="small">${l.kind === 'auction' ? (l.high ? `high bid <b style="color:#fff">${money(l.high.amt)}</b> by ${who(l.high.who)} · ${l.bids} bid(s)` : `start ${money(l.price)} · no bids`) : `price <b style="color:#fff">${money(l.price)}</b>`}</div></div>${btn}</div>`; };
   if (t === 'browse') { const ls = s.auctions.filter(l => l.seller !== E.ME).sort((a, b) => a.endDay - b.endDay);
@@ -489,7 +646,7 @@ function renderOverlay() {
         <div class="inspt"><div class="title" style="font-size:24px;color:${(isLegendaryST(c) ? RCOL.LGD : RCOL[c.rarity]) || '#fff'}">${esc(c.name)} ${rar(c.rarity, c)}</div>
         ${isMon(c) ? `<div class="kv"><span>Type</span><b>${c.types.join(' / ')}</b></div><div class="kv"><span>HP</span><b>${m ? `${m.hp} / ${c.hp}` : c.hp}</b></div><div class="kv"><span>Move</span><b>${esc(c.move)} · ${c.dmg}${isDouble(c) ? '×2' : ''} dmg (${c.moveType})</b></div>${c.split ? `<div class="kv"><span>Split</span><b style="color:#7ee0ff">${isDouble(c) ? 'Double hit: strikes the same target twice' : 'Hits up to 2 different targets'}</b></div>` : ''}${m && m.protected ? '<div class="kv"><span>Shield</span><b style="color:#7ee0ff">🛡 Protected — can\'t be targeted</b></div>' : ''}${stg ? `<div class="kv"><span>Now</span><b style="color:#ffb84d">${esc(stg)}</b></div>` : ''}${o.live ? `<div class="kv"><span>Side</span><b>${o.live.side === 0 ? 'Yours' : 'Opponent'}</b></div>` : ''}`
           : `<div class="kv"><span>Kind</span><b>${stKindLabel(c)}</b></div>${c.effectText ? `<div class="txt"><b>Effect:</b> ${esc(c.effectText)}</div>` : ''}<div class="txt">${esc(c.text || '')}</div>`}
-          ${isMon(c) && c.effectText ? `<div class="txt"><b>Effect:</b> ${esc(c.effectText)}</div>` : ''}
+          ${isMon(c) && c.effectText ? `<div class="txt"><b>Effect:</b> ${esc(c.effectText)}</div>` : ''}${isMon(c) && c.text ? `<div class="txt">${esc(c.text)}</div>` : ''}${isMon(c) && c.fx ? `<div class="kv"><span>Status</span><b>${c.fxChance || 0}% chance to ${({brn:'Burn',psn:'Poison',par:'Paralyze',cnf:'Confuse',slp:'Sleep',frz:'Freeze'})[c.fx] || c.fx}</b></div>` : ''}
         </div></div><button class="btn" data-a="closeOv" style="margin-top:12px;min-width:160px">Close</button>`;
       document.body.appendChild(d); return;
     }
@@ -529,7 +686,7 @@ function showAchievements() {
 
 // ---------- battle ----------
 // coin toss before every match: call it; win → you choose first/second, lose → the AI chooses first or second
-function startBattle(v) { UI.overlay = { kind: 'coin', v, phase: 'call', result: G.rng.int(2) ? 'heads' : 'tails' }; render(); }
+function startBattle(v) { UI.battleWas = UI.sub; UI.overlay = { kind: 'coin', v, phase: 'call', result: G.rng.int(2) ? 'heads' : 'tails' }; render(); }
 function coinCall(call) {
   const o = UI.overlay; o.call = call; o.won = call === o.result; o.phase = 'spin'; sfx('coin'); renderOverlay();
   setTimeout(() => { if (UI.overlay !== o) return; o.phase = o.won ? 'choose' : 'ai'; if (!o.won) { const k = +String(o.v).slice(1); o.aiFirst = BattleAI.chooseFirst(G.rng, persOf(k).style); } sfx(o.won ? 'coinWin' : 'coinLose'); renderOverlay(); }, SNAP ? 0 : 1700);
@@ -555,7 +712,7 @@ function beginBattle(v, first) {
   UI.overlay = null;
   let mine = G.activeDeckCards, theirs;
   if (mode === 'draft') { const op = G.draftOpponent(); mine = G.s.draft.picks[G.draftSeat()].map(card); theirs = op.deck.map(card); } else theirs = G.aiDeck(k);
-  const b = new Battle(mine, 'You', theirs, o.name, G.rng.next(), first);
+  const b = new Battle(mine, G.nameOf(E.ME), theirs, o.name, G.rng.next(), first);
   b.humanSide = 0;
   BattleAI.openingMulligans(b, [1]);      // the AI decides first (it can't see your hand); then you get the prompt
   UI.battle = { b, k, league, mode, sel: null, ei: b.events.length, busy: false, floats: [], lines: b.events.filter(e => e.e === 'log').map(e => fixG(e.text)) };
@@ -604,7 +761,7 @@ function stRow(side) {
 }
 function battleView() {
   const B = UI.battle, b = B.b, me = b.sides[0], op = b.sides[1], o = B.spec ? { name: B.spec.nb, avatar: B.spec.ab } : G.s.ai[B.k], my = !B.spec && b.current === 0 && !b.over && !B.busy;
-  const nA = B.spec ? esc(B.spec.na) : 'You', avA = B.spec ? B.spec.aa : G.picOf('me'), avB = B.spec ? B.spec.ab : G.faceOf(B.k);
+  const nA = B.spec ? esc(B.spec.na) : meName(), avA = B.spec ? B.spec.aa : G.picOf('me'), avB = B.spec ? B.spec.ab : G.faceOf(B.k);
   const prev = B.prevLife || [me.life, op.life];
   const hearts = (side, n) => `<span class="hearts" aria-label="${n} of ${Battle.startLife} hearts left">${Array.from({ length: Battle.startLife }, (_, i) => `<i class="ht ${i < n ? 'on' : i < prev[side] ? 'lost' : ''}">${HEART}</i>`).join('')}<b class="hn">${n}</b></span>`;
   B.prevLife = [me.life, op.life];
@@ -829,9 +986,109 @@ function tapSlot(side, i) {
 function inspectMon(side, i) { const m = UI.battle?.b.sides[side].mons[i]; if (!m) return; G.s.seenHoldTip = true; UI.overlay = { kind: 'inspect', id: m.card.id, back: false, live: { side, i } }; sfx('click'); renderOverlay(); }
 function inspectCard(id) { G.s.seenHoldTip = true; UI.overlay = { kind: 'inspect', id, back: false, battle: !!UI.battle }; sfx('click'); renderOverlay(); }
 
+
+function focusables() {
+  const root = document.getElementById('main') || document;
+  return [...root.querySelectorAll('.bubble:not(.off):not([disabled]), .btn:not([disabled]), .picgrid button, .seg button, .grid3 button')];
+}
+function applyFocus(i) {
+  const els = focusables();
+  if (!els.length) return;
+  UI.focus = ((i % els.length) + els.length) % els.length;
+  els.forEach((el, n) => el.classList.toggle('focusglow', n === UI.focus));
+  els[UI.focus].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function bindHomeAndFocus() {
+  const cv = document.getElementById('homescene');
+  if (cv && G) {
+    const pic = G.picOf ? G.picOf('me') : null;
+    const id = pic && String(pic).replace(/^trainers\//, '');
+    startHomeScene(cv, id);
+  } else {
+    stopHomeScene();
+  }
+  const els = focusables();
+  if (els.length) {
+    if (UI.focus == null || UI.focus >= els.length) UI.focus = 0;
+    applyFocus(UI.focus);
+  }
+}
+function moveFocus(dx, dy) {
+  const els = focusables();
+  if (!els.length) return;
+  if (dy && !dx) {
+    // grid-aware: prefer element closest in the requested vertical direction
+    const cur = els[UI.focus] || els[0];
+    const r = cur.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let best = -1, bestScore = 1e9;
+    els.forEach((el, i) => {
+      if (i === UI.focus) return;
+      const b = el.getBoundingClientRect();
+      const x = b.left + b.width / 2, y = b.top + b.height / 2;
+      const vd = (y - cy) * dy;
+      if (vd <= 4) return;
+      const score = vd + Math.abs(x - cx) * 0.6;
+      if (score < bestScore) { bestScore = score; best = i; }
+    });
+    applyFocus(best >= 0 ? best : UI.focus + dy);
+  } else {
+    applyFocus((UI.focus || 0) + (dx || 0) + (dy || 0) * 2);
+  }
+}
+function confirmFocus() {
+  const els = focusables();
+  const el = els[UI.focus];
+  if (el) el.click();
+}
+function goBack() {
+  if (UI.overlay) { UI.overlay = null; render(); return; }
+  if (UI.battle) { A.leaveBattle(); return; }
+  if (UI.tab !== 'home' && UI.sub) { UI.sub = null; render(); return; }
+  if (UI.tab !== 'home') { UI.tab = 'home'; UI.sub = null; render(); }
+}
+let _navLock = 0;
+function navInput(which) {
+  const now = performance.now();
+  if (now < _navLock) return;
+  _navLock = now + 160;
+  if (which === 'A') confirmFocus();
+  else if (which === 'B') goBack();
+  else if (which === 'L') moveFocus(-1, 0);
+  else if (which === 'R') moveFocus(1, 0);
+  else if (which === 'U') moveFocus(0, -1);
+  else if (which === 'D') moveFocus(0, 1);
+}
+document.addEventListener('keydown', ev => {
+  if (document.getElementById('intro')) return;
+  if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA')) return;
+  const map = { ArrowLeft:'L', ArrowRight:'R', ArrowUp:'U', ArrowDown:'D', Enter:'A', ' ':'A', a:'A', A:'A', Escape:'B', Backspace:'B', b:'B', B:'B' };
+  const w = map[ev.key];
+  if (!w) return;
+  ev.preventDefault();
+  navInput(w);
+});
+(function pollPad(){
+  if (document.getElementById('intro')) { requestAnimationFrame(pollPad); return; }
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  for (const p of pads) {
+    if (!p) continue;
+    if (p.buttons[0]?.pressed) navInput('A');
+    if (p.buttons[1]?.pressed) navInput('B');
+    if (p.buttons[14]?.pressed || p.axes[0] < -0.55) navInput('L');
+    if (p.buttons[15]?.pressed || p.axes[0] > 0.55) navInput('R');
+    if (p.buttons[12]?.pressed || p.axes[1] < -0.55) navInput('U');
+    if (p.buttons[13]?.pressed || p.axes[1] > 0.55) navInput('D');
+  }
+  requestAnimationFrame(pollPad);
+})();
+
 // ---------- actions ----------
 const A = {
-  tab: v => { UI.tab = v; if (v !== 'more') UI.more = null; render(); $('#main').scrollTop = 0; },
+  tab: v => { UI.tab = v; UI.sub = null; if (v !== 'more') UI.more = null; render(); $('#main').scrollTop = 0; },
+  sub: v => { UI.sub = v || null; render(); $('#main').scrollTop = 0; },
+  mktTab: v => { UI.mktTab = v; render(); },
+  setName: () => { const el = document.getElementById('trainerName'); if (el) G.setTrainerName(el.value); render(); },
   bset: v => { UI.binderSet = v; render(); },
   // every pack gets a brand-new overlay object (fresh sealed state, new animation key) - nothing carries over from the last one
   open: v => { const r = G.openPack(v); if (!r) return; UI.packN = (UI.packN || 0) + 1; UI.overlay = { kind: 'pack', n: UI.packN, set: v, cards: r.cards, fresh: r.fresh, phase: 0, i: 0, flipped: false }; render(); },
@@ -864,7 +1121,7 @@ const A = {
   counter: v => { UI.counter = v; render(); },
   cancelCounter: () => { UI.counter = null; render(); },
   doCounter: v => { const o = G.s.offers.find(x => x.id === UI.counter); UI.counter = null; if (o) { const ok = G.counter(o, v); alert(ok ? 'Deal! Trade completed.' : 'They turned down your counter.'); } render(); },
-  reset: () => { if (confirm(NEW_GAME_WARN)) { UI.more = ''; UI.tab = 'packs'; localStorage.removeItem(SAVE_KEY); G = new E.Game(storage()); hook(); render(); } },
+  reset: () => { if (confirm(NEW_GAME_WARN)) { UI.more = ''; UI.sub = null; UI.tab = 'home'; localStorage.removeItem(SAVE_KEY); G = new E.Game(storage()); hook(); render(); } },
   fight: v => startBattle(v),
   slot: v => { const [s, i] = v.split(':').map(Number); tapSlot(s, i); },
   st: v => { const B = UI.battle, [s, i] = v.split(':').map(Number); if (B.spec || B.busy || B.b.current !== 0 || s !== 0) return;
@@ -890,14 +1147,14 @@ const A = {
     }
     B.b.finish(1); drainEvents(); checkOver();
   },
-  leaveSpec: () => { const B = UI.battle; if (B?.spec) { clearTimeout(B.spec.timer); settleSpec(B); } UI.battle = null; UI.overlay = null; UI.tab = 'more'; UI.more = 'spectate'; render(); },
+  leaveSpec: () => { const B = UI.battle; if (B?.spec) { clearTimeout(B.spec.timer); settleSpec(B); } UI.battle = null; UI.overlay = null; UI.tab = 'battle'; UI.sub = 'spectate'; render(); },
   specSpeed: v => { UI.battle.spec.speed = +v; render(); specTick(); },
   specPause: () => { const S = UI.battle.spec; S.paused = !S.paused; render(); specTick(); },
   specStep: () => specStep(),
   watch: v => watch(v),
-  setPic: (e, v) => { G.setProfilePic(v === 'default' ? null : v); render(); },
-  setCoin: (e, v) => { G.setCoin(v); render(); },
-  setMat: (e, v) => { G.setMatTheme(v === 'default' ? null : v); render(); },
+  setPic: v => { G.setProfilePic(!v || v === 'default' ? null : v); render(); },
+  setCoin: v => { G.setCoin(v); render(); },
+  setMat: v => { G.setMatTheme(!v || v === 'default' ? null : v); render(); },
   grave: (e, v) => { const B = UI.battle; if (!B) return; const side = +v; const pile = B.b.sides[side].discard; UI.overlay = { kind: 'grave', side, cards: pile.slice().reverse() }; renderOverlay(); },
   skipDay: () => { G.skipDay(); banner(`Day ${G.s.day}`); render(); },
   aTab: v => { UI.aTab = v; render(); }, lKind: v => { UI.lKind = v; render(); }, lDays: v => { UI.lDays = +v; render(); },
@@ -907,7 +1164,7 @@ const A = {
   listCard: v => { const kind = UI.lKind || 'auction', days = UI.lDays || 2, def = kind === 'auction' ? Math.round(G.value(v) * 0.7) : G.value(v);
     const r = prompt(`${kind === 'auction' ? 'Starting bid' : 'Price'} for ${card(v).name} (market value ${money(G.value(v))}), ${days} day(s):`, def); if (r == null) return;
     const p = Math.round(+String(r).replace(/[$,]/g, '')); if (!(p > 0)) return; if (G.list(E.ME, v, kind, p, days)) banner('Listed!'); render(); },
-  leaveBattle: () => { const m = UI.battle?.mode; UI.overlay = null; UI.battle = null; if (m === 'tour' || m === 'draft') { UI.tab = 'more'; UI.more = m; } else UI.tab = 'battle'; render(); },
+  leaveBattle: () => { const m = UI.battle?.mode; const was = UI.battleWas; UI.overlay = null; UI.battle = null; UI.tab = 'battle'; UI.sub = (m === 'tour' || m === 'draft') ? m : (was === 'casual' ? 'casual' : 'ranked'); render(); },
   keepHand: () => { const b = UI.battle.b; UI.overlay = null; render(); if (b.current === 1) setTimeout(aiTurn, 600); },
   mulligan: () => { const B = UI.battle, b = B.b; b.redraw(0); sfx('flip'); drainEvents(); UI.overlay = null; render(); banner('Mulligan: new hand'); if (b.current === 1) setTimeout(aiTurn, 600); },
   tourForfeit: () => { if (!confirm('Withdraw from today\'s tournament? Your remaining match is forfeited.')) return; G.finishTour(true); G.save(); render(); },
@@ -1017,7 +1274,32 @@ function demo() {
     case 'spectate_live': { UI.tab = 'more'; UI.more = 'spectate'; watch('R0'); const B = UI.battle; B.spec.paused = true; clearTimeout(B.spec.timer); B.spec.speed = 2;
       for (let n = 0; n < 400 && B.b.turnNumber < 9 && !B.b.over; n++) specStep(); break; }
     case 'coinflip': UI.tab = 'battle'; UI.overlay = { kind: 'coin', v: 'L' + g.nextLeagueOpponent(), phase: 'choose', result: 'heads', call: 'heads', won: true }; break;
-    case 'settings': UI.tab = 'more'; setTimeout(() => { const el = document.getElementById('audiopanel'); if (el) el.scrollIntoView(); }, 50); break;
+    case 'settings': UI.tab = 'settings'; UI.sub = null; break;
+    case 'menu_home': UI.tab = 'home'; UI.sub = null; break;
+    case 'menu_battle': UI.tab = 'battle'; UI.sub = null; break;
+    case 'menu_shop': UI.tab = 'shop'; UI.sub = null; break;
+    case 'menu_collection': UI.tab = 'binder'; UI.sub = null; break;
+    case 'menu_records': UI.tab = 'records'; UI.sub = null; break;
+    case 'menu_profile': UI.tab = 'profile'; UI.sub = null; break;
+    case 'menu_settings': UI.tab = 'settings'; UI.sub = null; break;
+    case 'sub_ranked': UI.tab = 'battle'; UI.sub = 'ranked'; break;
+    case 'sub_casual': UI.tab = 'battle'; UI.sub = 'casual'; break;
+    case 'sub_draft': UI.tab = 'battle'; UI.sub = 'draft'; break;
+    case 'sub_spectate': UI.tab = 'battle'; UI.sub = 'spectate'; break;
+    case 'sub_tour': { while (!g.isTourDay(g.s.day)) g.s.day++; UI.tab = 'battle'; UI.sub = 'tour'; break; }
+    case 'sub_tour_closed': { while (g.isTourDay(g.s.day)) g.s.day++; UI.tab = 'battle'; UI.sub = null; break; }
+    case 'sub_packs': UI.tab = 'shop'; UI.sub = 'packs'; break;
+    case 'sub_marketplace': UI.tab = 'shop'; UI.sub = 'marketplace'; UI.mktTab = 'auction'; break;
+    case 'sub_quicksell': UI.tab = 'shop'; UI.sub = 'quicksell'; break;
+    case 'sub_trade': UI.tab = 'shop'; UI.sub = 'trade'; break;
+    case 'sub_stats': UI.tab = 'records'; UI.sub = 'stats'; break;
+    case 'sub_trainers': UI.tab = 'records'; UI.sub = 'trainers'; break;
+    case 'sub_ach': UI.tab = 'records'; UI.sub = 'ach'; break;
+    case 'sub_league': UI.tab = 'records'; UI.sub = 'league'; break;
+    case 'sub_decks': UI.tab = 'binder'; UI.sub = 'decks'; break;
+    case 'sub_cards': UI.tab = 'binder'; UI.sub = 'cards'; break;
+    case 'intro': case 'intro_mid': case 'intro_logo': UI.tab = 'home'; UI.sub = null; break;
+
     case 'clean_slate': case 'clean_slate_pick': {
       const f = Array(20).fill(card('ww_snarlpup'));
       const b = new Battle(f, 'You', f, g.s.ai[2].name, 55n, 0);
@@ -1072,7 +1354,7 @@ function demo() {
     case 'binder_ht_st': UI.tab = 'binder'; UI.binderSet = 'HT'; break;
     case 'ra_packs': UI.tab = 'packs'; break;
     case 'ra_open': { const ch = inSet('RA').filter(c => Rarity.isChase(c.rarity)); const rest = inSet('RA').filter(c => !Rarity.isChase(c.rarity)).slice(0,4); UI.overlay = { kind: 'pack', set: 'RA', cards: [...rest, ...ch].slice(0,7), fresh: new Set(ch.map(c => c.id)), phase: 2 }; break; }
-    case 'promo_ursacoon': UI.tab = 'binder'; UI.overlay = { kind: 'inspect', id: 'pr_ursacoon_flame_punch', back: false }; break;
+    case 'card_ursacoon': case 'promo_ursacoon': UI.tab = 'binder'; UI.overlay = { kind: 'inspect', id: 'pr_ursacoon_flame_punch', back: false }; break;
     case 'doremat': {
       const f = Array(20).fill(card('ww_snarlpup'));
       const b = new Battle(f, 'You', f, g.s.ai[2].name, 42n, 0);
@@ -1100,6 +1382,7 @@ function demo() {
     case 'card_sliggy': UI.tab = 'binder'; UI.binderSet = 'WW'; UI.overlay = { kind: 'inspect', id: 'ww_sliggy', back: false }; break;
     case 'card_goldgulp': UI.tab = 'binder'; UI.binderSet = 'HT'; UI.overlay = { kind: 'inspect', id: 'ht_goldgulp', back: false }; break;
     case 'card_rocketbee': UI.tab = 'binder'; UI.binderSet = 'T2'; UI.overlay = { kind: 'inspect', id: 't2_rocketbee', back: false }; break;
+    case 'card_petalmoth': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.sub = 'cards'; UI.overlay = { kind: 'inspect', id: 'ra_petalmoth', back: false }; break;
     case 'card_rokbru': UI.tab = 'binder'; UI.binderSet = 'WW'; UI.overlay = { kind: 'inspect', id: 'ww_rokbru', back: false }; break;
     case 'card_mesby': UI.tab = 'binder'; UI.binderSet = 'RA'; UI.overlay = { kind: 'inspect', id: 'ra_mesby', back: false }; break;
     case 'card_power_up': UI.tab = 'binder'; UI.binderSet = 'WW'; UI.overlay = { kind: 'inspect', id: 'st_power_up', back: false, battle: true }; break;
@@ -1132,13 +1415,20 @@ function demo() {
 (async () => {
   try {
     await loadAssets();
-    if (SNAP) demo(); else { G = new E.Game(storage()); }
+    const introSnap = SNAP === 'intro' || SNAP === 'intro_mid' || SNAP === 'intro_logo';
+    if (SNAP && !introSnap) demo();
+    else { G = new E.Game(storage()); if (introSnap) demo(); }
     hook(); if (!SNAP) G.daysDue(); render(); tickDays();
+    if (!SNAP) await runIntro({ skip: false });
+    else if (introSnap) {
+      const seek = SNAP === 'intro_logo' ? 800 : 2500;
+      await runIntro({ seek, freeze: true });
+    }
     if (G.s._htWelcome) { delete G.s._htWelcome; G.toast = 'Hidden Transcendence — free pack ready in Packs!'; G.save(); }
     if (G.s._v20Welcome) { delete G.s._v20Welcome; G.toast = 'Update gift: 3 free packs of every set are in Packs!'; G.save(); }
     if (G.s._raWelcome) { delete G.s._raWelcome; G.toast = 'Rivals & Allies — 3 free packs ready in Packs!'; G.save(); }
   if (!SNAP && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=24').then(reg => {
+      navigator.serviceWorker.register('sw.js?v=27').then(reg => {
         // When a new SW is waiting, activate it and reload so HT / balance updates aren't stuck behind an old PWA cache.
         const kick = () => { try { reg.waiting && reg.waiting.postMessage('skipWaiting'); } catch (_) {} };
         if (reg.waiting) kick();
