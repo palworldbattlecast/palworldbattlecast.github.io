@@ -31,6 +31,8 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
 #boss{position:fixed;left:calc(18px + env(safe-area-inset-left));top:calc(12px + env(safe-area-inset-top));width:min(36vw,330px);display:none}
 #boss .n{font-size:13px;letter-spacing:4px;color:#ffb0a0;font-weight:bold;text-shadow:1px 1px 0 #000}
 #boss .bar{height:12px;border:1px solid #888;background:#200}#boss .bar i{background:linear-gradient(#ff3a20,#a00a00)}
+#obj{position:fixed;left:50%;top:calc(46px + env(safe-area-inset-top));transform:translateX(-50%);font-size:clamp(11px,1.8vw,15px);color:#ffd27a;background:rgba(0,0,0,.45);padding:4px 10px;letter-spacing:1px;white-space:nowrap;display:none;text-shadow:1px 1px 0 #000}
+#obj:before{content:'\25B8  '}
 #cross{position:fixed;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px}
 #cross:before,#cross:after{content:"";position:absolute;background:#7fffa0;box-shadow:0 0 3px #0a0}#cross:before{left:8px;top:0;width:2px;height:18px;clip-path:polygon(0 0,100% 0,100% 35%,0 35%,0 65%,100% 65%,100% 100%,0 100%)}#cross:after{top:8px;left:0;height:2px;width:18px;clip-path:polygon(0 0,35% 0,35% 100%,0 100%,0 0,65% 0,100% 0,100% 100%,65% 100%)}
 #toast{position:fixed;left:50%;top:62%;transform:translateX(-50%);font-size:18px;font-weight:bold;opacity:0;transition:opacity .4s;text-shadow:2px 2px 0 #000}
@@ -40,11 +42,11 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
 #stick{position:fixed;left:calc(110px + env(safe-area-inset-left));top:auto;bottom:90px;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);opacity:.35}
 #stick[style*="top"]{bottom:auto}
 #knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.35)}
-.tb{position:fixed;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;letter-spacing:1px;color:#fff;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08)}
+.tb{position:fixed;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;letter-spacing:1px;color:rgba(255,255,255,.85);border:2px solid rgba(255,255,255,.28);background:rgba(255,255,255,.05)}
 .tb.on{background:rgba(255,255,255,.3);transform:scale(.92)}
-#b_fire{width:104px;height:104px;right:calc(34px + env(safe-area-inset-right));bottom:calc(40px + env(safe-area-inset-bottom));border-color:rgba(255,80,60,.7);background:rgba(255,60,40,.18);font-size:16px}
-#b_reload{width:64px;height:64px;right:calc(160px + env(safe-area-inset-right));bottom:calc(36px + env(safe-area-inset-bottom));border-color:rgba(120,255,140,.6);font-size:10px}
-#b_jump{width:64px;height:64px;right:calc(150px + env(safe-area-inset-right));bottom:calc(122px + env(safe-area-inset-bottom));font-size:11px}
+#b_fire{width:84px;height:84px;right:calc(16px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));border-color:rgba(255,80,60,.6);background:rgba(255,60,40,.12);font-size:14px}
+#b_reload{width:54px;height:54px;right:calc(30px + env(safe-area-inset-right));bottom:calc(116px + env(safe-area-inset-bottom));border-color:rgba(120,255,140,.5);font-size:9px}
+#b_jump{width:54px;height:54px;right:calc(30px + env(safe-area-inset-right));bottom:calc(182px + env(safe-area-inset-bottom));font-size:10px}
 #b_pause{width:44px;height:44px;right:calc(16px + env(safe-area-inset-right));top:calc(10px + env(safe-area-inset-top));font-size:14px}
 .panel{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:20;text-align:center}
 .panel h1{font-size:clamp(40px,10vw,96px);margin:0;letter-spacing:10px;color:#c8241a;text-shadow:0 0 18px #500,4px 4px 0 #000;font-family:Impact,"Arial Black",sans-serif}
@@ -60,11 +62,11 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
 <canvas id="c"></canvas>
 <div id="vig" class="ov"></div><div id="scan" class="ov"></div><div id="red" class="ov"></div><div id="flash" class="ov"></div>
 <div id="hud">
- <div id="boss"><div class="n">MINOTAUR</div><div class="bar"><i id="bossfill"></i></div></div>
+ <div id="boss"><div class="n" id="bossname">MINOTAUR</div><div class="bar"><i id="bossfill"></i></div></div>
  <div id="wv"><b id="wavev">WAVE 1</b><span id="scorev"></span></div>
  <div id="hp"><div class="lbl">HEALTH</div><div class="big" id="hpv">100</div><div class="bar"><i id="hpbar"></i></div></div>
  <div id="am"><div class="lbl">PLASMA</div><div class="big"><span id="ammov">36</span><span style="font-size:.5em;color:#3a9a5a"> / <span id="resv">180</span></span></div></div>
- <div id="cross"></div><div id="toast"></div>
+ <div id="obj"></div><div id="cross"></div><div id="toast"></div>
 </div>
 <div id="banner"></div><div id="sub"></div>
 <div id="fade" class="ov"></div>
@@ -72,10 +74,11 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
  <div class="tb" id="b_fire">FIRE</div><div class="tb" id="b_reload">RELOAD</div><div class="tb" id="b_jump">JUMP</div><div class="tb" id="b_pause">II</div></div>
 <div id="skip">TAP TO SKIP &#9654;</div>
 <div class="panel" id="title"><h1>DEAD ORBIT</h1><h2>U.S.C. HALCYON &middot; DECK 4</h2><div class="tap">TAP TO START</div><div class="hint">Best in landscape. Safari: Share &rarr; Add to Home Screen for fullscreen.</div></div>
-<div class="panel" id="menu"><h1>DEAD ORBIT</h1><h2>SURVIVE THE BREACH</h2><button class="btn" id="m_play">NEW GAME</button><button class="btn" id="m_skip">SKIP INTRO</button>
+<div class="panel" id="menu"><h1>DEAD ORBIT</h1><h2>SURVIVE THE BREACH</h2><button class="btn" id="m_play">NEW GAME</button><button class="btn" id="m_skip">SKIP INTRO</button><button class="btn" id="m_surv">SURVIVAL MODE</button>
  <div class="hint" id="ctrlhint">Touch: left thumb move &middot; right thumb look &middot; FIRE / RELOAD / JUMP<br>Desktop: WASD &middot; mouse &middot; click fire &middot; R reload &middot; Space jump &middot; Esc pause</div></div>
 <div class="panel" id="pause"><h1 style="font-size:56px">PAUSED</h1><h2>&nbsp;</h2><button class="btn" id="p_resume">RESUME</button><button class="btn" id="p_restart">RESTART</button><button class="btn" id="p_menu">MAIN MENU</button></div>
 <div class="panel" id="dead"><h1>YOU DIED</h1><h2 id="deadstats">&nbsp;</h2><button class="btn" id="d_restart">TRY AGAIN</button><button class="btn" id="d_menu">MAIN MENU</button></div>
+<div class="panel" id="win"><h1 style="color:#5dff8a;text-shadow:0 0 18px #063,4px 4px 0 #000;font-size:clamp(34px,8vw,72px)">DECK 4 CLEARED</h1><h2 id="winstats" style="line-height:1.8">&nbsp;</h2><button class="btn" id="w_again">PLAY AGAIN</button><button class="btn" id="w_menu">MAIN MENU</button><div class="hint">End of level 1 &middot; more decks coming</div></div>
 <div id="rotate"><div>&#128241;</div>ROTATE TO LANDSCAPE</div>
-<script type="module" src="game.js?v=2"></script>
+<script type="module" src="game.js?v=3"></script>
 </body></html>
