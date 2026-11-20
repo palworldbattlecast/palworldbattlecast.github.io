@@ -26,6 +26,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
 #shopbox h3{margin:2px 0 4px;color:#5ae0f0;letter-spacing:5px;font-size:clamp(16px,3vw,24px)}#shopinfo{color:#ffd27a;font-size:clamp(11px,1.8vw,15px);letter-spacing:2px;margin-bottom:6px}
 #shopgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
 .si{font-family:inherit;background:rgba(20,30,36,.9);border:2px solid #345;color:#ddd;padding:7px 6px;font-size:clamp(11px,1.7vw,14px);letter-spacing:1px;cursor:pointer;text-align:left;line-height:1.35}.si b{display:block;font-size:1.05em}.si em{font-style:normal;color:#ffd27a;float:right}.si.no{opacity:.4}.si small{color:#8ab;display:block}
+@media (max-height:480px){#shopbox{padding:6px 10px}#shopgrid{grid-template-columns:repeat(4,1fr);gap:4px}.si{padding:4px 5px;font-size:11px;line-height:1.25}.si small{display:none}#shopbox h3{font-size:16px;margin:0 0 2px}#shopinfo{margin-bottom:3px;font-size:11px}#shopbtns .btn{padding:5px 14px!important;min-width:110px!important}}
 #shopbtns{margin-top:8px}#shopbtns .btn{min-width:150px;padding:8px 18px;font-size:clamp(13px,2.2vw,18px)}
 .lb{position:fixed;left:0;right:0;height:0;background:#000;transition:height .6s;z-index:6;pointer-events:none}#lb1{top:0}#lb2{bottom:0}
 #fade{background:#000;opacity:1;transition:opacity 1.5s}#red{background:radial-gradient(ellipse at center,rgba(120,0,0,.25),rgba(170,0,0,.85));opacity:0}#flash{background:#fff4d8;opacity:0}
