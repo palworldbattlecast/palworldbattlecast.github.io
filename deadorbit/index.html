@@ -14,6 +14,7 @@
 html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;inset:0;touch-action:none;overscroll-behavior:none;font-family:"Courier New",ui-monospace,Menlo,monospace;color:#d8d8d0}
 #c{position:fixed;inset:0;width:100vw;height:100vh;image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .ov{position:fixed;inset:0;pointer-events:none}
+.lb{position:fixed;left:0;right:0;height:0;background:#000;transition:height .6s;z-index:6;pointer-events:none}#lb1{top:0}#lb2{bottom:0}
 #fade{background:#000;opacity:1;transition:opacity 1.5s}#red{background:radial-gradient(ellipse at center,rgba(120,0,0,.25),rgba(170,0,0,.85));opacity:0}#flash{background:#fff4d8;opacity:0}
 #scan{background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
 #vig{background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.65))}
@@ -73,6 +74,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
  <div id="obj"></div><div id="cross"></div><div id="toast"></div>
 </div>
 <div id="banner"></div><div id="sub"></div>
+<div id="lb1" class="lb"></div><div id="lb2" class="lb"></div>
 <div id="fade" class="ov"></div>
 <div id="touch"><div id="stick"><div id="knob"></div></div>
  <div class="tb" id="b_fire">FIRE</div><div class="tb" id="b_reload">RELOAD</div><div class="tb" id="b_jump">JUMP</div><div class="tb" id="b_pause">II</div><div class="tb" id="b_swap">SWAP</div><div class="tb" id="b_light">LIGHT</div></div>
@@ -85,5 +87,5 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
 <div class="panel" id="tdmsel"><h1 style="font-size:clamp(26px,6vw,56px)">TEAM DEATHMATCH</h1><h2>CHOOSE YOUR SIDE</h2><div class="row"><button class="btn sel" id="t_sold">SOLDIERS</button><button class="btn" id="t_mino">MINOTAURS</button></div><h2>MAP</h2><div class="row"><button class="btn sm sel" id="t_med">MED BAY</button><button class="btn sm" id="t_arm">ARMORY</button><button class="btn sm" id="t_arena">ARENA</button></div><div class="row"><button class="btn" id="t_go" style="border-color:#c8241a;color:#fff">DEPLOY</button><button class="btn sm" id="t_back">BACK</button></div><div class="hint">6 v 6 with bots &middot; first to 30 kills, or most kills after 5:00</div></div>
 <div class="panel" id="win"><h1 style="color:#5dff8a;text-shadow:0 0 18px #063,4px 4px 0 #000;font-size:clamp(34px,8vw,72px)" id="wintitle">CHAPTER 1 COMPLETE</h1><h2 id="winstats" style="line-height:1.8">&nbsp;</h2><button class="btn" id="w_again">PLAY AGAIN</button><button class="btn" id="w_menu">MAIN MENU</button><div class="hint" id="winhint" style="font-size:16px;letter-spacing:4px;color:#c8c8d0">TO BE CONTINUED...</div></div>
 <div id="rotate"><div>&#128241;</div>ROTATE TO LANDSCAPE</div>
-<script type="module" src="game.js?v=6"></script>
+<script type="module" src="game.js?v=7"></script>
 </body></html>
