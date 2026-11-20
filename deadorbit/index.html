@@ -47,6 +47,8 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
 #b_fire{width:84px;height:84px;right:calc(16px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));border-color:rgba(255,80,60,.6);background:rgba(255,60,40,.12);font-size:14px}
 #b_reload{width:54px;height:54px;right:calc(30px + env(safe-area-inset-right));bottom:calc(116px + env(safe-area-inset-bottom));border-color:rgba(120,255,140,.5);font-size:9px}
 #b_jump{width:54px;height:54px;right:calc(30px + env(safe-area-inset-right));bottom:calc(182px + env(safe-area-inset-bottom));font-size:10px}
+#b_swap{width:50px;height:50px;right:calc(112px + env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));font-size:9px}
+#b_light{width:50px;height:50px;right:calc(96px + env(safe-area-inset-right));bottom:calc(132px + env(safe-area-inset-bottom));font-size:9px;border-color:rgba(255,240,180,.5)}
 #b_pause{width:44px;height:44px;right:calc(16px + env(safe-area-inset-right));top:calc(10px + env(safe-area-inset-top));font-size:14px}
 .panel{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:20;text-align:center}
 .panel h1{font-size:clamp(40px,10vw,96px);margin:0;letter-spacing:10px;color:#c8241a;text-shadow:0 0 18px #500,4px 4px 0 #000;font-family:Impact,"Arial Black",sans-serif}
@@ -65,20 +67,20 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
  <div id="boss"><div class="n" id="bossname">MINOTAUR</div><div class="bar"><i id="bossfill"></i></div></div>
  <div id="wv"><b id="wavev">WAVE 1</b><span id="scorev"></span></div>
  <div id="hp"><div class="lbl">HEALTH</div><div class="big" id="hpv">100</div><div class="bar"><i id="hpbar"></i></div></div>
- <div id="am"><div class="lbl">PLASMA</div><div class="big"><span id="ammov">36</span><span style="font-size:.5em;color:#3a9a5a"> / <span id="resv">180</span></span></div></div>
+ <div id="am"><div class="lbl" id="wlbl">PLASMA</div><div class="big"><span id="ammov">36</span><span id="resw" style="font-size:.5em;color:#3a9a5a"> / <span id="resv">180</span></span></div></div>
  <div id="obj"></div><div id="cross"></div><div id="toast"></div>
 </div>
 <div id="banner"></div><div id="sub"></div>
 <div id="fade" class="ov"></div>
 <div id="touch"><div id="stick"><div id="knob"></div></div>
- <div class="tb" id="b_fire">FIRE</div><div class="tb" id="b_reload">RELOAD</div><div class="tb" id="b_jump">JUMP</div><div class="tb" id="b_pause">II</div></div>
+ <div class="tb" id="b_fire">FIRE</div><div class="tb" id="b_reload">RELOAD</div><div class="tb" id="b_jump">JUMP</div><div class="tb" id="b_pause">II</div><div class="tb" id="b_swap">SWAP</div><div class="tb" id="b_light">LIGHT</div></div>
 <div id="skip">TAP TO SKIP &#9654;</div>
 <div class="panel" id="title"><h1>DEAD ORBIT</h1><h2>U.S.C. HALCYON &middot; DECK 4</h2><div class="tap">TAP TO START</div><div class="hint">Best in landscape. Safari: Share &rarr; Add to Home Screen for fullscreen.</div></div>
 <div class="panel" id="menu"><h1>DEAD ORBIT</h1><h2>SURVIVE THE BREACH</h2><button class="btn" id="m_play">NEW GAME</button><button class="btn" id="m_skip">SKIP INTRO</button><button class="btn" id="m_surv">SURVIVAL MODE</button>
- <div class="hint" id="ctrlhint">Touch: left thumb move &middot; right thumb look &middot; FIRE / RELOAD / JUMP<br>Desktop: WASD &middot; mouse &middot; click fire &middot; R reload &middot; Space jump &middot; Esc pause</div></div>
+ <div class="hint" id="ctrlhint">Touch: left thumb move &middot; right thumb look &middot; FIRE / RELOAD / JUMP / SWAP / LIGHT<br>Desktop: WASD &middot; mouse &middot; click fire &middot; R reload &middot; Q or 1/2 swap &middot; F flashlight &middot; Space jump &middot; Esc pause</div></div>
 <div class="panel" id="pause"><h1 style="font-size:56px">PAUSED</h1><h2>&nbsp;</h2><button class="btn" id="p_resume">RESUME</button><button class="btn" id="p_restart">RESTART</button><button class="btn" id="p_menu">MAIN MENU</button></div>
 <div class="panel" id="dead"><h1>YOU DIED</h1><h2 id="deadstats">&nbsp;</h2><button class="btn" id="d_restart">TRY AGAIN</button><button class="btn" id="d_menu">MAIN MENU</button></div>
-<div class="panel" id="win"><h1 style="color:#5dff8a;text-shadow:0 0 18px #063,4px 4px 0 #000;font-size:clamp(34px,8vw,72px)">DECK 4 CLEARED</h1><h2 id="winstats" style="line-height:1.8">&nbsp;</h2><button class="btn" id="w_again">PLAY AGAIN</button><button class="btn" id="w_menu">MAIN MENU</button><div class="hint">End of level 1 &middot; more decks coming</div></div>
+<div class="panel" id="win"><h1 style="color:#5dff8a;text-shadow:0 0 18px #063,4px 4px 0 #000;font-size:clamp(34px,8vw,72px)">CHAPTER 1 COMPLETE</h1><h2 id="winstats" style="line-height:1.8">&nbsp;</h2><button class="btn" id="w_again">PLAY AGAIN</button><button class="btn" id="w_menu">MAIN MENU</button><div class="hint" style="font-size:16px;letter-spacing:4px;color:#c8c8d0">TO BE CONTINUED...</div></div>
 <div id="rotate"><div>&#128241;</div>ROTATE TO LANDSCAPE</div>
-<script type="module" src="game.js?v=4"></script>
+<script type="module" src="game.js?v=5"></script>
 </body></html>
