@@ -14,6 +14,19 @@
 html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;inset:0;touch-action:none;overscroll-behavior:none;font-family:"Courier New",ui-monospace,Menlo,monospace;color:#d8d8d0}
 #c{position:fixed;inset:0;width:100vw;height:100vh;image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .ov{position:fixed;inset:0;pointer-events:none}
+#sh{margin-bottom:6px}.shb{border-color:#4a7ac8!important;background:#061230!important}#shbar{background:linear-gradient(#8ac8ff,#2a6aff)!important;transition:width .1s}
+#shf{background:radial-gradient(ellipse at center,rgba(40,120,255,0),rgba(60,140,255,.7));opacity:0}
+#slots{position:fixed;right:calc(18px + env(safe-area-inset-right));top:calc(108px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:3px;align-items:flex-end;pointer-events:none}
+#slots .sl{font-size:clamp(10px,1.5vw,13px);letter-spacing:1px;padding:2px 8px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.45);color:#999;white-space:nowrap}#slots .sl.on{background:rgba(0,0,0,.6);font-weight:bold}#slots .sl span{opacity:.8;margin-left:6px}#slots .sl.e{opacity:.5}
+#swapp{position:fixed;left:50%;top:70%;transform:translateX(-50%);font-size:clamp(12px,2vw,17px);letter-spacing:2px;color:#eee;background:rgba(0,0,0,.6);padding:6px 14px 9px;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;border:1px solid #555}
+#swapp i{position:absolute;left:0;bottom:0;height:3px;display:block}
+#cdown{position:fixed;left:50%;top:15%;transform:translateX(-50%);text-align:center;color:#5ae0f0;letter-spacing:3px;font-size:clamp(12px,2vw,17px);text-shadow:0 0 6px #000;opacity:0;pointer-events:none;transition:opacity .3s}#cdown b{display:block;font-size:clamp(26px,5vw,44px);color:#fff}#cdown small{display:block;color:#ffd27a;font-size:.8em}
+#shop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:21}
+#shopbox{background:rgba(10,16,20,.95);border:2px solid #2a8a9a;box-shadow:0 0 24px rgba(40,200,220,.3);padding:10px 14px;max-width:min(94vw,760px);max-height:92vh;overflow:auto;text-align:center}
+#shopbox h3{margin:2px 0 4px;color:#5ae0f0;letter-spacing:5px;font-size:clamp(16px,3vw,24px)}#shopinfo{color:#ffd27a;font-size:clamp(11px,1.8vw,15px);letter-spacing:2px;margin-bottom:6px}
+#shopgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.si{font-family:inherit;background:rgba(20,30,36,.9);border:2px solid #345;color:#ddd;padding:7px 6px;font-size:clamp(11px,1.7vw,14px);letter-spacing:1px;cursor:pointer;text-align:left;line-height:1.35}.si b{display:block;font-size:1.05em}.si em{font-style:normal;color:#ffd27a;float:right}.si.no{opacity:.4}.si small{color:#8ab;display:block}
+#shopbtns{margin-top:8px}#shopbtns .btn{min-width:150px;padding:8px 18px;font-size:clamp(13px,2.2vw,18px)}
 .lb{position:fixed;left:0;right:0;height:0;background:#000;transition:height .6s;z-index:6;pointer-events:none}#lb1{top:0}#lb2{bottom:0}
 #fade{background:#000;opacity:1;transition:opacity 1.5s}#red{background:radial-gradient(ellipse at center,rgba(120,0,0,.25),rgba(170,0,0,.85));opacity:0}#flash{background:#fff4d8;opacity:0}
 #scan{background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
@@ -69,11 +82,12 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
 <div id="hud">
  <div id="boss"><div class="n" id="bossname">MINOTAUR</div><div class="bar"><i id="bossfill"></i></div></div>
  <div id="wv"><b id="wavev">WAVE 1</b><span id="scorev"></span></div>
- <div id="hp"><div class="lbl">HEALTH</div><div class="big" id="hpv">100</div><div class="bar"><i id="hpbar"></i></div></div>
+ <div id="hp"><div id="sh" style="display:none"><div class="lbl" style="color:#6ab0ff">SHIELD</div><div class="bar shb"><i id="shbar"></i></div></div><div class="lbl">HEALTH</div><div class="big" id="hpv">100</div><div class="bar"><i id="hpbar"></i></div></div>
  <div id="am"><div class="lbl" id="wlbl">PLASMA</div><div class="big"><span id="ammov">36</span><span id="resw" style="font-size:.5em;color:#3a9a5a"> / <span id="resv">180</span></span></div></div>
  <div id="obj"></div><div id="cross"></div><div id="toast"></div>
 </div>
 <div id="banner"></div><div id="sub"></div>
+<div id="shf" class="ov"></div><div id="slots"></div><div id="swapp"></div>
 <div id="lb1" class="lb"></div><div id="lb2" class="lb"></div>
 <div id="fade" class="ov"></div>
 <div id="touch"><div id="stick"><div id="knob"></div></div>
@@ -85,7 +99,9 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
 <div class="panel" id="pause"><h1 style="font-size:56px">PAUSED</h1><h2>&nbsp;</h2><button class="btn" id="p_resume">RESUME</button><button class="btn" id="p_restart">RESTART</button><button class="btn" id="p_menu">MAIN MENU</button></div>
 <div class="panel" id="dead"><h1>YOU DIED</h1><h2 id="deadstats">&nbsp;</h2><button class="btn" id="d_restart">TRY AGAIN</button><button class="btn" id="d_menu">MAIN MENU</button></div>
 <div class="panel" id="tdmsel"><h1 style="font-size:clamp(26px,6vw,56px)">TEAM DEATHMATCH</h1><h2>CHOOSE YOUR SIDE</h2><div class="row"><button class="btn sel" id="t_sold">SOLDIERS</button><button class="btn" id="t_mino">MINOTAURS</button></div><h2>MAP</h2><div class="row"><button class="btn sm sel" id="t_med">MED BAY</button><button class="btn sm" id="t_arm">ARMORY</button><button class="btn sm" id="t_arena">ARENA</button></div><div class="row"><button class="btn" id="t_go" style="border-color:#c8241a;color:#fff">DEPLOY</button><button class="btn sm" id="t_back">BACK</button></div><div class="hint">6 v 6 with bots &middot; first to 30 kills, or most kills after 5:00</div></div>
+<div class="panel" id="survsel"><h1 style="font-size:clamp(26px,6vw,56px)">SURVIVAL</h1><h2>CHOOSE A MAP</h2><div class="row"><button class="btn sm sel" id="s_classic">CLASSIC ARENA</button><button class="btn sm" id="s_med">MED BAY</button><button class="btn sm" id="s_arm">ARMORY</button><button class="btn sm" id="s_arena">LANE ARENA</button></div><div class="row"><button class="btn" id="s_go" style="border-color:#c8241a;color:#fff">DEPLOY</button><button class="btn sm" id="s_back">BACK</button></div></div>
+<div id="cdown"></div><div id="shop"><div id="shopbox"><h3>SUPPLY TERMINAL</h3><div id="shopinfo"></div><div id="shopgrid"></div><div id="shopbtns"><button class="btn" id="shop_ready" style="border-color:#5dff8a;color:#5dff8a">DONE</button><button class="btn" id="shop_close">CLOSE</button></div></div></div>
 <div class="panel" id="win"><h1 style="color:#5dff8a;text-shadow:0 0 18px #063,4px 4px 0 #000;font-size:clamp(34px,8vw,72px)" id="wintitle">CHAPTER 1 COMPLETE</h1><h2 id="winstats" style="line-height:1.8">&nbsp;</h2><button class="btn" id="w_again">PLAY AGAIN</button><button class="btn" id="w_menu">MAIN MENU</button><div class="hint" id="winhint" style="font-size:16px;letter-spacing:4px;color:#c8c8d0">TO BE CONTINUED...</div></div>
 <div id="rotate"><div>&#128241;</div>ROTATE TO LANDSCAPE</div>
-<script type="module" src="game.js?v=7"></script>
+<script type="module" src="game.js?v=8"></script>
 </body></html>
