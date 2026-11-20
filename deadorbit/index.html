@@ -26,8 +26,8 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
 .bar{height:10px;background:#1a0a0a;border:1px solid #533;margin-top:3px}.bar i{display:block;height:100%;background:#d83a2a;width:100%}
 #am{position:fixed;right:calc(18px + env(safe-area-inset-right));top:calc(56px + env(safe-area-inset-top));text-align:right;color:#5dff8a}
 #am .big{color:#5dff8a;text-shadow:0 0 8px #1f8a3a,2px 2px 0 #000}
-#wv{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);text-align:center;font-size:14px;letter-spacing:3px}
-#wv span{display:block;font-size:11px;color:#aaa;margin-top:2px}
+#wv{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);text-align:center;font-size:14px;letter-spacing:3px;white-space:nowrap}
+#wv>span{display:block;font-size:11px;color:#aaa;margin-top:2px}
 #boss{position:fixed;left:calc(18px + env(safe-area-inset-left));top:calc(12px + env(safe-area-inset-top));width:min(36vw,330px);display:none}
 #boss .n{font-size:13px;letter-spacing:4px;color:#ffb0a0;font-weight:bold;text-shadow:1px 1px 0 #000}
 #boss .bar{height:12px;border:1px solid #888;background:#200}#boss .bar i{background:linear-gradient(#ff3a20,#a00a00)}
@@ -50,6 +50,8 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
 #b_swap{width:50px;height:50px;right:calc(112px + env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));font-size:9px}
 #b_light{width:50px;height:50px;right:calc(96px + env(safe-area-inset-right));bottom:calc(132px + env(safe-area-inset-bottom));font-size:9px;border-color:rgba(255,240,180,.5)}
 #b_pause{width:44px;height:44px;right:calc(16px + env(safe-area-inset-right));top:calc(10px + env(safe-area-inset-top));font-size:14px}
+.row{display:flex;flex-wrap:wrap;justify-content:center}#tdmsel h2{margin:6px 0 2px}.btn.sm{min-width:150px}.btn.sel{border-color:#5dff8a;color:#5dff8a;box-shadow:0 0 12px rgba(93,255,138,.35)}
+@media (max-height:500px){.btn{padding:7px 18px;margin:4px;font-size:15px}.panel h1{font-size:34px}h2{margin:2px 0 8px}#tdmsel .btn{min-width:130px}}
 .panel{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:20;text-align:center}
 .panel h1{font-size:clamp(40px,10vw,96px);margin:0;letter-spacing:10px;color:#c8241a;text-shadow:0 0 18px #500,4px 4px 0 #000;font-family:Impact,"Arial Black",sans-serif}
 .panel h2{font-size:clamp(14px,2.4vw,20px);letter-spacing:6px;color:#9a9;margin:4px 0 26px}
@@ -76,11 +78,12 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;position:fixed;in
  <div class="tb" id="b_fire">FIRE</div><div class="tb" id="b_reload">RELOAD</div><div class="tb" id="b_jump">JUMP</div><div class="tb" id="b_pause">II</div><div class="tb" id="b_swap">SWAP</div><div class="tb" id="b_light">LIGHT</div></div>
 <div id="skip">TAP TO SKIP &#9654;</div>
 <div class="panel" id="title"><h1>DEAD ORBIT</h1><h2>U.S.C. HALCYON &middot; DECK 4</h2><div class="tap">TAP TO START</div><div class="hint">Best in landscape. Safari: Share &rarr; Add to Home Screen for fullscreen.</div></div>
-<div class="panel" id="menu"><h1>DEAD ORBIT</h1><h2>SURVIVE THE BREACH</h2><button class="btn" id="m_play">NEW GAME</button><button class="btn" id="m_skip">SKIP INTRO</button><button class="btn" id="m_surv">SURVIVAL MODE</button>
+<div class="panel" id="menu"><h1>DEAD ORBIT</h1><h2>SURVIVE THE BREACH</h2><button class="btn" id="m_play">NEW GAME</button><button class="btn" id="m_skip">SKIP INTRO</button><button class="btn" id="m_surv">SURVIVAL MODE</button><button class="btn" id="m_tdm">TEAM DEATHMATCH</button>
  <div class="hint" id="ctrlhint">Touch: left thumb move &middot; right thumb look &middot; FIRE / RELOAD / JUMP / SWAP / LIGHT<br>Desktop: WASD &middot; mouse &middot; click fire &middot; R reload &middot; Q or 1/2 swap &middot; F flashlight &middot; Space jump &middot; Esc pause</div></div>
 <div class="panel" id="pause"><h1 style="font-size:56px">PAUSED</h1><h2>&nbsp;</h2><button class="btn" id="p_resume">RESUME</button><button class="btn" id="p_restart">RESTART</button><button class="btn" id="p_menu">MAIN MENU</button></div>
 <div class="panel" id="dead"><h1>YOU DIED</h1><h2 id="deadstats">&nbsp;</h2><button class="btn" id="d_restart">TRY AGAIN</button><button class="btn" id="d_menu">MAIN MENU</button></div>
-<div class="panel" id="win"><h1 style="color:#5dff8a;text-shadow:0 0 18px #063,4px 4px 0 #000;font-size:clamp(34px,8vw,72px)">CHAPTER 1 COMPLETE</h1><h2 id="winstats" style="line-height:1.8">&nbsp;</h2><button class="btn" id="w_again">PLAY AGAIN</button><button class="btn" id="w_menu">MAIN MENU</button><div class="hint" style="font-size:16px;letter-spacing:4px;color:#c8c8d0">TO BE CONTINUED...</div></div>
+<div class="panel" id="tdmsel"><h1 style="font-size:clamp(26px,6vw,56px)">TEAM DEATHMATCH</h1><h2>CHOOSE YOUR SIDE</h2><div class="row"><button class="btn sel" id="t_sold">SOLDIERS</button><button class="btn" id="t_mino">MINOTAURS</button></div><h2>MAP</h2><div class="row"><button class="btn sm sel" id="t_med">MED BAY</button><button class="btn sm" id="t_arm">ARMORY</button><button class="btn sm" id="t_arena">ARENA</button></div><div class="row"><button class="btn" id="t_go" style="border-color:#c8241a;color:#fff">DEPLOY</button><button class="btn sm" id="t_back">BACK</button></div><div class="hint">6 v 6 with bots &middot; first to 30 kills, or most kills after 5:00</div></div>
+<div class="panel" id="win"><h1 style="color:#5dff8a;text-shadow:0 0 18px #063,4px 4px 0 #000;font-size:clamp(34px,8vw,72px)" id="wintitle">CHAPTER 1 COMPLETE</h1><h2 id="winstats" style="line-height:1.8">&nbsp;</h2><button class="btn" id="w_again">PLAY AGAIN</button><button class="btn" id="w_menu">MAIN MENU</button><div class="hint" id="winhint" style="font-size:16px;letter-spacing:4px;color:#c8c8d0">TO BE CONTINUED...</div></div>
 <div id="rotate"><div>&#128241;</div>ROTATE TO LANDSCAPE</div>
-<script type="module" src="game.js?v=5"></script>
+<script type="module" src="game.js?v=6"></script>
 </body></html>
