@@ -1,6 +1,6 @@
 // Dead Orbit service worker: network-first (always fetch fresh index/js), cache only as offline fallback.
-const V = 'deadorbit-v11';
-self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(V).then(c => c.addAll(['./', 'index.html', 'game.js?v=11', 'manifest.json'])).catch(() => { })); });
+const V = 'deadorbit-v12';
+self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(V).then(c => c.addAll(['./', 'index.html', 'game.js?v=12', 'manifest.json'])).catch(() => { })); });
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
