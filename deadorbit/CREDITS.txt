@@ -1,0 +1,34 @@
+DEAD ORBIT - AUDIO CREDITS
+==========================
+Game, code, models and procedural synth sounds: made for this project.
+Every recorded sound and music track below is licensed CC0 1.0 (public domain dedication,
+https://creativecommons.org/publicdomain/zero/1.0/). Credit is not required, but here it is anyway.
+Files were trimmed, converted to mono MP3 and loudness-normalized for the game.
+
+SOUND EFFECTS
+- Kenney (www.kenney.nl): "Sci-Fi Sounds" - lasers, plasma, energy shotgun, Lance, Bull Pistol, doors, explosions. CC0.
+  https://kenney.nl/assets/sci-fi-sounds
+- Kenney: "Impact Sounds" - punches, heavy impacts, footsteps (concrete/tile, grass/soil, carpet, metal). CC0.
+  https://kenney.nl/assets/impact-sounds
+- Kenney: "Interface Sounds" - pickups. CC0.  https://kenney.nl/assets/interface-sounds
+- Kenney: "RPG Audio" - shotgun pump (metal latch/click). CC0.  https://kenney.nl/assets/rpg-audio
+- rubberduck: "80 CC0 creature SFX" - monster growls, roars, screeches, insect chitters. CC0.
+  https://opengameart.org/content/80-cc0-creature-sfx
+- rubberduck: "40 CC0 water / splash / slime SFX" - wet footsteps. CC0.
+  https://opengameart.org/content/40-cc0-water-splash-slime-sfx
+- yd: "Short alarm" - station alarm. CC0.  https://opengameart.org/content/short-alarm
+
+MUSIC (one loop per area, plus combat loops)
+- Med Ward: "Ambient Horror Track 01" by CleytonKauffman. CC0.  https://opengameart.org/content/ambient-horror-track-01
+- Blackout / Containment: "Blackout" by SkyleTheFrench. CC0.  https://opengameart.org/content/blackout
+- Maintenance (power on): "Factory ambiance" by yd. CC0.  https://opengameart.org/content/factory-ambiance
+- Deck 5: "Dungeon Ambience" by yd. CC0.  https://opengameart.org/content/dungeon-ambience
+- Science Wing: "Cold Silence" by Eponasoft. CC0.  https://opengameart.org/content/cold-silence
+- Weapons R&D / Seed Vault: "Dark Cavern Ambient" by Paul. CC0.  https://opengameart.org/content/dark-cavern-ambient
+- Hydroponics: "Post Apocalyptic Wastelands" by Juhani Junkala (SubspaceAudio). CC0.  https://opengameart.org/content/horror-atmosphere
+- Main Lab (Dr. Roze): "Bleeding Out" by Brandon (CC0 option of a CC0/OGA-BY dual license).  https://opengameart.org/content/bleeding-out
+- Religion Ward: "Mysterious Ambience (song21)" by cynicmusic (CC0 option of a multi-license release).  https://opengameart.org/content/mysterious-ambience-song21
+- Combat: "Hunter-class Lifeform" by vitalezzz. CC0.  https://opengameart.org/content/hunter-class-lifeform
+- Boss - Dr. Roze: "intense boss battle" by haruta. CC0.  https://opengameart.org/content/intense-boss-battle
+- Boss - Roze Ascendant: "Final Stand" by Centurion_of_war. CC0.  https://opengameart.org/content/final-stand-0
+- Team Deathmatch: "Die Hard Battle" by Centurion_of_war. CC0.  https://opengameart.org/content/die-hard-battle
