@@ -1,7 +1,7 @@
 // Dead Orbit service worker: network-first for the page and game code (always fresh), cache-first for the
 // recorded audio (immutable files, kept in their own cache so a version bump doesn't re-download them).
-const V = 'deadorbit-v14', A = 'deadorbit-audio-v1';
-self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(V).then(c => c.addAll(['./', 'index.html', 'game.js?v=14', 'manifest.json'])).catch(() => { })); });
+const V = 'deadorbit-v15', A = 'deadorbit-audio-v1';
+self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(V).then(c => c.addAll(['./', 'index.html', 'game.js?v=15', 'manifest.json'])).catch(() => { })); });
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== A).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
